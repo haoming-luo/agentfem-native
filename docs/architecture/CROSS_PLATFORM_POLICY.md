@@ -32,7 +32,8 @@ Native engine from any Tier-1 operating system.
 
 ## Packaging stages
 
-Gate 0 uses a pure Python/NumPy wheel. If a compiled production kernel is later
-approved by ADR, CI must build and test platform wheels (manylinux, Windows,
-and macOS) from the same source revision, with reproducible toolchain metadata
-and SBOM.
+Gate 0 began with a pure Python/NumPy wheel. ADR-0016 now selects C++20 and the
+P2 candidate builds `cp311-abi3` platform wheels for manylinux, native Windows,
+and macOS from the same source revision. CI must install and test the produced
+wheel—not only the checkout—and record toolchain metadata. Reproducible binary
+provenance and an SBOM remain release-gate work.

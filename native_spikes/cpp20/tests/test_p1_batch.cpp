@@ -16,6 +16,8 @@ bool close(const double left, const double right, const double tolerance = 1e-15
 }  // namespace
 
 int main() {
+  static_assert(AFN_P1_ABI_VERSION == 0x00010000u);
+  assert(afn_p1_abi_version() == AFN_P1_ABI_VERSION);
   const std::array<double, 8> points{{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}};
   const std::array<std::int64_t, 6> cells{{0, 1, 2, 0, 2, 3}};
   const std::array<double, 4> conductivity{{1.0, 0.0, 0.0, 1.0}};
@@ -39,6 +41,15 @@ int main() {
   assert(close(load[1], 1.0 / 3.0));
   assert(close(load[2], 2.0 / 3.0));
   assert(close(load[3], 1.0 / 3.0));
+
+  const std::array<double, 8> cell_conductivity{{
+      1.0, 0.0, 0.0, 1.0, 2.0, 0.0, 0.0, 2.0}};
+  assert(afn_p1_diffusion_assemble_cells(
+             4, 2, points.data(), cells.data(), cell_conductivity.data(), 2.0,
+             rows.data(), columns.data(), data.data(), load.data()) ==
+         AFN_P1_SUCCESS);
+  assert(close(data[0], first_expected[0]));
+  assert(close(data[9], 2.0 * first_expected[0]));
 
   const std::array<std::int64_t, 3> reversed_cell{{0, 2, 1}};
   std::array<std::int64_t, 9> reversed_rows{};

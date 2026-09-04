@@ -35,8 +35,10 @@ than FEniCSx objects.
   independent oracle for future optimized kernels.
 - `kernel`: mesh, topology, P1 elements, diffusion operators, deterministic
   assembly, and future state semantics owned by AgentFEM Native.
-- `fast path`: bounded vectorized CPU batches today; future compiled kernels
-  reproduce the oracle without becoming the source of mathematical meaning.
+- `fast path`: a packaged standard-library C++20 kernel for supported static
+  volume data, bounded vectorized NumPy fallback, and the readable oracle;
+  every optimized path reproduces the oracle without becoming the source of
+  mathematical meaning.
 - `providers`: replaceable dense/sparse linear algebra now, and future
   parallel runtime and hardware implementations.
 - `contract`: versioned JSON request/result execution and public AgentFEM
@@ -44,8 +46,9 @@ than FEniCSx objects.
 - `verification`: tests and evidence that consume public results without
   becoming part of the solver.
 
-The current implementation deliberately keeps these small enough to audit;
-future optimized C++20/Rust/compiled kernels must reproduce this reference.
+The current implementation deliberately keeps these small enough to audit.
+C++20 is the selected production compiled language; Rust remains a
+non-shipping comparison track, and both must reproduce the same reference.
 
 ## Cross-platform rule
 
@@ -55,11 +58,11 @@ Contract remain identical across native Windows, macOS, and Linux. Code uses Pyt
 `pathlib`, does not require a POSIX shell, treats filesystem case differences
 explicitly, and never embeds absolute developer paths in artifacts.
 
-The Python layer depends only on Python and NumPy wheels. The experimental
-C++20 spike depends only on the C++ standard library and exposes a narrow C
-ABI; it is not yet part of release packages. PETSc, MPI, GPU,
-and vendor solvers are optional future providers and cannot become import-time
-requirements of the reference package.
+The package depends only on Python, NumPy, and the platform C/C++ runtime. Its
+C++20 extension exposes a versioned C ABI and uses CPython's 3.11+ stable ABI;
+it does not use a third-party binding framework. PETSc, SciPy, MPI, GPU, and
+vendor solvers are optional providers and cannot become import-time
+requirements of the reference path.
 
 See `docs/adr/` for decisions and `docs/specifications/KERNEL_CONTRACT_V0.md`
 for the boundary presented to AgentFEM.

@@ -31,10 +31,11 @@ Each benchmark stores hardware, OS, architecture, compiler, flags, dependency
 versions, commit, numerical digest, wall time, and peak memory. A result without
 reproducibility metadata does not influence the decision.
 
-The benchmark suite now contains the oracle baseline, reference/vectorized
-comparison, large-scale vectorized guard, and C++20 shared-library comparison.
-Optimized spikes consume the same owned mesh and reproduce complete COO/load
-data before their timings are admitted.
+The benchmark suite contains the oracle baseline, reference/vectorized
+comparison, large-scale vectorized guard, interleaved C++20/Rust shared-library
+comparison, packaged-runtime comparison, and end-to-end sparse solve. Optimized
+paths consume the same owned mesh and reproduce complete COO/load data before
+their timings are admitted.
 
 ## Current evidence and direction
 
@@ -49,14 +50,19 @@ On the local macOS arm64 development machine with Python 3.12.13 and NumPy
   0.113 seconds and assembly took approximately 0.199 seconds, producing
   4,718,592 COO entries at about 2.63 million cells/second with exact constant
   null mode and total load.
-- 131,072 anisotropic cells: the standard-library C++20/C ABI spike was about
-  33 times faster than vectorized NumPy and emitted identical COO indices,
-  matrix data, and load data on this structured case.
+- At 8,192, 131,072, and 524,288 anisotropic cells, C++20 was respectively
+  1.25, 1.27, and 1.26 times as fast as the dependency-free Rust equivalent;
+  both emitted exactly identical COO indices, matrix data, and load data.
+- At 524,288 cells, raw C++20 was 31.2 times as fast as vectorized NumPy, while
+  the packaged public native path—including owned outputs—was 13.85 times as
+  fast as the public vectorized path.
+- At 32,768 cells, native assembly plus the same SciPy sparse solve was 1.28
+  times as fast end to end, with identical solution, reaction, and energy.
 
-These are local kernel measurements and do not establish end-to-end solver or
-cross-platform superiority. They do establish enough headroom to make C++20
-the leading compiled experiment. Rust remains required comparative evidence
-before final lock-in.
+These are local macOS arm64 measurements and do not establish cross-platform
+superiority. Together with the packaged stable-ABI prototype, sanitizer tests,
+and HPC/toolchain considerations, they select C++20 as the production compiled
+language. Rust remains a useful non-shipping safety/design comparator.
 
 ## Permissive-library policy
 
@@ -82,9 +88,9 @@ allowed. Permissive general-purpose runtime, binding, portability, sparse
 algebra, and hardware libraries may be approved after provenance and benchmark
 review.
 
-## Decision point
+## Decision
 
-C++20 leads the current experiment under ADR-0014. Final selection still waits
-for hosted three-platform builds, sanitizers, compiled-wheel packaging, a Rust
-comparison, and end-to-end sparse solve evidence. No optimized track may
-replace the NumPy oracle or independently expand public semantics.
+ADR-0016 selects C++20. The language decision is closed; release acceptance is
+not. Hosted three-platform wheel builds, binary provenance, and broader kernel
+coverage remain required. No optimized track may replace the NumPy oracle or
+independently expand public semantics.

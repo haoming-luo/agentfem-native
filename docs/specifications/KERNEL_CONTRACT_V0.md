@@ -25,7 +25,7 @@ failure exits with status 2. Python callers use `run_kernel_request`.
 - conditions: constant Dirichlet values and outward Neumann fluxes;
 - materials: named cell-set conductivity overrides;
 - procedure: steady diffusion with `numpy`, `scipy`, or `auto` provider, and
-  `auto`, `reference`, or `vectorized` assembly selection;
+  `auto`, `reference`, `vectorized`, or `native` assembly selection;
 - outputs: optional nodal legacy VTK artifact beneath an explicit root.
 
 Python's direct problem API additionally accepts spatial conductivity and
@@ -33,10 +33,11 @@ source callables. They are intentionally excluded from JSON because executable
 code is not a portable data contract.
 
 `procedure.assembly = "auto"` is conservative: static scalar/tensor volume
-data use bounded vectorized assembly, while callable volume fields remain on
-the element-by-element reference path. Explicit `vectorized` selection rejects
+data use the packaged native kernel when its ABI matches, then bounded
+vectorized assembly as the fallback; callable volume fields remain on the
+element-by-element reference path. Explicit optimized selection rejects
 unsupported data instead of silently changing its meaning. The result runtime
-records the actual assembly path used.
+records the actual assembly path and native ABI identity.
 
 ## Result and failures
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentfem-native"
-version = "0.3.0a1"
+version = "0.4.0a1"
 description = "The independently developed finite-element engine for AgentFEM."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,6 +18,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: C++",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
   "Operating System :: MacOS",
@@ -25,7 +26,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["build>=1"]
+dev = ["build>=1", "ruff>=0.8"]
 scipy = ["scipy>=1.12"]
 
 [project.scripts]
@@ -39,3 +40,6 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 agentfem_native = ["schemas/*.json"]
+
+[tool.setuptools.exclude-package-data]
+agentfem_native = ["*.cpp"]

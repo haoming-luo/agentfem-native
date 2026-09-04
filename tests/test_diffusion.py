@@ -18,6 +18,7 @@ from agentfem_native.mesh import (
     unit_square_triangles,
     unit_square_two_triangles,
 )
+from agentfem_native.native import native_kernel_available
 
 
 def _solve_unit_flux(mesh: TriangularMesh):
@@ -133,7 +134,8 @@ class DiffusionTests(unittest.TestCase):
                 neumann=(NeumannCondition("right", 2.0),),
             )
         )
-        self.assertEqual(result.assembly_mode, "vectorized")
+        expected = "native" if native_kernel_available() else "vectorized"
+        self.assertEqual(result.assembly_mode, expected)
         np.testing.assert_allclose(result.nodal_values, mesh.points[:, 0], atol=2.0e-15)
 
     def test_reference_and_vectorized_solve_results_are_equivalent(self) -> None:

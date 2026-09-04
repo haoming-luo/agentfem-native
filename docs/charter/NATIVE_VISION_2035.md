@@ -52,7 +52,7 @@ The execution ladder is:
 ```text
 readable NumPy oracle
     -> bounded vectorized CPU batches
-    -> C++20/Rust compiled kernels behind a stable ABI
+    -> C++20 production kernels behind a stable C ABI
     -> threaded/SIMD kernels
     -> distributed-memory providers
     -> GPU and domestic accelerator providers
@@ -66,17 +66,17 @@ shortcut may enter scientific execution unseen.
 
 ## Production-language judgment
 
-C++20 currently leads because scientific/HPC interoperability, vendor
-compilers, MPI, GPU toolchains, and stable C linkage are mature. The first P1
-spike already proves that a dependency-free compiled loop can reproduce Native
-COO data exactly and retain substantial headroom beyond vectorized NumPy.
+C++20 is the selected production compiled language because scientific/HPC
+interoperability, vendor compilers, MPI, GPU toolchains, and stable C linkage
+are mature. The packaged P1 kernel proves that a dependency-free compiled loop
+can reproduce Native COO data exactly and retain substantial headroom beyond
+vectorized NumPy.
 
-Rust remains strategically important. Its ownership model is especially
-valuable for nonlinear material state, rollback, concurrency, and long-lived
-services; its official Tier-1 host platforms cover the project's native
-desktop/server targets. A Rust spike must solve the same workload before final
-lock-in. Mixed implementation is acceptable only behind one stable ABI and
-without duplicating scientific semantics.
+Rust remains strategically useful as a non-shipping comparison and research
+track. Its ownership model offers lessons for nonlinear material state,
+rollback, concurrency, and long-lived services. It is not a second production
+runtime: mixed implementation would require a later evidence-backed ADR,
+remain behind one stable ABI, and never duplicate scientific semantics.
 
 Permissive general-purpose libraries are leverage, not weakness. BSD/MIT/
 Apache components such as SciPy, PETSc, OpenBLAS, Kokkos, or binding tools may

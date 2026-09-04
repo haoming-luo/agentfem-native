@@ -46,7 +46,7 @@ lowering prototype. Gate 1 remains open only for hosted native Windows,
 macOS, and Linux evidence and integration of the portable extension into
 AgentFEM's public exported IR.
 
-## Performance milestone P1 — bounded serial throughput (current)
+## Performance milestone P1 — bounded serial throughput (complete locally)
 
 - Completed: vectorized structured-mesh generation and validation; bounded
   vectorized static P1 assembly; conservative auto-dispatch; reference/fast
@@ -56,13 +56,29 @@ AgentFEM's public exported IR.
 - Measured local direction: hundreds-fold vectorized speedup over the readable
   element loop, followed by additional tens-fold C++ kernel headroom. These are
   local kernel benchmarks, not cross-platform end-to-end claims.
-- Open: hosted three-OS CMake evidence, sanitizer jobs, compiled-wheel
-  packaging, Rust equivalent spike, material-region ABI, and scalable sparse
-  end-to-end timing.
+- Completed locally: sanitizer builds, compiled-wheel packaging, a dependency-
+  free Rust equivalent, material-region ABI, and sparse end-to-end timing.
 
-Before Gate 2, complete the open P1 items and select the production language
-from evidence. Prefer permissive general-purpose dependencies; do not use a
-third-party FEM implementation to substitute for Native discretization.
+## Performance milestone P2 — packaged compiled kernel (current)
+
+- Completed locally: a hand-written CPython stable-ABI adapter packages the
+  C++20 kernel in a `cp311-abi3` wheel without pybind11, nanobind, Cython, or
+  the NumPy C API.
+- Completed locally: exact C++/Rust/NumPy COO and load-vector equivalence,
+  interleaved raw timings, public-runtime timing, and identical SciPy solution,
+  reaction, and energy evidence.
+- Decision: C++20 is the primary production kernel language. Rust remains a
+  valuable safety and design cross-check but is not a second shipping runtime
+  or a release blocker.
+- Completed locally: SciPy 1.18.1 was installed from an official wheel after
+  SHA-256 verification and passes provider equivalence; SciPy remains optional
+  infrastructure and owns no finite-element semantics.
+- Open: hosted native Windows/macOS/Linux wheel evidence, platform artifact
+  publication, binary provenance/SBOM, and broader field/operator coverage.
+
+Before Gate 2, close the open P2 release evidence. Prefer permissive
+general-purpose dependencies; do not use a third-party FEM implementation to
+substitute for Native discretization.
 
 ## Gate 2 — basic solid mechanics
 

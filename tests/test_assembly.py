@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
 from agentfem_native.assembly import (
     assemble_diffusion,
+    assemble_diffusion_native,
     assemble_diffusion_reference,
     assemble_diffusion_vectorized,
     p1_boundary_flux_load,
@@ -16,6 +18,7 @@ from agentfem_native.assembly import (
     select_assembly_mode,
 )
 from agentfem_native.mesh import unit_square_triangles, unit_square_two_triangles
+from agentfem_native.native import native_kernel_available
 from agentfem_native.reference import REFERENCE_TRIANGLE_VERTICES
 
 
@@ -115,9 +118,9 @@ class AssemblyTests(unittest.TestCase):
         np.testing.assert_allclose(load, reference_load, atol=3.0e-17)
 
     def test_auto_dispatch_is_conservative_for_callable_fields(self) -> None:
+        expected = "native" if native_kernel_available() else "vectorized"
         self.assertEqual(
-            select_assembly_mode("auto", conductivity=2.0, source=1.0),
-            "vectorized",
+            select_assembly_mode("auto", conductivity=2.0, source=1.0), expected
         )
         conductivity = lambda points: 1.0 + points[:, 0]
         self.assertEqual(
@@ -126,6 +129,51 @@ class AssemblyTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "requires static"):
             select_assembly_mode("vectorized", conductivity=conductivity, source=1.0)
+
+    def test_auto_falls_back_to_vectorized_when_native_is_unavailable(self) -> None:
+        with patch(
+            "agentfem_native.assembly.native_kernel_available", return_value=False
+        ):
+            self.assertEqual(
+                select_assembly_mode("auto", conductivity=2.0, source=1.0),
+                "vectorized",
+            )
+
+    def test_explicit_native_fails_when_native_is_unavailable(self) -> None:
+        with (
+            patch(
+                "agentfem_native.assembly.native_kernel_available", return_value=False
+            ),
+            self.assertRaisesRegex(ValueError, "unavailable"),
+        ):
+            select_assembly_mode("native", conductivity=2.0, source=1.0)
+
+    @unittest.skipUnless(native_kernel_available(), "compiled kernel unavailable")
+    def test_native_static_and_material_outputs_match_reference(self) -> None:
+        mesh = unit_square_triangles(7, 3)
+        tensor = np.array(((2.0, 0.25), (0.25, 1.0)))
+        overrides = {
+            index: np.array(((3.0, -0.1), (-0.1, 1.5)))
+            for index in range(0, mesh.cell_count, 5)
+        }
+        reference_matrix, reference_load = assemble_diffusion_reference(
+            mesh,
+            conductivity=tensor,
+            source=-0.4,
+            boundary_fluxes=(("top", 0.3),),
+            cell_conductivities=overrides,
+        )
+        matrix, load = assemble_diffusion_native(
+            mesh,
+            conductivity=tensor,
+            source=-0.4,
+            boundary_fluxes=(("top", 0.3),),
+            cell_conductivities=overrides,
+        )
+        np.testing.assert_array_equal(matrix.rows, reference_matrix.rows)
+        np.testing.assert_array_equal(matrix.columns, reference_matrix.columns)
+        np.testing.assert_allclose(matrix.data, reference_matrix.data, atol=4.0e-15)
+        np.testing.assert_allclose(load, reference_load, atol=4.0e-16)
 
     def test_vectorized_chunk_size_and_mode_fail_explicitly(self) -> None:
         mesh = unit_square_two_triangles()

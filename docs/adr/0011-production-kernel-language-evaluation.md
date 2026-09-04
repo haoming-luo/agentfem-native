@@ -1,6 +1,6 @@
 # ADR-0011: benchmark before selecting the production-kernel language
 
-Status: accepted evaluation plan — 2026-09-04
+Status: superseded by ADR-0016 — 2026-09-04
 
 Python/NumPy remains the executable mathematical reference, not a commitment
 to the final high-performance kernel. Before Gate 2 implementation grows, use

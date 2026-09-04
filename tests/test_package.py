@@ -9,7 +9,7 @@ import agentfem_native
 
 class PackageTests(unittest.TestCase):
     def test_public_version_and_gate_one_api(self) -> None:
-        self.assertEqual(agentfem_native.__version__, "0.3.0a1")
+        self.assertEqual(agentfem_native.__version__, "0.4.0a1")
         self.assertEqual(
             set(agentfem_native.__all__),
             {
@@ -35,6 +35,8 @@ class PackageTests(unittest.TestCase):
                 "kernel_result_schema",
                 "lower_agentfem_ir",
                 "lower_agentfem_model",
+                "native_kernel_available",
+                "native_kernel_identity",
                 "p1_basis",
                 "p1_basis_gradients",
                 "run_kernel_request",

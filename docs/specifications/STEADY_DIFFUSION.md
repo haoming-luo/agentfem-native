@@ -34,14 +34,14 @@ as deterministic COO triplets. The auditable dense NumPy provider and optional
 SciPy CSR direct provider solve the same constrained system behind one
 interface. Provider selection does not change discretization or assembly.
 
-For static scalar/tensor conductivity and scalar source, `auto` selects a
-bounded vectorized implementation. It computes affine Jacobian inverses
-analytically, emits the same cell-major/local-row/local-column COO ordering,
-and accumulates loads in the same cell order. `reference` always executes the
-quadrature-based element oracle. Callable fields select `reference`; requesting
-`vectorized` for unsupported field semantics fails instead of silently
-changing behavior. Chunk size is a performance control and cannot alter
-scientific results.
+For static scalar/tensor conductivity and scalar source, `auto` selects the
+packaged C++20 kernel when its ABI matches and otherwise a bounded vectorized
+implementation. Both compute affine Jacobian inverses analytically, emit the
+same cell-major/local-row/local-column COO ordering, and accumulate loads in
+the same cell order. `reference` always executes the quadrature-based element
+oracle. Callable fields select `reference`; requesting an unsupported optimized
+path fails instead of silently changing behavior. Chunk size is a performance
+control and cannot alter scientific results.
 
 Conductivity may be a positive scalar, a spatial scalar callable, or a
 symmetric positive-definite 2-by-2 tensor. Named cell sets may override the
@@ -81,7 +81,8 @@ total reaction equals zero.
 - numerical identity between installed NumPy and SciPy provider paths.
 - triplet-by-triplet reference/vectorized comparison for scalar, anisotropic,
   material-region, boundary-flux, orientation, and multiple chunk-size cases;
-- standard-library C++20 spike comparison against vectorized NumPy.
+- exact packaged C++20/reference/vectorized comparison, plus a dependency-free
+  Rust C-ABI cross-check and end-to-end SciPy solve comparison.
 
 ## Current limitations
 

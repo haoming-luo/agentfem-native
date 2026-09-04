@@ -39,12 +39,22 @@ def main() -> int:
                 path.read_text(encoding="utf-8").splitlines()[:3]
             ):
                 missing_spdx.append(str(path.relative_to(ROOT)))
-    for pattern in ("*.c", "*.cpp", "*.h"):
-        for path in (ROOT / "native_spikes").rglob(pattern):
+    implementation_roots = (ROOT / "native_spikes", ROOT / "src")
+    for pattern in ("*.c", "*.cpp", "*.h", "*.rs"):
+        for path in (
+            candidate
+            for root in implementation_roots
+            for candidate in root.rglob(pattern)
+        ):
             if "SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0" not in "\n".join(
                 path.read_text(encoding="utf-8").splitlines()[:3]
             ):
                 missing_spdx.append(str(path.relative_to(ROOT)))
+    setup_file = ROOT / "setup.py"
+    if "SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0" not in "\n".join(
+        setup_file.read_text(encoding="utf-8").splitlines()[:3]
+    ):
+        missing_spdx.append("setup.py")
     if missing_spdx:
         print("Files missing the selected SPDX identifier:")
         print("\n".join(missing_spdx))

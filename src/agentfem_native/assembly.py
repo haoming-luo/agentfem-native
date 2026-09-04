@@ -12,13 +12,14 @@ from numpy.typing import ArrayLike, NDArray
 
 from .geometry import AffineTriangleMap
 from .mesh import TriangularMesh
+from .native import assemble_p1_volume, native_kernel_available
 from .quadrature import triangle_rule
 from .reference import p1_basis
 
 FloatArray: TypeAlias = NDArray[np.float64]
 ScalarField = float | Callable[[FloatArray], ArrayLike]
 Conductivity = float | ArrayLike | Callable[[FloatArray], ArrayLike]
-AssemblyMode = Literal["auto", "reference", "vectorized"]
+AssemblyMode = Literal["auto", "reference", "vectorized", "native"]
 DEFAULT_ASSEMBLY_CHUNK_SIZE = 32_768
 
 
@@ -243,10 +244,10 @@ def select_assembly_mode(
     conductivity: Conductivity,
     source: ScalarField,
     cell_conductivities: dict[int, Conductivity] | None = None,
-) -> Literal["reference", "vectorized"]:
+) -> Literal["reference", "vectorized", "native"]:
     """Choose a safe implementation without changing field-call semantics."""
 
-    if mode not in {"auto", "reference", "vectorized"}:
+    if mode not in {"auto", "reference", "vectorized", "native"}:
         raise ValueError(f"Unknown assembly mode {mode!r}.")
     static = _static_conductivity_tensor(conductivity) is not None
     static = static and _static_source_value(source) is not None
@@ -257,11 +258,19 @@ def select_assembly_mode(
         )
     if mode == "reference":
         return "reference"
-    if mode == "vectorized" and not static:
+    if mode in {"vectorized", "native"} and not static:
         raise ValueError(
-            "Vectorized assembly currently requires static scalar/tensor "
+            f"{mode.capitalize()} assembly currently requires static scalar/tensor "
             "conductivity and a static scalar source."
         )
+    if mode == "native" and not native_kernel_available():
+        raise ValueError("Native assembly is unavailable in this installation.")
+    if mode == "native":
+        return "native"
+    if mode == "vectorized":
+        return "vectorized"
+    if static and native_kernel_available():
+        return "native"
     return "vectorized" if static else "reference"
 
 
@@ -360,6 +369,43 @@ def assemble_diffusion_vectorized(
     return COOMatrix((mesh.node_count, mesh.node_count), rows, columns, data), load
 
 
+def assemble_diffusion_native(
+    mesh: TriangularMesh,
+    *,
+    conductivity: Conductivity,
+    source: ScalarField = 0.0,
+    boundary_fluxes: tuple[tuple[str, ScalarField], ...] = (),
+    cell_conductivities: dict[int, Conductivity] | None = None,
+) -> tuple[COOMatrix, FloatArray]:
+    """Assemble static P1 volume terms through the packaged C++20 kernel."""
+
+    overrides = _validate_overrides(mesh, cell_conductivities)
+    default_tensor = _static_conductivity_tensor(conductivity)
+    source_value = _static_source_value(source)
+    if default_tensor is None or source_value is None:
+        raise ValueError(
+            "Native assembly currently requires static scalar/tensor "
+            "conductivity and a static scalar source."
+        )
+    tensors: FloatArray
+    if overrides:
+        tensors = np.broadcast_to(default_tensor, (mesh.cell_count, 2, 2)).copy()
+        for index, value in overrides.items():
+            tensor = _static_conductivity_tensor(value)
+            if tensor is None:
+                raise ValueError(
+                    "Native assembly requires static scalar/tensor material conductivity."
+                )
+            tensors[index] = tensor
+    else:
+        tensors = default_tensor
+    rows, columns, data, load = assemble_p1_volume(
+        mesh.points, mesh.cells, tensors, source_value
+    )
+    _add_boundary_fluxes(mesh, load, boundary_fluxes)
+    return COOMatrix((mesh.node_count, mesh.node_count), rows, columns, data), load
+
+
 def assemble_diffusion(
     mesh: TriangularMesh,
     *,
@@ -386,6 +432,14 @@ def assemble_diffusion(
             boundary_fluxes=boundary_fluxes,
             cell_conductivities=cell_conductivities,
             chunk_size=chunk_size,
+        )
+    if selected == "native":
+        return assemble_diffusion_native(
+            mesh,
+            conductivity=conductivity,
+            source=source,
+            boundary_fluxes=boundary_fluxes,
+            cell_conductivities=cell_conductivities,
         )
     return assemble_diffusion_reference(
         mesh,

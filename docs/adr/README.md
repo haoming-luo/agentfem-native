@@ -21,3 +21,7 @@ owner review. Superseded decisions remain in history.
   beside the mathematical oracle
 - [ADR-0014](0014-cpp20-leading-production-spike.md): C++20 leads compiled
   production-kernel experiments without final language lock-in
+- [ADR-0015](0015-packaged-cpp20-stable-abi.md): package the C++20 kernel with
+  a hand-written CPython stable-ABI adapter
+- [ADR-0016](0016-cpp20-production-language.md): select C++20 as the production
+  compiled-kernel language after an exact Rust comparison

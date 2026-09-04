@@ -18,6 +18,7 @@ from agentfem_native import (
     run_kernel_request,
     unit_square_two_triangles,
 )
+from agentfem_native.native import native_kernel_available
 
 
 def request_record(*, outputs: dict[str, object] | None = None) -> dict[str, object]:
@@ -56,7 +57,12 @@ class ContractTests(unittest.TestCase):
         result = run_kernel_request(request_record())
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["request_id"], "diffusion-001")
-        self.assertEqual(result["runtime"]["assembly"]["name"], "vectorized")  # type: ignore[index]
+        expected = "native" if native_kernel_available() else "vectorized"
+        self.assertEqual(result["runtime"]["assembly"]["name"], expected)  # type: ignore[index]
+        self.assertEqual(
+            result["runtime"]["native_kernel"]["available"],  # type: ignore[index]
+            native_kernel_available(),
+        )
         values = result["fields"]["solution"]["values"]  # type: ignore[index]
         self.assertEqual(values, [0.0, 1.0, 1.0, 0.0])
         json.dumps(result, allow_nan=False, sort_keys=True)
@@ -99,6 +105,19 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["error"]["code"], "unsupported_assembly")  # type: ignore[index]
         self.assertEqual(result["error"]["path"], "$.procedure.assembly")  # type: ignore[index]
+
+    @unittest.skipUnless(native_kernel_available(), "compiled kernel unavailable")
+    def test_explicit_native_assembly_is_reported(self) -> None:
+        request = request_record()
+        request["procedure"] = {
+            "kind": "steady_diffusion",
+            "linear_algebra": "numpy",
+            "assembly": "native",
+        }
+        result = run_kernel_request(request)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["runtime"]["assembly"]["name"], "native")  # type: ignore[index]
+        self.assertEqual(result["runtime"]["native_kernel"]["abi_version"], "1.0")  # type: ignore[index]
 
     def test_portable_vtk_artifact_has_relative_path_and_digest(self) -> None:
         request = request_record(

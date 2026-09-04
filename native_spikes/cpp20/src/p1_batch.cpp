@@ -29,25 +29,28 @@ bool positive_definite_tensor(const double* tensor) {
   return tensor[0] > tolerance && determinant > tolerance * scale;
 }
 
-}  // namespace
-
-extern "C" AFN_API int afn_p1_diffusion_assemble(
+int assemble_impl(
     const std::size_t node_count,
     const std::size_t cell_count,
     const double* points_xy,
     const std::int64_t* cells,
-    const double* conductivity_2x2,
+    const double* conductivity,
+    const bool conductivity_per_cell,
     const double source,
     std::int64_t* rows,
     std::int64_t* columns,
     double* data,
     double* load) {
   if (node_count == 0 || cell_count == 0 || points_xy == nullptr ||
-      cells == nullptr || conductivity_2x2 == nullptr || rows == nullptr ||
+      cells == nullptr || conductivity == nullptr || rows == nullptr ||
       columns == nullptr || data == nullptr || load == nullptr) {
     return AFN_P1_NULL_POINTER;
   }
-  if (!positive_definite_tensor(conductivity_2x2)) {
+  if (node_count > std::numeric_limits<std::size_t>::max() / 2 ||
+      cell_count > std::numeric_limits<std::size_t>::max() / 9) {
+    return AFN_P1_INVALID_CELL;
+  }
+  if (!conductivity_per_cell && !positive_definite_tensor(conductivity)) {
     return AFN_P1_INVALID_CONDUCTIVITY;
   }
   if (!std::isfinite(source)) {
@@ -56,6 +59,12 @@ extern "C" AFN_API int afn_p1_diffusion_assemble(
   std::fill(load, load + node_count, 0.0);
 
   for (std::size_t cell_index = 0; cell_index < cell_count; ++cell_index) {
+    const double* conductivity_2x2 =
+        conductivity + (conductivity_per_cell ? 4 * cell_index : 0);
+    if (conductivity_per_cell &&
+        !positive_definite_tensor(conductivity_2x2)) {
+      return AFN_P1_INVALID_CONDUCTIVITY;
+    }
     const std::int64_t* cell = cells + 3 * cell_index;
     for (std::size_t local = 0; local < 3; ++local) {
       if (cell[local] < 0 || static_cast<std::size_t>(cell[local]) >= node_count) {
@@ -115,4 +124,42 @@ extern "C" AFN_API int afn_p1_diffusion_assemble(
     }
   }
   return AFN_P1_SUCCESS;
+}
+
+}  // namespace
+
+extern "C" AFN_API std::uint32_t afn_p1_abi_version() {
+  return AFN_P1_ABI_VERSION;
+}
+
+extern "C" AFN_API int afn_p1_diffusion_assemble(
+    const std::size_t node_count,
+    const std::size_t cell_count,
+    const double* points_xy,
+    const std::int64_t* cells,
+    const double* conductivity_2x2,
+    const double source,
+    std::int64_t* rows,
+    std::int64_t* columns,
+    double* data,
+    double* load) {
+  return assemble_impl(node_count, cell_count, points_xy, cells,
+                       conductivity_2x2, false, source, rows, columns, data,
+                       load);
+}
+
+extern "C" AFN_API int afn_p1_diffusion_assemble_cells(
+    const std::size_t node_count,
+    const std::size_t cell_count,
+    const double* points_xy,
+    const std::int64_t* cells,
+    const double* conductivity_cells_2x2,
+    const double source,
+    std::int64_t* rows,
+    std::int64_t* columns,
+    double* data,
+    double* load) {
+  return assemble_impl(node_count, cell_count, points_xy, cells,
+                       conductivity_cells_2x2, true, source, rows, columns,
+                       data, load);
 }

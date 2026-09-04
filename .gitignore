@@ -1,5 +1,8 @@
 __pycache__/
 *.py[cod]
+*.so
+*.pyd
+*.dylib
 .pytest_cache/
 .ruff_cache/
 .venv/
@@ -9,4 +12,5 @@ dist/
 .coverage
 htmlcov/
 work/
+target/
 .DS_Store

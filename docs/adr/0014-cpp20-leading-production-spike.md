@@ -1,6 +1,6 @@
 # ADR-0014: C++20 leads the production-kernel experiments
 
-Status: accepted as an experiment, not final lock-in — 2026-09-04
+Status: superseded by ADR-0016 — 2026-09-04
 
 C++20 becomes the leading compiled-kernel experiment because the first
 standard-library-only P1 assembly spike demonstrates a direct stable C ABI,

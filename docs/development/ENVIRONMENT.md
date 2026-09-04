@@ -17,6 +17,12 @@ Add the optional SciPy sparse provider:
 python tools/bootstrap_env.py --with-scipy
 ```
 
+Install release and lint tooling when developing the package itself:
+
+```text
+python -m pip install --editable ".[dev,scipy]"
+```
+
 Install AgentFEM into the same environment from a local checkout:
 
 ```text
@@ -29,8 +35,9 @@ without reinstalling.
 
 The repository's own `agentfem-native` package is always installed editable
 into `.venv`; the command-line entry point and imports therefore exercise the
-current checkout. Passing `--agentfem` adds the separate public AgentFEM
-package to that same environment.
+current checkout, including the C++20 extension when a supported compiler is
+available. Passing `--agentfem` adds the separate public AgentFEM package to
+that same environment.
 
 ## Activate
 
@@ -58,10 +65,17 @@ python tools/check_independence.py
 python -m agentfem_native.cli examples/steady_diffusion_request.json --artifact-directory work/example --result work/example-result.json
 ```
 
-For the compiled performance experiment, use the native CMake workflow in
-`native_spikes/cpp20/README.md`. It is intentionally separate from the Python
-runtime until three-platform build and packaging gates pass.
+The regular editable install builds the packaged C++20 extension. The separate
+CMake workflow in `native_spikes/cpp20/README.md` runs the C ABI, C-header, and
+sanitizer tests. A C++20 compiler is therefore required when building from
+source; release wheels carry the compiled extension.
 
 The minimal Native runtime requires only NumPy. AgentFEM and SciPy are
 integration/provider dependencies; Native source must remain importable and
 testable without either one.
+
+The local 2026-09-04 milestone environment contains Python 3.12.13, NumPy
+2.3.5, SciPy 1.18.1, editable AgentFEM Native 0.4.0a1, and editable AgentFEM
+0.3.1. SciPy was installed from its official macOS arm64 wheel only after its
+published SHA-256 digest was verified; `pip check` and provider-equivalence
+tests pass.

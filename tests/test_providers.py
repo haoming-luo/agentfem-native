@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -38,11 +39,11 @@ class ProviderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unknown linear algebra provider"):
             solve_steady_diffusion(_problem(), provider="missing")
 
-    @unittest.skipIf(
-        importlib.util.find_spec("scipy") is not None, "SciPy is installed"
-    )
     def test_explicit_missing_scipy_provider_fails_with_install_hint(self) -> None:
-        with self.assertRaisesRegex(ProviderUnavailableError, r"\[scipy\]"):
+        with (
+            patch.object(ScipySparseProvider, "available", return_value=False),
+            self.assertRaisesRegex(ProviderUnavailableError, r"\[scipy\]"),
+        ):
             solve_steady_diffusion(_problem(), provider="scipy")
 
     @unittest.skipUnless(
@@ -56,6 +57,13 @@ class ProviderTests(unittest.TestCase):
             sparse.nodal_values, dense.nodal_values, atol=2.0e-15
         )
         self.assertLess(sparse.free_residual_norm, 2.0e-14)
+
+    @unittest.skipUnless(
+        importlib.util.find_spec("scipy") is not None, "SciPy unavailable"
+    )
+    def test_auto_provider_selects_installed_sparse_backend(self) -> None:
+        automatic = solve_steady_diffusion(_problem(), provider="auto")
+        self.assertEqual(automatic.provider_name, "scipy_sparse")
 
     def test_availability_probe_does_not_import_scipy(self) -> None:
         self.assertEqual(

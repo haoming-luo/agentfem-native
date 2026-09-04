@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0a1 — packaged native kernel candidate
+
+- Shipped the standard-library-only C++20 P1 volume-assembly kernel inside a
+  CPython 3.11+ stable-ABI wheel with no binding-framework dependency.
+- Added an ABI-versioned C boundary, ownership-safe buffer validation,
+  material-region tensors, GIL release, explicit `native` assembly selection,
+  and conservative `auto` fallback to vectorized/reference paths.
+- Built the same kernel in Rust, compared complete COO/load outputs and raw
+  timings, and selected C++20 as the production compiled-kernel direction.
+- Installed and verified the optional BSD-licensed SciPy provider without
+  transferring any finite-element semantics to SciPy.
+- Added native/runtime/end-to-end sparse benchmarks, cross-language ABI tests,
+  three-OS wheel CI, and Python-minor stable-ABI installation evidence.
+
 ## Unreleased — Gate 0 foundation
 
 - Established the project charter, architecture, Kernel Contract draft,

@@ -22,6 +22,7 @@ from .diffusion import (
     solve_steady_diffusion,
 )
 from .mesh import TriangularMesh
+from .native import native_kernel_identity
 from .providers import ProviderUnavailableError
 from .results import write_legacy_vtk
 
@@ -204,7 +205,7 @@ def _problem_from_request(
             path="$.procedure.linear_algebra",
         )
     assembly_mode = _text(procedure.get("assembly", "auto"), "$.procedure.assembly")
-    if assembly_mode not in {"auto", "reference", "vectorized"}:
+    if assembly_mode not in {"auto", "reference", "vectorized", "native"}:
         raise KernelRequestError(
             "unsupported_assembly",
             f"Unknown assembly mode {assembly_mode!r}.",
@@ -253,6 +254,7 @@ def _runtime(
         "python": platform.python_version(),
         "numpy": np.__version__,
         "assembly": {"name": assembly_mode},
+        "native_kernel": native_kernel_identity(),
         "linear_algebra_provider": {
             "name": provider_name,
             "version": provider_version,

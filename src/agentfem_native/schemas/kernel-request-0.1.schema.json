@@ -51,7 +51,7 @@
       "properties": {
         "kind": {"const": "steady_diffusion"},
         "linear_algebra": {"enum": ["numpy", "scipy", "auto"]},
-        "assembly": {"enum": ["auto", "reference", "vectorized"]}
+        "assembly": {"enum": ["auto", "reference", "vectorized", "native"]}
       },
       "additionalProperties": false
     },

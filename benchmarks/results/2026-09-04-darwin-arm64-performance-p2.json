@@ -1,0 +1,120 @@
+{
+  "schema": "agentfem.native-benchmark-evidence",
+  "schema_version": "0.1.0",
+  "recorded_at_local_date": "2026-09-04",
+  "source_base_commit": "cb5acaa",
+  "source_state": "AgentFEM Native 0.4.0a1 P2 candidate changes",
+  "environment": {
+    "os": "Darwin",
+    "macos": "26.6.2 (25G83)",
+    "architecture": "arm64",
+    "python_runtime": "3.12.13",
+    "python_wheel_builder": "3.11",
+    "numpy": "2.3.5",
+    "scipy": "1.18.1",
+    "compiler": "Apple clang 21.0.0 (clang-2100.1.1.101)",
+    "rustc": "1.98.1 (48a229cea 2026-09-01)",
+    "cpp_flags": "-std=c++20 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror -fvisibility=hidden",
+    "rust_profile": "release; codegen-units=1; fat LTO; panic=abort"
+  },
+  "packaging": {
+    "wheel_tag": "cp311-abi3-macosx_11_0_arm64",
+    "built_with_python": "3.11",
+    "installed_and_tested_with_python": "3.12.13",
+    "compiled_kernel": "agentfem_native/_p1_native.abi3.so",
+    "c_abi_version": "1.0",
+    "full_test_count": 83,
+    "full_test_status": "passed"
+  },
+  "scipy_environment": {
+    "optional_provider_installed": true,
+    "wheel_sha256_expected": "7bbf207c4453ce1ad2e00b17313852b33310b83090c2311bdaf97f93c0380d12",
+    "wheel_sha256_verified": "7bbf207c4453ce1ad2e00b17313852b33310b83090c2311bdaf97f93c0380d12",
+    "pip_check": "passed",
+    "numpy_sparse_solution_equivalence": "passed"
+  },
+  "language_scaling": [
+    {
+      "cells": 8192,
+      "repeats": 31,
+      "cpp20_median_seconds": 0.00006954200216569006,
+      "rust_median_seconds": 0.00008674999116919935,
+      "numpy_vectorized_median_seconds": 0.001997458006371744,
+      "rust_over_cpp20_time": 1.2474474197983214,
+      "cpp20_speedup_over_numpy": 28.723044263416817,
+      "rust_speedup_over_numpy": 23.0254548669158
+    },
+    {
+      "cells": 131072,
+      "repeats": 31,
+      "cpp20_median_seconds": 0.0010270000057062134,
+      "rust_median_seconds": 0.0012993330019526184,
+      "numpy_vectorized_median_seconds": 0.03246579199912958,
+      "rust_over_cpp20_time": 1.2651733152222682,
+      "cpp20_speedup_over_numpy": 31.61226077774418,
+      "rust_speedup_over_numpy": 24.986506115322605
+    },
+    {
+      "cells": 524288,
+      "repeats": 21,
+      "cpp20_median_seconds": 0.004114665993256494,
+      "rust_median_seconds": 0.0051993749948451295,
+      "numpy_vectorized_median_seconds": 0.12839895900106058,
+      "rust_over_cpp20_time": 1.2636201828693652,
+      "cpp20_speedup_over_numpy": 31.205196050297396,
+      "rust_speedup_over_numpy": 24.695075682819663
+    }
+  ],
+  "language_decision_case_raw_seconds": {
+    "cells": 524288,
+    "cpp20": [0.004078584010130726, 0.005150708995643072, 0.004062792009790428, 0.004055500001413748, 0.004160959011642262, 0.00406866600678768, 0.004130625005927868, 0.003992500001913868, 0.004192458000034094, 0.003967500000726432, 0.004083166990312748, 0.00408512499416247, 0.004074500000569969, 0.004191959000308998, 0.0041581249970477074, 0.004199792005238123, 0.003930249993572943, 0.004126667001401074, 0.004114665993256494, 0.004187041005934589, 0.004198084003292024],
+    "rust": [0.01004858300439082, 0.009915665999869816, 0.005157042003702372, 0.006168332998640835, 0.005198500002734363, 0.005091208004159853, 0.005133415994350798, 0.00522141600959003, 0.005025582999223843, 0.005233792006038129, 0.0050824170029954985, 0.0051993749948451295, 0.005227957997703925, 0.005230833005043678, 0.005259832993033342, 0.005021375007345341, 0.005137749991263263, 0.005088666992378421, 0.005171625001821667, 0.0052892499952577055, 0.00523770900326781],
+    "numpy_vectorized": [0.12843420899298508, 0.13666208300855942, 0.13156254099158105, 0.12879200000315905, 0.12904587500088383, 0.12954104199889116, 0.12839895900106058, 0.12871487501251977, 0.1300542920071166, 0.12803762500698213, 0.1280563339969376, 0.12794337498780806, 0.12821729200368281, 0.1282752499973867, 0.12791341700358316, 0.12821504200110212, 0.12808758299797773, 0.1285222500009695, 0.12788304199057166, 0.12955266601056792, 0.12811774999136105]
+  },
+  "language_equivalence": {
+    "cpp20_vs_rust_index_identity": true,
+    "cpp20_vs_rust_max_abs_matrix_difference": 0.0,
+    "cpp20_vs_rust_max_abs_load_difference": 0.0,
+    "cpp20_vs_numpy_index_identity": true,
+    "cpp20_vs_numpy_max_abs_matrix_difference": 0.0,
+    "cpp20_vs_numpy_max_abs_load_difference": 0.0
+  },
+  "packaged_native_runtime": {
+    "cells": 524288,
+    "coo_entries_with_duplicates": 4718592,
+    "repeats": 21,
+    "native_seconds": [0.009268750000046566, 0.01431225000123959, 0.009397832996910438, 0.009206957998685539, 0.00917779200244695, 0.009150625002803281, 0.009129375001066364, 0.009167124997475185, 0.009258249992853962, 0.009035916009452194, 0.009213666009600274, 0.00922337498923298, 0.009349041007226333, 0.009304167004302144, 0.009175667000818066, 0.009149666992016137, 0.009122333998675458, 0.009173375001410022, 0.009133874991675839, 0.009268417008570395, 0.00923533400055021],
+    "native_median_seconds": 0.009206957998685539,
+    "vectorized_seconds": [0.1275329999916721, 0.14225283300038427, 0.13000124999962281, 0.12722924999252427, 0.1267518749955343, 0.1280708330014022, 0.13019566699222196, 0.12703070900170133, 0.12717049999628216, 0.1277209169929847, 0.12745845899917185, 0.12679100000241306, 0.1273488750011893, 0.12878724999609403, 0.12747566599864513, 0.12860029100556858, 0.12690233399916906, 0.12808575000963174, 0.1277434590010671, 0.12722566700540483, 0.1276657919952413],
+    "vectorized_median_seconds": 0.1275329999916721,
+    "speedup": 13.85180642834254,
+    "complete_output_identity": true
+  },
+  "end_to_end_scipy_sparse": {
+    "cells": 32768,
+    "nodes": 16641,
+    "repeats": 9,
+    "native_seconds": [0.04210174999025185, 0.04208766600640956, 0.040983291997690685, 0.03853066598821897, 0.038043583001126535, 0.03915366700675804, 0.038270917008048855, 0.03852329099026974, 0.03791045800608117],
+    "native_median_seconds": 0.03853066598821897,
+    "vectorized_seconds": [0.048163416009629145, 0.05071433400735259, 0.04950025001016911, 0.04869683399738278, 0.04956833399774041, 0.04911562500637956, 0.04917258299246896, 0.04932720800570678, 0.04918537499906961],
+    "vectorized_median_seconds": 0.04918537499906961,
+    "speedup": 1.2765254307856602,
+    "max_abs_solution_difference": 0.0,
+    "total_reaction_difference": 0.0,
+    "potential_energy_difference": 0.0
+  },
+  "verification": {
+    "cpp20_asan_ubsan": "passed",
+    "rust_unit_tests": "passed",
+    "rustfmt": "passed",
+    "clippy_deny_warnings": "passed",
+    "independence_scan": "passed",
+    "hosted_windows_linux_macos_ci": "pending"
+  },
+  "limitations": [
+    "Local macOS arm64 evidence; hosted Windows and Linux execution remains pending.",
+    "Language results are kernel microbenchmarks and do not generalize to every operator or material.",
+    "The end-to-end case uses one SciPy direct sparse solve and is not a broad solver study.",
+    "Rust remains a comparison implementation and is not shipped in the runtime wheel."
+  ]
+}

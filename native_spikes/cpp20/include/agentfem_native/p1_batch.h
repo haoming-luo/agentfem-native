@@ -18,6 +18,8 @@
 extern "C" {
 #endif
 
+#define AFN_P1_ABI_VERSION 0x00010000u
+
 typedef enum AfnP1Status {
   AFN_P1_SUCCESS = 0,
   AFN_P1_NULL_POINTER = 1,
@@ -26,12 +28,26 @@ typedef enum AfnP1Status {
   AFN_P1_NONFINITE_INPUT = 4,
 } AfnP1Status;
 
+AFN_API uint32_t afn_p1_abi_version(void);
+
 AFN_API int afn_p1_diffusion_assemble(
     size_t node_count,
     size_t cell_count,
     const double* points_xy,
     const int64_t* cells,
     const double* conductivity_2x2,
+    double source,
+    int64_t* rows,
+    int64_t* columns,
+    double* data,
+    double* load);
+
+AFN_API int afn_p1_diffusion_assemble_cells(
+    size_t node_count,
+    size_t cell_count,
+    const double* points_xy,
+    const int64_t* cells,
+    const double* conductivity_cells_2x2,
     double source,
     int64_t* rows,
     int64_t* columns,

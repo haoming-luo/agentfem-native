@@ -93,3 +93,30 @@ license-incompatible code is rejected.
   using automatic vectorized assembly pass.
 - Exact raw results and caveats:
   `benchmarks/results/2026-09-04-darwin-arm64-performance-p1.json`.
+
+## Performance milestone P2 — 2026-09-04
+
+- Task origin: project owner requested that the C++ kernel enter wheels, that
+  optional SciPy be installed when compatible with autonomy, and that C++20
+  and Rust be compared before one production direction was selected.
+- AI-assisted scope: ABI-versioned C++ core, hand-written CPython Limited-API
+  adapter, native dispatch/fallback, Rust equivalent, cross-language/runtime/
+  sparse benchmarks, wheel tests, CI, specifications, ADRs, and roadmap.
+- Third-party source boundary: official Python packaging/C API, Rust platform
+  and linkage, and SciPy package/license metadata were consulted. No external
+  finite-element implementation source was read or incorporated.
+- Local toolchains: Apple Clang 21.0.0 and rustc 1.98.1 on macOS arm64. The
+  C++ runtime kernel and Rust comparator contain no third-party source/library
+  dependency; Rust is development-only and not in the wheel.
+- Local integration environment: Python 3.12.13, NumPy 2.3.5, verified SciPy
+  1.18.1, editable AgentFEM Native 0.4.0a1, and editable AgentFEM 0.3.1;
+  `pip check` succeeds and the full suite has no optional-provider skip.
+- Packaging evidence: a `cp311-abi3` macOS arm64 wheel built with Python 3.11
+  imports and passes the full suite under Python 3.12, exercising the bundled
+  `_p1_native.abi3` extension. Hosted native Windows/Linux/macOS evidence is
+  pending and is not inferred from this local result.
+- Language decision: full-output-equivalent Rust was 1.25–1.27 times the C++
+  time across the recorded scales. C++20 is selected under ADR-0016; Rust is a
+  non-shipping comparator.
+- Exact raw results and caveats:
+  `benchmarks/results/2026-09-04-darwin-arm64-performance-p2.json`.

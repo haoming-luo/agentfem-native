@@ -42,14 +42,24 @@ class IndependenceTests(unittest.TestCase):
                     for line in first_lines
                 ):
                     missing.append(str(path.relative_to(PROJECT_ROOT)))
-        for pattern in ("*.c", "*.cpp", "*.h"):
-            for path in (PROJECT_ROOT / "native_spikes").rglob(pattern):
+        implementation_roots = (PROJECT_ROOT / "native_spikes", PROJECT_ROOT / "src")
+        for pattern in ("*.c", "*.cpp", "*.h", "*.rs"):
+            for path in (
+                candidate
+                for root in implementation_roots
+                for candidate in root.rglob(pattern)
+            ):
                 first_lines = path.read_text(encoding="utf-8").splitlines()[:3]
                 if not any(
                     "SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0" in line
                     for line in first_lines
                 ):
                     missing.append(str(path.relative_to(PROJECT_ROOT)))
+        setup_file = PROJECT_ROOT / "setup.py"
+        if "SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0" not in "\n".join(
+            setup_file.read_text(encoding="utf-8").splitlines()[:3]
+        ):
+            missing.append("setup.py")
         self.assertEqual(missing, [])
 
 

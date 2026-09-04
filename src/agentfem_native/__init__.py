@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Independent executable mathematics for the AgentFEM Native Engine."""
 
-__version__ = "0.3.0a1"
+__version__ = "0.4.0a1"
 
 from .contract import (
     CONTRACT_NAME,
@@ -23,6 +23,7 @@ from .diffusion import (
 )
 from .geometry import AffineTriangleMap
 from .mesh import TriangularMesh, unit_square_triangles, unit_square_two_triangles
+from .native import native_kernel_available, native_kernel_identity
 from .providers import (
     NumpyDenseProvider,
     ProviderIdentity,
@@ -61,6 +62,8 @@ __all__ = (
     "kernel_result_schema",
     "lower_agentfem_ir",
     "lower_agentfem_model",
+    "native_kernel_available",
+    "native_kernel_identity",
     "p1_basis",
     "p1_basis_gradients",
     "run_kernel_request",
