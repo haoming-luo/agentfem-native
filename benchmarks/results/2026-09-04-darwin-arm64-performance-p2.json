@@ -23,7 +23,7 @@
     "installed_and_tested_with_python": "3.12.13",
     "compiled_kernel": "agentfem_native/_p1_native.abi3.so",
     "c_abi_version": "1.0",
-    "full_test_count": 83,
+    "full_test_count": 85,
     "full_test_status": "passed"
   },
   "scipy_environment": {

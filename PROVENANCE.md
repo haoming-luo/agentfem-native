@@ -120,3 +120,19 @@ license-incompatible code is rejected.
   non-shipping comparator.
 - Exact raw results and caveats:
   `benchmarks/results/2026-09-04-darwin-arm64-performance-p2.json`.
+
+## Cross-platform release automation extension — 2026-09-04
+
+- Task origin: the project owner assigned local macOS validation to the
+  development workstation and future native Windows/Linux validation to
+  GitHub CI.
+- AI-assisted scope: manually dispatchable four-target release-wheel matrix,
+  wheel-installed scientific tests, strict stable-ABI auditing, downloadable
+  artifacts, deterministic SHA-256 artifact manifest, and manifest tests.
+- External research: official GitHub Actions artifact/matrix documentation and
+  the official cibuildwheel 4.1.1 platform example. No numerical source or
+  third-party finite-element implementation was consulted.
+- Diagnostic finding: an emulated manylinux x86_64 compile exposed a missing
+  direct `<cstdint>` include that Apple Clang had tolerated indirectly. The
+  include was corrected, but the emulated run is not claimed as native Linux
+  acceptance; GitHub's Linux runner remains authoritative.

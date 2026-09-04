@@ -31,13 +31,13 @@ NumPy 2.3.5, and SciPy 1.18.1.
 
 The locally built `cp311-abi3` macOS arm64 wheel was produced with Python 3.11,
 installed under Python 3.12, imported its bundled `_p1_native.abi3` extension,
-and passed all 83 tests. C++ optimized/sanitizer tests, C-header smoke tests,
+and passed all 85 tests. C++ optimized/sanitizer tests, C-header smoke tests,
 Rust formatting/lint/tests, ABI equivalence, package checks, and SciPy-provider
 equivalence also pass locally.
 
 ## Claim boundary
 
-These data demonstrate local correctness, packaging feasibility, Python-minor
+These data demonstrate local macOS correctness, packaging feasibility, Python-minor
 ABI reuse, and material speedup. They do not claim native Windows, Linux, or
 cross-machine superiority until hosted workflows produce artifacts and
 evidence on those systems. Raw repetitions, tool versions, digests, and

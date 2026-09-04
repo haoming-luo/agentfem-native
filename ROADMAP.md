@@ -76,6 +76,10 @@ AgentFEM's public exported IR.
 - Open: hosted native Windows/macOS/Linux wheel evidence, platform artifact
   publication, binary provenance/SBOM, and broader field/operator coverage.
 
+Execution policy: the local development machine runs macOS builds and tests.
+GitHub CI is the required execution environment for native Windows and Linux;
+local emulation is diagnostic only and never substitutes for those runners.
+
 Before Gate 2, close the open P2 release evidence. Prefer permissive
 general-purpose dependencies; do not use a third-party FEM implementation to
 substitute for Native discretization.

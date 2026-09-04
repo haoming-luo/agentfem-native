@@ -26,7 +26,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["build>=1", "ruff>=0.8"]
+dev = ["build>=1", "cibuildwheel==4.1.1", "ruff>=0.8"]
 scipy = ["scipy>=1.12"]
 
 [project.scripts]
@@ -43,3 +43,10 @@ agentfem_native = ["schemas/*.json"]
 
 [tool.setuptools.exclude-package-data]
 agentfem_native = ["*.cpp"]
+
+[tool.cibuildwheel]
+build = "cp311-*"
+skip = "*-musllinux_*"
+build-verbosity = 1
+test-requires = ["scipy>=1.12"]
+test-command = "python -m unittest discover -s {project}/tests -v"

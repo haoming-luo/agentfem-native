@@ -3,6 +3,10 @@
 AgentFEM Native uses one repository-local `.venv` on native Windows, macOS,
 and Linux. The directory is ignored by Git and can always be rebuilt.
 
+The primary development workstation runs this environment natively on macOS.
+Windows and Linux verification is delegated to GitHub CI on their native
+runners; local Docker/cross-compilation is optional diagnosis, not acceptance.
+
 ## Create or refresh
 
 From the repository root:
@@ -75,7 +79,7 @@ integration/provider dependencies; Native source must remain importable and
 testable without either one.
 
 The local 2026-09-04 milestone environment contains Python 3.12.13, NumPy
-2.3.5, SciPy 1.18.1, editable AgentFEM Native 0.4.0a1, and editable AgentFEM
-0.3.1. SciPy was installed from its official macOS arm64 wheel only after its
-published SHA-256 digest was verified; `pip check` and provider-equivalence
-tests pass.
+2.3.5, SciPy 1.18.1, cibuildwheel 4.1.1, Ruff 0.16.6, editable AgentFEM Native
+0.4.0a1, and editable AgentFEM 0.3.1. SciPy was installed from its official
+macOS arm64 wheel only after its published SHA-256 digest was verified; `pip
+check` and provider-equivalence tests pass.

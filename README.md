@@ -36,7 +36,8 @@ study.solve(backend="native")
 Native Windows, macOS, and Linux are all first-class release targets. Platform
 support is defined by the same public contract, scientific tests, package
 build, and independence checks passing on each operating system; it is not
-implemented as separate physics forks.
+implemented as separate physics forks. Local development validates macOS;
+GitHub CI owns the authoritative native Windows and Linux acceptance runs.
 
 ## Current evidence
 

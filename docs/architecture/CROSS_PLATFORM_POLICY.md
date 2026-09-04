@@ -18,6 +18,11 @@ Architecture-specific and provider-specific claims require their own runners
 and evidence, but an optional unavailable provider cannot remove the serial
 Native engine from any Tier-1 operating system.
 
+The developer workstation is responsible for native macOS feedback. GitHub
+CI is authoritative for native Windows and Linux builds/tests and also repeats
+macOS acceptance. Docker or cross-compilation may diagnose portability but
+cannot be recorded as native Windows/Linux release evidence.
+
 ## Engineering constraints
 
 - No shell scripts are required for install, tests, or core operation.
@@ -35,5 +40,7 @@ Native engine from any Tier-1 operating system.
 Gate 0 began with a pure Python/NumPy wheel. ADR-0016 now selects C++20 and the
 P2 candidate builds `cp311-abi3` platform wheels for manylinux, native Windows,
 and macOS from the same source revision. CI must install and test the produced
-wheel—not only the checkout—and record toolchain metadata. Reproducible binary
-provenance and an SBOM remain release-gate work.
+wheel—not only the checkout—run strict stable-ABI auditing, upload each platform
+artifact, and produce a filename/size/SHA-256 manifest bound to the source
+revision. Reproducible binary provenance attestations and an SBOM remain
+release-gate work.
