@@ -144,3 +144,19 @@ license-incompatible code is rejected.
 - Distribution boundary: these wheels and their SHA-256 manifest are private,
   ephemeral CI evidence retained for 14 days. No PyPI upload, GitHub Release,
   public binary publication, or release compatibility commitment was made.
+
+## Gate 1 closure and AF-IR reprioritization — 2026-09-04
+
+- Task origin: the project owner observed that AF-IR is not a current AgentFEM
+  development priority.
+- Decision: Native Gate 1 closes on its owned scientific, independence,
+  performance, contract, and native three-platform evidence. Promotion of the
+  existing external lowering prototype into AgentFEM's public AF-IR export is
+  an optional integration track, not a Native gate blocker.
+- Rationale: Native milestone progress must not depend on an upstream interface
+  that is neither required for standalone kernel execution nor currently
+  prioritized. The versioned Kernel Contract remains the stable ownership
+  boundary; integration can resume when AgentFEM exposes a prioritized,
+  reconstructable public export.
+- Consequence: Gate 2 basic solid mechanics becomes the next active scientific
+  milestone. No numerical code or evidence threshold was changed.

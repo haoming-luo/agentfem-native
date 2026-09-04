@@ -4,7 +4,7 @@ AgentFEM Native is the independently developed finite-element engine for
 AgentFEM. It is an official autonomous computation backend, not a FEniCSx
 fork and not a second end-user product.
 
-The repository is at **Gate 1 native-kernel-candidate maturity**. The locally
+The repository has **completed Gate 1** and is entering Gate 2 planning. The
 verified serial kernel solves two-dimensional steady scalar diffusion on
 affine P1 triangles with named node, boundary, and material regions;
 scalar, spatially varying, or symmetric positive-definite tensor
@@ -14,8 +14,8 @@ automatically use the packaged C++20 kernel when its ABI is available, with
 bounded vectorized NumPy as the portable fallback; callable fields retain the
 element-by-element oracle. A measured C++/Rust comparison selected C++20 as
 the production compiled-kernel direction. Native installability and scientific
-checks pass on all Tier-1 platforms; the API remains experimental until the
-portable extension is integrated into AgentFEM's public exported IR.
+checks pass on all Tier-1 platforms. The API remains experimental because it
+is pre-1.0; optional AF-IR promotion is no longer a Native gate blocker.
 
 ## Stable direction
 
@@ -39,8 +39,8 @@ support is defined by the same public contract, scientific tests, package
 build, and independence checks passing on each operating system; it is not
 implemented as separate physics forks. Local development validates macOS;
 GitHub CI owns the authoritative native Windows and Linux acceptance runs.
-The current hosted baseline is GitHub Actions run `33834316684` at commit
-`f005c8d`. Its wheels are short-lived private CI installation-test artifacts,
+The current hosted baseline is GitHub Actions run `33834926337` at commit
+`2abd07c`. Its wheels are short-lived private CI installation-test artifacts,
 not a public package release; the project is still in rapid iteration and has
 not published to PyPI or GitHub Releases.
 

@@ -54,6 +54,7 @@ Kernel Contract 0.1 and an external lowering adapter now exist in Native.
 The adapter calls only public `to_ir()`/`as_dict()` methods. AF-IR 0.1's
 current runtime mesh summary declares itself non-reconstructable, so the
 prototype requires `root.native_kernel` to carry executable portable arrays
-and conditions. The current AgentFEM repository was not modified; promotion
-of that extension into the public AgentFEM export is the next integration
-change and requires its own tests in the AgentFEM repository.
+and conditions. The current AgentFEM repository was not modified. Promotion
+of that extension into the public AgentFEM export is deferred until AgentFEM
+prioritizes a reconstructable, versioned export. It requires its own tests in
+the AgentFEM repository but is not a Native scientific-gate requirement.

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Gate 2 preparation
+
+- Closed Gate 1 from its native three-platform scientific and installability
+  evidence. Reclassified public AF-IR promotion as an optional, non-blocking
+  AgentFEM integration track while it is not an upstream development priority.
+
 ## 0.4.0a1 — packaged native kernel candidate
 
 - Shipped the standard-library-only C++20 P1 volume-assembly kernel inside a

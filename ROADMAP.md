@@ -37,14 +37,15 @@ First vertical slice: solve `-div(k grad u) = f` on the unit square using two
 P1 triangles, then generalize only after the element-to-result evidence chain
 is complete.
 
-Current state: a local Gate 1 release candidate is implemented. It includes
+Current state: complete. Gate 1 includes
 analytical, patch, convergence, orientation, renumbering, balance, failure,
 and VTK evidence; cell material regions; variable and anisotropic
 conductivity; NumPy and optional SciPy providers; Kernel Contract 0.1 JSON
 request/result envelopes; a cross-platform CLI; and an external public-AF-IR
 lowering prototype. The same scientific suite passes on hosted native Windows,
-macOS, and Linux. Gate 1 remains open only for integration of the portable
-extension into AgentFEM's public exported IR.
+macOS, and Linux. Promotion of the optional adapter into AgentFEM's public
+export is not a Native gate requirement and resumes only when the upstream
+AgentFEM roadmap needs that integration.
 
 ## Performance milestone P1 — bounded serial throughput (complete locally)
 
@@ -88,7 +89,17 @@ Before Gate 2, keep the hosted P2 installability evidence green. Prefer permissi
 general-purpose dependencies; do not use a third-party FEM implementation to
 substitute for Native discretization.
 
-## Gate 2 — basic solid mechanics
+## AgentFEM integration track — deferred, non-blocking
+
+- Retain the external Kernel Contract/AF-IR lowering prototype as boundary
+  evidence; do not couple Native internals to the current AF-IR shape.
+- Do not spend core-kernel milestone capacity promoting `root.native_kernel`
+  into AgentFEM while AF-IR is not an AgentFEM development priority.
+- Resume end-to-end AgentFEM integration when the upstream public export is a
+  prioritized, reconstructable, versioned contract. This track does not block
+  Gate 2 or later Native scientific work.
+
+## Gate 2 — basic solid mechanics (next active milestone)
 
 Scope: 2D small-strain isotropic elasticity, plane stress/strain, displacement
 constraints, traction/body force, reactions, strain energy, stress/strain

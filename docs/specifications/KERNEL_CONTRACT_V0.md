@@ -59,5 +59,7 @@ data must be present in `root.native_kernel`; absence fails explicitly at that
 path. `lower_agentfem_model` calls only the public `to_ir()` and optional
 `as_dict()` methods and never imports AgentFEM or a FEniCSx backend.
 
-The next integration step is to make the portable extension an official
-AgentFEM export without weakening the independent Native ownership boundary.
+If AgentFEM later prioritizes this integration, the portable extension may
+become an official, reconstructable AgentFEM export without weakening the
+independent Native ownership boundary. Until then the external prototype is
+sufficient boundary evidence and is not a Native milestone blocker.

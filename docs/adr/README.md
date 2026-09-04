@@ -25,3 +25,5 @@ owner review. Superseded decisions remain in history.
   a hand-written CPython stable-ABI adapter
 - [ADR-0016](0016-cpp20-production-language.md): select C++20 as the production
   compiled-kernel language after an exact Rust comparison
+- [ADR-0017](0017-decouple-af-ir-from-native-gates.md): keep AF-IR promotion as
+  an optional AgentFEM integration track rather than a Native gate blocker

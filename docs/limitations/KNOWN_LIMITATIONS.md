@@ -1,8 +1,9 @@
 # Known limitations
 
-- The Kernel Contract and AgentFEM public-AF-IR adapter are experimental 0.x
-  interfaces. Current AF-IR requires an explicit executable extension because
-  its mesh summary is not reconstructable.
+- The Kernel Contract and optional AgentFEM public-AF-IR adapter are
+  experimental 0.x interfaces. Current AF-IR requires an explicit executable
+  extension because its mesh summary is not reconstructable. Public AF-IR
+  promotion is deferred and does not block Native kernel milestones.
 - Only affine 2D triangles, nodal scalar P1 fields, steady diffusion, and
   stateless conductivity materials exist.
 - The bounded vectorized path currently supports static scalar/tensor

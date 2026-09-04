@@ -1,7 +1,8 @@
-# Gate 1 release-candidate evidence
+# Gate 1 evidence
 
-Date: 2026-09-04. Version: `0.2.0a1`. Maturity: locally verified on native
-macOS arm64; hosted native Windows and Linux evidence pending.
+Initial snapshot: 2026-09-04 at version `0.2.0a1`.
+Current disposition: Gate 1 complete; later `0.4.0a1` hosted evidence passed
+on native Windows, macOS, and Linux.
 
 ## Implemented scope
 
@@ -61,14 +62,20 @@ runtime itself still depends only on NumPy; SciPy and AgentFEM remain optional
 and do not alter independent discretization ownership. MPI execution is not a
 Gate 1 claim and was not validated in the restricted local sandbox.
 
-## Remaining release blockers
+## Hosted completion evidence
 
-- Run the configured workflow on hosted native Windows, macOS, and Linux and
-  preserve the job URLs/artifact digests. WSL cannot substitute for Windows.
-- Add the executable portable extension to AgentFEM's public AF-IR export and
-  test end-to-end lowering in the AgentFEM repository.
-- Benchmark and package the C++20, Rust, and compiled-kernel candidates before
-  selecting a production implementation language.
+- GitHub Actions run `33834926337` at commit `2abd07c` passed all 21 jobs,
+  including the common scientific suite, native C++ tests, optional SciPy,
+  C++/Rust/NumPy equivalence, and private CI installability wheels.
+- C++20 was selected as the production compiled-kernel language in ADR-0016
+  after the exact Rust comparison and packaged through the stable ABI.
+- Native Windows x86_64, Linux x86_64, macOS x86_64, and macOS arm64 passed.
+  WSL was not used as a substitute for Windows.
 
-Until the first two items close, this is a Gate 1 release candidate rather
-than a cross-platform Gate 1 completion claim.
+## Deferred integration work
+
+Promoting the executable extension into AgentFEM's public AF-IR export is an
+optional upstream integration track. AF-IR is not currently an AgentFEM
+development priority, so this work does not block Native Gate 1 completion or
+Gate 2 scientific development. The existing external adapter remains boundary
+evidence and fails explicitly when executable data are absent.
