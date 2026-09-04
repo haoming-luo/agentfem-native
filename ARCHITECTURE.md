@@ -35,6 +35,8 @@ than FEniCSx objects.
   independent oracle for future optimized kernels.
 - `kernel`: mesh, topology, P1 elements, diffusion operators, deterministic
   assembly, and future state semantics owned by AgentFEM Native.
+- `fast path`: bounded vectorized CPU batches today; future compiled kernels
+  reproduce the oracle without becoming the source of mathematical meaning.
 - `providers`: replaceable dense/sparse linear algebra now, and future
   parallel runtime and hardware implementations.
 - `contract`: versioned JSON request/result execution and public AgentFEM
@@ -53,7 +55,9 @@ Contract remain identical across native Windows, macOS, and Linux. Code uses Pyt
 `pathlib`, does not require a POSIX shell, treats filesystem case differences
 explicitly, and never embeds absolute developer paths in artifacts.
 
-The reference layer depends only on Python and NumPy wheels. PETSc, MPI, GPU,
+The Python layer depends only on Python and NumPy wheels. The experimental
+C++20 spike depends only on the C++ standard library and exposes a narrow C
+ABI; it is not yet part of release packages. PETSc, MPI, GPU,
 and vendor solvers are optional future providers and cannot become import-time
 requirements of the reference package.
 

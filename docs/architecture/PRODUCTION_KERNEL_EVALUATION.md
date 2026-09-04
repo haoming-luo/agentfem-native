@@ -31,9 +31,32 @@ Each benchmark stores hardware, OS, architecture, compiler, flags, dependency
 versions, commit, numerical digest, wall time, and peak memory. A result without
 reproducibility metadata does not influence the decision.
 
-`benchmarks/reference_diffusion.py` is the first machine-readable NumPy
-assembly baseline. Optimized spikes must consume the same mesh and reproduce
-the same algebraic checks before performance comparisons are accepted.
+The benchmark suite now contains the oracle baseline, reference/vectorized
+comparison, large-scale vectorized guard, and C++20 shared-library comparison.
+Optimized spikes consume the same owned mesh and reproduce complete COO/load
+data before their timings are admitted.
+
+## Current evidence and direction
+
+On the local macOS arm64 development machine with Python 3.12.13 and NumPy
+2.3.5:
+
+- 8,192 anisotropic P1 cells: bounded vectorized assembly was approximately
+  385 times faster than the element-by-element oracle; COO indices were
+  identical, maximum matrix difference was `6.67e-16`, and maximum load
+  difference was `1.63e-19`.
+- 524,288 cells: vectorized mesh construction/validation took approximately
+  0.113 seconds and assembly took approximately 0.199 seconds, producing
+  4,718,592 COO entries at about 2.63 million cells/second with exact constant
+  null mode and total load.
+- 131,072 anisotropic cells: the standard-library C++20/C ABI spike was about
+  33 times faster than vectorized NumPy and emitted identical COO indices,
+  matrix data, and load data on this structured case.
+
+These are local kernel measurements and do not establish end-to-end solver or
+cross-platform superiority. They do establish enough headroom to make C++20
+the leading compiled experiment. Rust remains required comparative evidence
+before final lock-in.
 
 ## Permissive-library policy
 
@@ -48,6 +71,10 @@ AgentFEM Native. Examples for evaluation—not automatic dependencies—include:
   https://nanobind.readthedocs.io/en/latest/packaging.html
 - Rust's native target support is evaluated from its official platform list:
   https://doc.rust-lang.org/rustc/platform-support.html
+- OpenBLAS is a BSD-3-Clause candidate for portable optimized BLAS across
+  several CPU architectures: https://www.openmathlib.org/OpenBLAS/docs/
+- CMake publishes native distributions/toolchain support for Windows, macOS,
+  and Linux: https://cmake.org/download/
 
 Using a permissive finite-element library to perform Native discretization or
 assembly would undermine the autonomous-kernel mission even if legally
@@ -57,6 +84,7 @@ review.
 
 ## Decision point
 
-Select the production language in a later ADR after the serial diffusion
-benchmark suite and three-platform packaging spikes exist. Until then, no
-optimized track may replace the NumPy oracle or expand public semantics.
+C++20 leads the current experiment under ADR-0014. Final selection still waits
+for hosted three-platform builds, sanitizers, compiled-wheel packaging, a Rust
+comparison, and end-to-end sparse solve evidence. No optimized track may
+replace the NumPy oracle or independently expand public semantics.

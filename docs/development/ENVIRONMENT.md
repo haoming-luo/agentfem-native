@@ -27,6 +27,11 @@ python tools/bootstrap_env.py --agentfem /path/to/agentfem
 path is installed editable so changes in both repositories are visible
 without reinstalling.
 
+The repository's own `agentfem-native` package is always installed editable
+into `.venv`; the command-line entry point and imports therefore exercise the
+current checkout. Passing `--agentfem` adds the separate public AgentFEM
+package to that same environment.
+
 ## Activate
 
 Windows PowerShell:
@@ -52,6 +57,10 @@ python -m unittest discover -v
 python tools/check_independence.py
 python -m agentfem_native.cli examples/steady_diffusion_request.json --artifact-directory work/example --result work/example-result.json
 ```
+
+For the compiled performance experiment, use the native CMake workflow in
+`native_spikes/cpp20/README.md`. It is intentionally separate from the Python
+runtime until three-platform build and packaging gates pass.
 
 The minimal Native runtime requires only NumPy. AgentFEM and SciPy are
 integration/provider dependencies; Native source must remain importable and

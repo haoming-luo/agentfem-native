@@ -11,10 +11,9 @@ from typing import TypeAlias
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from .geometry import AffineTriangleMap
-
 FloatArray: TypeAlias = NDArray[np.float64]
 IndexArray: TypeAlias = NDArray[np.int64]
+MESH_VALIDATION_CHUNK_SIZE = 65_536
 
 
 def _readonly_float_array(value: ArrayLike, shape_tail: tuple[int, ...]) -> FloatArray:
@@ -72,6 +71,69 @@ def _named_indices(
     return MappingProxyType(result)
 
 
+def _validate_cells(points: FloatArray, cells: IndexArray) -> None:
+    duplicate_nodes = (
+        (cells[:, 0] == cells[:, 1])
+        | (cells[:, 1] == cells[:, 2])
+        | (cells[:, 2] == cells[:, 0])
+    )
+    if np.any(duplicate_nodes):
+        raise ValueError("Each triangle cell must reference three distinct nodes.")
+    for start in range(0, cells.shape[0], MESH_VALIDATION_CHUNK_SIZE):
+        chunk = cells[start : start + MESH_VALIDATION_CHUNK_SIZE]
+        vertices = points[chunk]
+        first_columns = vertices[:, 1] - vertices[:, 0]
+        second_columns = vertices[:, 2] - vertices[:, 0]
+        determinants = (
+            first_columns[:, 0] * second_columns[:, 1]
+            - second_columns[:, 0] * first_columns[:, 1]
+        )
+        edge_scale = np.maximum(
+            np.linalg.norm(first_columns, axis=1),
+            np.linalg.norm(second_columns, axis=1),
+        )
+        threshold = 32.0 * np.finfo(np.float64).eps * edge_scale**2
+        if np.any(np.abs(determinants) <= threshold):
+            raise ValueError("Triangle is degenerate or numerically singular.")
+
+
+def _edge_keys(edges: IndexArray, node_count: int) -> IndexArray:
+    lower = np.minimum(edges[..., 0], edges[..., 1])
+    upper = np.maximum(edges[..., 0], edges[..., 1])
+    return lower * node_count + upper
+
+
+def _validate_declared_boundaries(
+    cells: IndexArray,
+    boundary_sets: Mapping[str, IndexArray],
+    node_count: int,
+) -> None:
+    if not boundary_sets:
+        return
+    declared = np.unique(
+        np.concatenate(
+            [_edge_keys(edges, node_count) for edges in boundary_sets.values()]
+        )
+    )
+    counts = np.zeros(declared.size, dtype=np.int64)
+    local_edges = np.array(((0, 1), (1, 2), (2, 0)), dtype=np.int64)
+    for start in range(0, cells.shape[0], MESH_VALIDATION_CHUNK_SIZE):
+        chunk = cells[start : start + MESH_VALIDATION_CHUNK_SIZE]
+        keys = _edge_keys(chunk[:, local_edges], node_count).ravel()
+        positions = np.searchsorted(declared, keys)
+        inside = positions < declared.size
+        matched = np.zeros(keys.size, dtype=bool)
+        matched[inside] = declared[positions[inside]] == keys[inside]
+        np.add.at(counts, positions[matched], 1)
+    for name, edges in boundary_sets.items():
+        keys = _edge_keys(edges, node_count)
+        positions = np.searchsorted(declared, keys)
+        invalid = counts[positions] != 1
+        if np.any(invalid):
+            edge = tuple(edges[int(np.flatnonzero(invalid)[0])])
+            raise ValueError(f"Edge {edge} in {name!r} is not a mesh boundary edge.")
+
+
 @dataclass(frozen=True, slots=True)
 class TriangularMesh:
     """A serial, zero-based, owned 2D triangle mesh with named boundary sets."""
@@ -91,12 +153,7 @@ class TriangularMesh:
             )
         if np.any(cells < 0) or np.any(cells >= points.shape[0]):
             raise ValueError("Cell connectivity contains an out-of-range node index.")
-        for cell in cells:
-            if np.unique(cell).size != 3:
-                raise ValueError(
-                    "Each triangle cell must reference three distinct nodes."
-                )
-            AffineTriangleMap(points[cell])
+        _validate_cells(points, cells)
 
         node_sets = _named_indices(
             self.node_sets, width=None, node_count=points.shape[0]
@@ -111,33 +168,13 @@ class TriangularMesh:
             width=None,
             node_count=cells.shape[0],
         )
-        boundary_edges = self._boundary_edge_keys(cells)
-        for name, edges in boundary_sets.items():
-            for edge in edges:
-                key = tuple(sorted((int(edge[0]), int(edge[1]))))
-                if key not in boundary_edges:
-                    raise ValueError(
-                        f"Edge {tuple(edge)} in {name!r} is not a mesh boundary edge."
-                    )
+        _validate_declared_boundaries(cells, boundary_sets, points.shape[0])
 
         object.__setattr__(self, "points", points)
         object.__setattr__(self, "cells", cells)
         object.__setattr__(self, "node_sets", node_sets)
         object.__setattr__(self, "boundary_sets", boundary_sets)
         object.__setattr__(self, "cell_sets", cell_sets)
-
-    @staticmethod
-    def _boundary_edge_keys(cells: IndexArray) -> set[tuple[int, int]]:
-        counts: dict[tuple[int, int], int] = {}
-        for cell in cells:
-            for first, second in (
-                (cell[0], cell[1]),
-                (cell[1], cell[2]),
-                (cell[2], cell[0]),
-            ):
-                key = tuple(sorted((int(first), int(second))))
-                counts[key] = counts.get(key, 0) + 1
-        return {edge for edge, count in counts.items() if count == 1}
 
     @property
     def node_count(self) -> int:
@@ -192,44 +229,38 @@ def unit_square_triangles(nx: int, ny: int | None = None) -> TriangularMesh:
     if isinstance(ny, bool) or not isinstance(ny, int) or ny < 1:
         raise ValueError("ny must be a positive integer.")
 
-    points = np.array(
-        [(i / nx, j / ny) for j in range(ny + 1) for i in range(nx + 1)],
-        dtype=np.float64,
-    )
+    x_coordinates = np.linspace(0.0, 1.0, nx + 1)
+    y_coordinates = np.linspace(0.0, 1.0, ny + 1)
+    x_grid, y_grid = np.meshgrid(x_coordinates, y_coordinates)
+    points = np.column_stack((x_grid.ravel(), y_grid.ravel()))
 
-    def node(i: int, j: int) -> int:
-        return j * (nx + 1) + i
-
-    cells: list[tuple[int, int, int]] = []
-    for j in range(ny):
-        for i in range(nx):
-            lower_left = node(i, j)
-            lower_right = node(i + 1, j)
-            upper_left = node(i, j + 1)
-            upper_right = node(i + 1, j + 1)
-            cells.extend(
-                (
-                    (lower_left, lower_right, upper_right),
-                    (lower_left, upper_right, upper_left),
-                )
-            )
+    lower_left = (
+        np.arange(ny, dtype=np.int64)[:, None] * (nx + 1)
+        + np.arange(nx, dtype=np.int64)[None, :]
+    ).ravel()
+    lower_right = lower_left + 1
+    upper_left = lower_left + (nx + 1)
+    upper_right = upper_left + 1
+    first_triangles = np.column_stack((lower_left, lower_right, upper_right))
+    second_triangles = np.column_stack((lower_left, upper_right, upper_left))
+    cells = np.stack((first_triangles, second_triangles), axis=1).reshape(-1, 3)
 
     node_sets = {
-        "bottom": np.array([node(i, 0) for i in range(nx + 1)]),
-        "right": np.array([node(nx, j) for j in range(ny + 1)]),
-        "top": np.array([node(i, ny) for i in range(nx + 1)]),
-        "left": np.array([node(0, j) for j in range(ny + 1)]),
+        "bottom": np.arange(nx + 1, dtype=np.int64),
+        "right": np.arange(ny + 1, dtype=np.int64) * (nx + 1) + nx,
+        "top": ny * (nx + 1) + np.arange(nx + 1, dtype=np.int64),
+        "left": np.arange(ny + 1, dtype=np.int64) * (nx + 1),
     }
     node_sets["boundary"] = np.unique(np.concatenate(tuple(node_sets.values())))
     boundary_sets = {
-        "bottom": np.array([(node(i, 0), node(i + 1, 0)) for i in range(nx)]),
-        "right": np.array([(node(nx, j), node(nx, j + 1)) for j in range(ny)]),
-        "top": np.array([(node(i + 1, ny), node(i, ny)) for i in range(nx)]),
-        "left": np.array([(node(0, j + 1), node(0, j)) for j in range(ny)]),
+        "bottom": np.column_stack((node_sets["bottom"][:-1], node_sets["bottom"][1:])),
+        "right": np.column_stack((node_sets["right"][:-1], node_sets["right"][1:])),
+        "top": np.column_stack((node_sets["top"][1:], node_sets["top"][:-1])),
+        "left": np.column_stack((node_sets["left"][1:], node_sets["left"][:-1])),
     }
     return TriangularMesh(
         points=points,
-        cells=np.array(cells),
+        cells=cells,
         node_sets=node_sets,
         boundary_sets=boundary_sets,
     )

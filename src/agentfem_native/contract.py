@@ -203,6 +203,13 @@ def _problem_from_request(
             f"Unknown linear algebra provider {provider!r}.",
             path="$.procedure.linear_algebra",
         )
+    assembly_mode = _text(procedure.get("assembly", "auto"), "$.procedure.assembly")
+    if assembly_mode not in {"auto", "reference", "vectorized"}:
+        raise KernelRequestError(
+            "unsupported_assembly",
+            f"Unknown assembly mode {assembly_mode!r}.",
+            path="$.procedure.assembly",
+        )
     outputs = _mapping(request.get("outputs", {}), "$.outputs")
     return (
         SteadyDiffusionProblem(
@@ -212,6 +219,7 @@ def _problem_from_request(
             dirichlet=tuple(dirichlet),
             neumann=tuple(neumann),
             materials=tuple(materials),
+            assembly_mode=assembly_mode,
         ),
         provider,
         outputs,
@@ -236,12 +244,15 @@ def _artifact_path(directory: Path, portable_path: object) -> tuple[Path, str]:
     return directory.joinpath(*pure.parts), pure.as_posix()
 
 
-def _runtime(provider_name: str, provider_version: str) -> dict[str, object]:
+def _runtime(
+    provider_name: str, provider_version: str, assembly_mode: str
+) -> dict[str, object]:
     return {
         "os": platform.system(),
         "architecture": platform.machine(),
         "python": platform.python_version(),
         "numpy": np.__version__,
+        "assembly": {"name": assembly_mode},
         "linear_algebra_provider": {
             "name": provider_name,
             "version": provider_version,
@@ -309,7 +320,9 @@ def run_kernel_request(
                 }
             },
             "artifacts": artifacts,
-            "runtime": _runtime(result.provider_name, result.provider_version),
+            "runtime": _runtime(
+                result.provider_name, result.provider_version, result.assembly_mode
+            ),
             "warnings": [],
         }
     except KernelRequestError as error:

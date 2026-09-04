@@ -56,6 +56,7 @@ class ContractTests(unittest.TestCase):
         result = run_kernel_request(request_record())
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["request_id"], "diffusion-001")
+        self.assertEqual(result["runtime"]["assembly"]["name"], "vectorized")  # type: ignore[index]
         values = result["fields"]["solution"]["values"]  # type: ignore[index]
         self.assertEqual(values, [0.0, 1.0, 1.0, 0.0])
         json.dumps(result, allow_nan=False, sort_keys=True)
@@ -86,6 +87,18 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["error"]["code"], "unsupported_provider")  # type: ignore[index]
         self.assertEqual(result["error"]["path"], "$.procedure.linear_algebra")  # type: ignore[index]
+
+    def test_unknown_assembly_is_addressable_before_assembly(self) -> None:
+        request = request_record()
+        request["procedure"] = {
+            "kind": "steady_diffusion",
+            "linear_algebra": "numpy",
+            "assembly": "unknown",
+        }
+        result = run_kernel_request(request)
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["error"]["code"], "unsupported_assembly")  # type: ignore[index]
+        self.assertEqual(result["error"]["path"], "$.procedure.assembly")  # type: ignore[index]
 
     def test_portable_vtk_artifact_has_relative_path_and_digest(self) -> None:
         request = request_record(

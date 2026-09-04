@@ -10,7 +10,12 @@ from typing import TypeAlias
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from .assembly import Conductivity, ScalarField, assemble_diffusion
+from .assembly import (
+    Conductivity,
+    ScalarField,
+    assemble_diffusion,
+    select_assembly_mode,
+)
 from .mesh import TriangularMesh
 from .providers import LinearAlgebraProvider, resolve_provider
 
@@ -45,6 +50,7 @@ class SteadyDiffusionProblem:
     dirichlet: tuple[DirichletCondition, ...] = ()
     neumann: tuple[NeumannCondition, ...] = ()
     materials: tuple[CellMaterial, ...] = ()
+    assembly_mode: str = "auto"
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +66,7 @@ class DiffusionResult:
     potential_energy: float
     provider_name: str
     provider_version: str
+    assembly_mode: str
 
     def __post_init__(self) -> None:
         for name in ("nodal_values", "residual", "constrained_nodes"):
@@ -136,12 +143,20 @@ def solve_steady_diffusion(
     fluxes = tuple(
         (condition.boundary_set, condition.flux) for condition in problem.neumann
     )
+    cell_conductivities = _collect_cell_conductivities(problem)
+    assembly_mode = select_assembly_mode(
+        problem.assembly_mode,
+        conductivity=problem.conductivity,
+        source=problem.source,
+        cell_conductivities=cell_conductivities,
+    )
     matrix, load = assemble_diffusion(
         problem.mesh,
         conductivity=problem.conductivity,
         source=problem.source,
         boundary_fluxes=fluxes,
-        cell_conductivities=_collect_cell_conductivities(problem),
+        cell_conductivities=cell_conductivities,
+        mode=assembly_mode,
     )
     constrained, values = _collect_dirichlet(problem)
     outcome = resolve_provider(provider).solve_constrained(
@@ -166,4 +181,5 @@ def solve_steady_diffusion(
         potential_energy=potential,
         provider_name=outcome.provider.name,
         provider_version=outcome.provider.version,
+        assembly_mode=assembly_mode,
     )

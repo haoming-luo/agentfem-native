@@ -1,0 +1,9 @@
+include ARCHITECTURE.md CHANGELOG.md LICENSE NOTICE PROVENANCE.md README.md ROADMAP.md THIRD_PARTY_NOTICES.md
+recursive-include benchmarks *.py *.json
+recursive-include docs *.md
+recursive-include examples *.py *.json
+recursive-include native_spikes *.c *.cpp *.h CMakeLists.txt *.md
+recursive-include src/agentfem_native/schemas *.json
+recursive-include tests *.py
+recursive-include tools *.py
+prune work

@@ -31,7 +31,29 @@ def main() -> int:
         print("Forbidden finite-element imports found:")
         print("\n".join(offenders))
         return 1
-    print("Independence scan passed: no forbidden finite-element imports.")
+
+    missing_spdx = []
+    for directory in ("src", "tests", "tools", "examples", "benchmarks"):
+        for path in (ROOT / directory).rglob("*.py"):
+            if "SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0" not in "\n".join(
+                path.read_text(encoding="utf-8").splitlines()[:3]
+            ):
+                missing_spdx.append(str(path.relative_to(ROOT)))
+    for pattern in ("*.c", "*.cpp", "*.h"):
+        for path in (ROOT / "native_spikes").rglob(pattern):
+            if "SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0" not in "\n".join(
+                path.read_text(encoding="utf-8").splitlines()[:3]
+            ):
+                missing_spdx.append(str(path.relative_to(ROOT)))
+    if missing_spdx:
+        print("Files missing the selected SPDX identifier:")
+        print("\n".join(missing_spdx))
+        return 1
+
+    print(
+        "Independence scan passed: no forbidden finite-element imports and "
+        "all implementation files carry the selected SPDX identifier."
+    )
     return 0
 
 

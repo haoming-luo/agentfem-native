@@ -34,6 +34,15 @@ as deterministic COO triplets. The auditable dense NumPy provider and optional
 SciPy CSR direct provider solve the same constrained system behind one
 interface. Provider selection does not change discretization or assembly.
 
+For static scalar/tensor conductivity and scalar source, `auto` selects a
+bounded vectorized implementation. It computes affine Jacobian inverses
+analytically, emits the same cell-major/local-row/local-column COO ordering,
+and accumulates loads in the same cell order. `reference` always executes the
+quadrature-based element oracle. Callable fields select `reference`; requesting
+`vectorized` for unsupported field semantics fails instead of silently
+changing behavior. Chunk size is a performance control and cannot alter
+scientific results.
+
 Conductivity may be a positive scalar, a spatial scalar callable, or a
 symmetric positive-definite 2-by-2 tensor. Named cell sets may override the
 default conductivity. Material assignments must not overlap; unassigned cells
@@ -66,10 +75,13 @@ total reaction equals zero.
   order greater than 1.5 over 4/8/16 subdivisions;
 - explicit rejection of degenerate mesh entities and unsupported pure-Neumann
   solve;
-- portable ASCII VTK nodal output.
+- portable ASCII VTK nodal output;
 - variable-conductivity exact solution, anisotropic linear exact solution,
   and a two-region layered-material exact solution;
 - numerical identity between installed NumPy and SciPy provider paths.
+- triplet-by-triplet reference/vectorized comparison for scalar, anisotropic,
+  material-region, boundary-flux, orientation, and multiple chunk-size cases;
+- standard-library C++20 spike comparison against vectorized NumPy.
 
 ## Current limitations
 

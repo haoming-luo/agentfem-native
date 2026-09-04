@@ -17,3 +17,7 @@ owner review. Superseded decisions remain in history.
   production-language and permissive-library selection
 - [ADR-0012](0012-executable-kernel-contract.md): executable JSON contract and
   external AgentFEM lowering extension
+- [ADR-0013](0013-bounded-vectorized-assembly.md): bounded vectorized assembly
+  beside the mathematical oracle
+- [ADR-0014](0014-cpp20-leading-production-spike.md): C++20 leads compiled
+  production-kernel experiments without final language lock-in

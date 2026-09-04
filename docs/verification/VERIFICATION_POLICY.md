@@ -26,3 +26,10 @@ Maturity labels mean:
 Cross-platform consistency requires equal scientific assertions. Small
 floating-point differences may use one justified tolerance; OS-specific
 tolerance inflation requires a written numerical diagnosis and ADR.
+
+Performance claims additionally require a warm repeated measurement, median
+wall time, problem size, output count, peak-memory observation, hardware and
+software identity, compiler flags where relevant, and full numerical-output
+comparison against the oracle. A fast result with missing or unequal output is
+a failed benchmark. Microbenchmarks must be labelled as such and cannot imply
+solver- or application-level superiority.

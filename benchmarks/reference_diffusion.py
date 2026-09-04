@@ -11,7 +11,7 @@ from time import perf_counter
 import numpy as np
 
 from agentfem_native import unit_square_triangles
-from agentfem_native.assembly import assemble_diffusion
+from agentfem_native.assembly import assemble_diffusion_reference
 
 
 def main() -> int:
@@ -27,7 +27,7 @@ def main() -> int:
     nonzeros = 0
     for _ in range(arguments.repeats):
         started = perf_counter()
-        matrix, _ = assemble_diffusion(mesh, conductivity=1.0, source=1.0)
+        matrix, _ = assemble_diffusion_reference(mesh, conductivity=1.0, source=1.0)
         timings.append(perf_counter() - started)
         nonzeros = int(matrix.data.size)
 

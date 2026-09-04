@@ -1,5 +1,8 @@
 name: cross-platform-reference-kernel
 
+permissions:
+  contents: read
+
 on:
   push:
   pull_request:
@@ -18,16 +21,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - name: Install reference kernel
-        run: python -m pip install --upgrade pip .[dev]
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip build
+      - name: Build source and wheel distributions
+        run: python -m build
+      - name: Install the built wheel
+        run: python -c "import glob, subprocess, sys; wheels = glob.glob('dist/*.whl'); assert len(wheels) == 1, wheels; subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', wheels[0]])"
       - name: Run mathematical tests
         run: python -m unittest discover -v
       - name: Run portable contract example
         run: python -m agentfem_native.cli examples/steady_diffusion_request.json --artifact-directory work/ci-artifacts --result work/ci-result.json
       - name: Check independent lineage
         run: python tools/check_independence.py
-      - name: Build source and wheel distributions
-        run: python -m build
 
   scipy-provider:
     strategy:
@@ -45,3 +50,29 @@ jobs:
         run: python -m pip install --upgrade pip .[scipy]
       - name: Run sparse-provider and scientific tests
         run: python -m unittest discover -v
+
+  cpp20-spike:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure standard-library C++20 spike
+        run: cmake -S native_spikes/cpp20 -B work/cpp20-build -DCMAKE_BUILD_TYPE=Release
+      - name: Build C++20 spike
+        run: cmake --build work/cpp20-build --config Release
+      - name: Test C++20 numerical contract
+        run: ctest --test-dir work/cpp20-build -C Release --output-on-failure
+
+  cpp20-sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure C++20 spike with sanitizers
+        run: cmake -S native_spikes/cpp20 -B work/cpp20-sanitize -DCMAKE_BUILD_TYPE=Debug -DAFN_ENABLE_SANITIZERS=ON
+      - name: Build sanitized C++20 spike
+        run: cmake --build work/cpp20-sanitize
+      - name: Test sanitized C++20 numerical contract
+        run: ctest --test-dir work/cpp20-sanitize --output-on-failure

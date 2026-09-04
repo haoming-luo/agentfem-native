@@ -1,0 +1,123 @@
+{
+  "schema": "agentfem.native-benchmark-evidence",
+  "schema_version": "0.1.0",
+  "recorded_at_local_date": "2026-09-04",
+  "source_base_commit": "55eb933",
+  "source_state": "AgentFEM Native 0.3.0a1 performance-candidate changes",
+  "environment": {
+    "os": "Darwin",
+    "macos": "26.6.2 (25G83)",
+    "architecture": "arm64",
+    "python": "3.12.13",
+    "numpy": "2.3.5",
+    "compiler": "Apple clang 21.0.0 (clang-2100.1.1.101)",
+    "cpp_flags": "-std=c++20 -O3 -Wall -Wextra -Wpedantic -Werror -fvisibility=hidden"
+  },
+  "reference_vs_vectorized": {
+    "cells": 8192,
+    "nodes": 4225,
+    "coo_entries_with_duplicates": 73728,
+    "chunk_size": 4096,
+    "reference_seconds": [
+      0.9323841250006808,
+      0.9487845420080703,
+      0.9182097080047242,
+      0.9446365000039805,
+      0.9252804999996442,
+      0.9097481249918928,
+      0.9102814999932889,
+      0.9433084579941351,
+      0.9286613330041291
+    ],
+    "reference_median_seconds": 0.9286613330041291,
+    "vectorized_seconds": [
+      0.002312041004188359,
+      0.0027142920007463545,
+      0.003274583999882452,
+      0.0022223749983822927,
+      0.002518041990697384,
+      0.00448533300368581,
+      0.002307917005964555,
+      0.002230250000138767,
+      0.002409624998108484
+    ],
+    "vectorized_median_seconds": 0.002409624998108484,
+    "speedup": 385.396621355237,
+    "reference_tracemalloc_peak_bytes": 3649443,
+    "vectorized_tracemalloc_peak_bytes": 4764525,
+    "row_identity": true,
+    "column_identity": true,
+    "max_abs_matrix_difference": 6.661338147750939e-16,
+    "max_abs_load_difference": 1.6263032587282567e-19,
+    "reference_digest": "c57b2d04e97a26659bb9ec22a8d9d15233c2b6c8adcdc997041f7ff2b9f66dde",
+    "vectorized_digest": "f66af2cb1330b6e6eec7293677f9931ea5f1492a3b5125258ec4b0e037852096"
+  },
+  "vectorized_scale": {
+    "cells": 524288,
+    "nodes": 263169,
+    "coo_entries_with_duplicates": 4718592,
+    "chunk_size": 32768,
+    "mesh_seconds": 0.11299837499973364,
+    "assembly_seconds": 0.19911929199588485,
+    "cells_per_second": 2633034.6735605877,
+    "coo_entries_per_second": 23697312.062045287,
+    "tracemalloc_peak_bytes": 260036911,
+    "constant_null_mode_max_abs": 0.0,
+    "load_sum": 1.0
+  },
+  "cpp20_vs_vectorized": {
+    "cells": 131072,
+    "nodes": 66049,
+    "cpp20_seconds": [
+      0.00294025000766851,
+      0.0011006660060957074,
+      0.001356084001599811,
+      0.0013618749944726005,
+      0.0012359999964246526,
+      0.0011800829961430281,
+      0.001154749988927506,
+      0.0011816659971373156,
+      0.0017896670033223927,
+      0.0011502909910632297,
+      0.0011962090065935627
+    ],
+    "cpp20_median_seconds": 0.0011962090065935627,
+    "vectorized_seconds": [
+      0.043663875010679476,
+      0.039902832999359816,
+      0.037659458990674466,
+      0.038344707994838245,
+      0.03872616699663922,
+      0.038318207996780984,
+      0.0408119999920018,
+      0.039808874993468635,
+      0.04230416601058096,
+      0.04090841599099804,
+      0.040481959003955126
+    ],
+    "vectorized_median_seconds": 0.039902832999359816,
+    "cpp20_speedup_over_vectorized": 33.357743320283866,
+    "index_identity": true,
+    "max_abs_matrix_difference": 0.0,
+    "max_abs_load_difference": 0.0
+  },
+  "local_native_verification": {
+    "optimized_contract_test": "passed",
+    "address_and_undefined_behavior_sanitizers": "passed",
+    "c11_header_smoke_test": "passed",
+    "hosted_three_platform_ci": "pending"
+  },
+  "release_candidate": {
+    "version": "0.3.0a1",
+    "unittest_total": 75,
+    "unittest_passed": 74,
+    "unittest_skipped_optional_scipy": 1,
+    "installed_wheel_suite_passed": true
+  },
+  "limitations": [
+    "Local kernel-only evidence; not an end-to-end solve benchmark.",
+    "C++20 spike supports one global static conductivity tensor and scalar source.",
+    "Hosted Windows, Linux, and macOS CMake evidence remains pending.",
+    "tracemalloc is a Python allocator observation, not whole-process RSS."
+  ]
+}

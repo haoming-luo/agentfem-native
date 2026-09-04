@@ -9,6 +9,20 @@
   affine geometry mapping, and degree-1/degree-2 triangle quadrature.
 - Added mathematical, orientation, independence, and packaging tests.
 
+## 0.3.0a1 — performance architecture candidate
+
+- Added a bounded-memory, vectorized P1 diffusion assembly path with safe
+  automatic dispatch and the element-by-element implementation retained as
+  the executable mathematical oracle.
+- Vectorized structured-mesh generation, geometric validation, and declared
+  boundary adjacency checks.
+- Added reference/vectorized equivalence, chunk invariance, material-region,
+  failure, scale, memory, and machine-readable performance evidence.
+- Added a standard-library-only C++20/C ABI assembly spike with numerical
+  tests and native Windows/macOS/Linux CMake CI configuration.
+- Selected C++20 as the leading production-kernel experiment while retaining
+  Rust as an evidence-driven second candidate.
+
 ## 0.2.0a1 — Gate 1 release candidate
 
 - Added named cell material regions, spatially varying scalar conductivity,

@@ -18,6 +18,6 @@
   "dirichlet": [{"node_set": "left", "value": 0.0}],
   "neumann": [{"boundary_set": "right", "flux": 1.0}],
   "materials": [],
-  "procedure": {"kind": "steady_diffusion", "linear_algebra": "auto"},
+  "procedure": {"kind": "steady_diffusion", "assembly": "auto", "linear_algebra": "auto"},
   "outputs": {"vtk": {"path": "results/temperature.vtk", "field_name": "T"}}
 }

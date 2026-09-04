@@ -120,6 +120,7 @@ class DiffusionTests(unittest.TestCase):
                 neumann=(NeumannCondition("right", 2.0),),
             )
         )
+        self.assertEqual(result.assembly_mode, "reference")
         np.testing.assert_allclose(result.nodal_values, mesh.points[:, 0], atol=2.0e-15)
 
     def test_anisotropic_conductivity_reproduces_linear_exact_solution(self) -> None:
@@ -132,7 +133,32 @@ class DiffusionTests(unittest.TestCase):
                 neumann=(NeumannCondition("right", 2.0),),
             )
         )
+        self.assertEqual(result.assembly_mode, "vectorized")
         np.testing.assert_allclose(result.nodal_values, mesh.points[:, 0], atol=2.0e-15)
+
+    def test_reference_and_vectorized_solve_results_are_equivalent(self) -> None:
+        mesh = unit_square_triangles(6)
+        common = {
+            "mesh": mesh,
+            "conductivity": np.array(((2.0, 0.25), (0.25, 1.5))),
+            "source": 0.5,
+            "dirichlet": (DirichletCondition("left", 0.0),),
+            "neumann": (NeumannCondition("right", 1.0),),
+        }
+        reference = solve_steady_diffusion(
+            SteadyDiffusionProblem(**common, assembly_mode="reference")
+        )
+        vectorized = solve_steady_diffusion(
+            SteadyDiffusionProblem(**common, assembly_mode="vectorized")
+        )
+        self.assertEqual(reference.assembly_mode, "reference")
+        self.assertEqual(vectorized.assembly_mode, "vectorized")
+        np.testing.assert_allclose(
+            vectorized.nodal_values, reference.nodal_values, rtol=0.0, atol=2.0e-15
+        )
+        self.assertAlmostEqual(
+            vectorized.total_reaction, reference.total_reaction, places=13
+        )
 
     def test_piecewise_material_regions_reproduce_layered_solution(self) -> None:
         base = unit_square_triangles(2, 2)

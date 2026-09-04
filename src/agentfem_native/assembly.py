@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TypeAlias
+from typing import Literal, TypeAlias
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -18,6 +18,8 @@ from .reference import p1_basis
 FloatArray: TypeAlias = NDArray[np.float64]
 ScalarField = float | Callable[[FloatArray], ArrayLike]
 Conductivity = float | ArrayLike | Callable[[FloatArray], ArrayLike]
+AssemblyMode = Literal["auto", "reference", "vectorized"]
+DEFAULT_ASSEMBLY_CHUNK_SIZE = 32_768
 
 
 def _field_values(field: ScalarField, points: FloatArray, *, name: str) -> FloatArray:
@@ -155,7 +157,28 @@ def p1_boundary_flux_load(edge_vertices: ArrayLike, flux: ScalarField) -> FloatA
     return length * (basis.T @ (weights * values))
 
 
-def assemble_diffusion(
+def _validate_overrides(
+    mesh: TriangularMesh,
+    cell_conductivities: dict[int, Conductivity] | None,
+) -> dict[int, Conductivity]:
+    overrides = {} if cell_conductivities is None else dict(cell_conductivities)
+    if any(index < 0 or index >= mesh.cell_count for index in overrides):
+        raise ValueError("Cell conductivity override index is out of range.")
+    return overrides
+
+
+def _add_boundary_fluxes(
+    mesh: TriangularMesh,
+    load: FloatArray,
+    boundary_fluxes: tuple[tuple[str, ScalarField], ...],
+) -> None:
+    for set_name, flux in boundary_fluxes:
+        for edge in mesh.boundary_edges(set_name):
+            local_load = p1_boundary_flux_load(mesh.points[edge], flux)
+            load[edge] += local_load
+
+
+def assemble_diffusion_reference(
     mesh: TriangularMesh,
     *,
     conductivity: Conductivity,
@@ -163,7 +186,7 @@ def assemble_diffusion(
     boundary_fluxes: tuple[tuple[str, ScalarField], ...] = (),
     cell_conductivities: dict[int, Conductivity] | None = None,
 ) -> tuple[COOMatrix, FloatArray]:
-    """Assemble the serial P1 diffusion matrix and load vector."""
+    """Assemble with the readable element-by-element mathematical oracle."""
 
     entry_count = mesh.cell_count * 9
     rows = np.empty(entry_count, dtype=np.int64)
@@ -172,9 +195,7 @@ def assemble_diffusion(
     load = np.zeros(mesh.node_count, dtype=np.float64)
 
     cursor = 0
-    overrides = {} if cell_conductivities is None else dict(cell_conductivities)
-    if any(index < 0 or index >= mesh.cell_count for index in overrides):
-        raise ValueError("Cell conductivity override index is out of range.")
+    overrides = _validate_overrides(mesh, cell_conductivities)
     for cell_index, cell in enumerate(mesh.cells):
         local_conductivity = overrides.get(cell_index, conductivity)
         local_stiffness = p1_diffusion_stiffness(mesh.points[cell], local_conductivity)
@@ -187,9 +208,189 @@ def assemble_diffusion(
                 data[cursor] = local_stiffness[local_row, local_column]
                 cursor += 1
 
-    for set_name, flux in boundary_fluxes:
-        for edge in mesh.boundary_edges(set_name):
-            local_load = p1_boundary_flux_load(mesh.points[edge], flux)
-            load[edge] += local_load
+    _add_boundary_fluxes(mesh, load, boundary_fluxes)
 
     return COOMatrix((mesh.node_count, mesh.node_count), rows, columns, data), load
+
+
+def _static_conductivity_tensor(value: Conductivity) -> FloatArray | None:
+    if callable(value):
+        return None
+    try:
+        array = np.asarray(value, dtype=np.float64)
+    except (TypeError, ValueError):
+        return None
+    if array.ndim == 0 or array.shape == (2, 2):
+        return _conductivity_tensors(value, np.zeros((1, 2), dtype=np.float64))[0]
+    return None
+
+
+def _static_source_value(source: ScalarField) -> float | None:
+    if callable(source):
+        return None
+    try:
+        array = np.asarray(source, dtype=np.float64)
+    except (TypeError, ValueError):
+        return None
+    if array.ndim != 0 or not np.isfinite(array):
+        return None
+    return float(array)
+
+
+def select_assembly_mode(
+    mode: AssemblyMode | str,
+    *,
+    conductivity: Conductivity,
+    source: ScalarField,
+    cell_conductivities: dict[int, Conductivity] | None = None,
+) -> Literal["reference", "vectorized"]:
+    """Choose a safe implementation without changing field-call semantics."""
+
+    if mode not in {"auto", "reference", "vectorized"}:
+        raise ValueError(f"Unknown assembly mode {mode!r}.")
+    static = _static_conductivity_tensor(conductivity) is not None
+    static = static and _static_source_value(source) is not None
+    if cell_conductivities:
+        static = static and all(
+            _static_conductivity_tensor(value) is not None
+            for value in cell_conductivities.values()
+        )
+    if mode == "reference":
+        return "reference"
+    if mode == "vectorized" and not static:
+        raise ValueError(
+            "Vectorized assembly currently requires static scalar/tensor "
+            "conductivity and a static scalar source."
+        )
+    return "vectorized" if static else "reference"
+
+
+def assemble_diffusion_vectorized(
+    mesh: TriangularMesh,
+    *,
+    conductivity: Conductivity,
+    source: ScalarField = 0.0,
+    boundary_fluxes: tuple[tuple[str, ScalarField], ...] = (),
+    cell_conductivities: dict[int, Conductivity] | None = None,
+    chunk_size: int = DEFAULT_ASSEMBLY_CHUNK_SIZE,
+) -> tuple[COOMatrix, FloatArray]:
+    """Assemble static-coefficient P1 cells in bounded vectorized batches."""
+
+    if (
+        isinstance(chunk_size, bool)
+        or not isinstance(chunk_size, int)
+        or chunk_size < 1
+    ):
+        raise ValueError("Assembly chunk_size must be a positive integer.")
+    overrides = _validate_overrides(mesh, cell_conductivities)
+    default_tensor = _static_conductivity_tensor(conductivity)
+    source_value = _static_source_value(source)
+    if default_tensor is None or source_value is None:
+        raise ValueError(
+            "Vectorized assembly currently requires static scalar/tensor "
+            "conductivity and a static scalar source."
+        )
+    override_tensors: dict[int, FloatArray] = {}
+    for index, value in overrides.items():
+        tensor = _static_conductivity_tensor(value)
+        if tensor is None:
+            raise ValueError(
+                "Vectorized assembly requires static scalar/tensor material conductivity."
+            )
+        override_tensors[index] = tensor
+    override_indices = np.array(sorted(override_tensors), dtype=np.int64)
+    override_values = (
+        np.stack([override_tensors[int(index)] for index in override_indices])
+        if override_indices.size
+        else np.empty((0, 2, 2), dtype=np.float64)
+    )
+
+    entry_count = mesh.cell_count * 9
+    rows = np.empty(entry_count, dtype=np.int64)
+    columns = np.empty(entry_count, dtype=np.int64)
+    data = np.empty(entry_count, dtype=np.float64)
+    load = np.zeros(mesh.node_count, dtype=np.float64)
+    for start in range(0, mesh.cell_count, chunk_size):
+        stop = min(start + chunk_size, mesh.cell_count)
+        cells = mesh.cells[start:stop]
+        vertices = mesh.points[cells]
+        first_columns = vertices[:, 1] - vertices[:, 0]
+        second_columns = vertices[:, 2] - vertices[:, 0]
+        determinants = (
+            first_columns[:, 0] * second_columns[:, 1]
+            - second_columns[:, 0] * first_columns[:, 1]
+        )
+        inverse_determinants = 1.0 / determinants
+        gradients = np.empty((stop - start, 3, 2), dtype=np.float64)
+        gradients[:, 0, 0] = (
+            first_columns[:, 1] - second_columns[:, 1]
+        ) * inverse_determinants
+        gradients[:, 0, 1] = (
+            second_columns[:, 0] - first_columns[:, 0]
+        ) * inverse_determinants
+        gradients[:, 1, 0] = second_columns[:, 1] * inverse_determinants
+        gradients[:, 1, 1] = -second_columns[:, 0] * inverse_determinants
+        gradients[:, 2, 0] = -first_columns[:, 1] * inverse_determinants
+        gradients[:, 2, 1] = first_columns[:, 0] * inverse_determinants
+        tensors = np.broadcast_to(default_tensor, (stop - start, 2, 2)).copy()
+        first_override = int(np.searchsorted(override_indices, start))
+        last_override = int(np.searchsorted(override_indices, stop))
+        indices = override_indices[first_override:last_override] - start
+        tensors[indices] = override_values[first_override:last_override]
+        local_stiffness = (
+            0.5
+            * np.abs(determinants)[:, None, None]
+            * np.einsum(
+                "mia,mab,mjb->mij", gradients, tensors, gradients, optimize=True
+            )
+        )
+        local_load = (source_value * np.abs(determinants)[:, None] / 6.0) * np.ones(
+            (1, 3), dtype=np.float64
+        )
+
+        entry_start = start * 9
+        entry_stop = stop * 9
+        rows[entry_start:entry_stop] = np.repeat(cells, 3, axis=1).ravel()
+        columns[entry_start:entry_stop] = np.tile(cells, (1, 3)).ravel()
+        data[entry_start:entry_stop] = local_stiffness.ravel()
+        np.add.at(load, cells.ravel(), local_load.ravel())
+
+    _add_boundary_fluxes(mesh, load, boundary_fluxes)
+
+    return COOMatrix((mesh.node_count, mesh.node_count), rows, columns, data), load
+
+
+def assemble_diffusion(
+    mesh: TriangularMesh,
+    *,
+    conductivity: Conductivity,
+    source: ScalarField = 0.0,
+    boundary_fluxes: tuple[tuple[str, ScalarField], ...] = (),
+    cell_conductivities: dict[int, Conductivity] | None = None,
+    mode: AssemblyMode | str = "auto",
+    chunk_size: int = DEFAULT_ASSEMBLY_CHUNK_SIZE,
+) -> tuple[COOMatrix, FloatArray]:
+    """Dispatch to the fastest implementation valid for the supplied fields."""
+
+    selected = select_assembly_mode(
+        mode,
+        conductivity=conductivity,
+        source=source,
+        cell_conductivities=cell_conductivities,
+    )
+    if selected == "vectorized":
+        return assemble_diffusion_vectorized(
+            mesh,
+            conductivity=conductivity,
+            source=source,
+            boundary_fluxes=boundary_fluxes,
+            cell_conductivities=cell_conductivities,
+            chunk_size=chunk_size,
+        )
+    return assemble_diffusion_reference(
+        mesh,
+        conductivity=conductivity,
+        source=source,
+        boundary_fluxes=boundary_fluxes,
+        cell_conductivities=cell_conductivities,
+    )
