@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-AgentFEM-Native-Draft
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 
 from __future__ import annotations
 
@@ -31,12 +31,15 @@ class IndependenceTests(unittest.TestCase):
         }
         self.assertEqual(offenders, {})
 
-    def test_all_python_files_have_draft_spdx_identifier(self) -> None:
+    def test_all_python_files_have_selected_spdx_identifier(self) -> None:
         missing = []
-        for directory in ("src", "tests", "tools", "examples"):
+        for directory in ("src", "tests", "tools", "examples", "benchmarks"):
             for path in (PROJECT_ROOT / directory).rglob("*.py"):
                 first_lines = path.read_text(encoding="utf-8").splitlines()[:3]
-                if not any("SPDX-License-Identifier:" in line for line in first_lines):
+                if not any(
+                    "SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0" in line
+                    for line in first_lines
+                ):
                     missing.append(str(path.relative_to(PROJECT_ROOT)))
         self.assertEqual(missing, [])
 

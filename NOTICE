@@ -4,4 +4,5 @@ This repository contains an independently developed finite-element reference
 kernel for AgentFEM. It is not a fork, translation, or derivative packaging of
 DOLFINx, Basix, UFL, or FFCx.
 
-License terms are in LICENSE and remain a pre-release draft.
+License terms are in LICENSE. Commercial use requires a separate written
+AgentFEM commercial license.

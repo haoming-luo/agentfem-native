@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-AgentFEM-Native-Draft
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Affine geometry mapping for independently defined P1 triangles."""
 
 from __future__ import annotations

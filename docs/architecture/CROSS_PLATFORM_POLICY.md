@@ -1,10 +1,12 @@
 # Cross-platform policy
 
-Linux and native Windows are core differentiators and first-class targets.
+Native Windows, macOS, and Linux are core differentiators and first-class
+targets.
 
 ## Release acceptance
 
-For every release candidate, both `ubuntu-latest` and `windows-latest` must:
+For every release candidate, `ubuntu-latest`, `windows-latest`, and
+`macos-latest` must:
 
 1. install from the source distribution and wheel in a clean environment;
 2. run the identical mathematical and public-contract tests;
@@ -12,8 +14,9 @@ For every release candidate, both `ubuntu-latest` and `windows-latest` must:
 4. create and reload portable evidence using relative paths;
 5. report numerical tolerances and provider capabilities explicitly.
 
-macOS runs the same checks for the pure-Python reference layer. Architecture-
-specific and provider-specific claims require their own runners and evidence.
+Architecture-specific and provider-specific claims require their own runners
+and evidence, but an optional unavailable provider cannot remove the serial
+Native engine from any Tier-1 operating system.
 
 ## Engineering constraints
 
@@ -30,5 +33,6 @@ specific and provider-specific claims require their own runners and evidence.
 ## Packaging stages
 
 Gate 0 uses a pure Python/NumPy wheel. If a compiled production kernel is later
-approved by ADR, CI must build and test platform wheels (manylinux and Windows)
-from the same source revision, with reproducible toolchain metadata and SBOM.
+approved by ADR, CI must build and test platform wheels (manylinux, Windows,
+and macOS) from the same source revision, with reproducible toolchain metadata
+and SBOM.

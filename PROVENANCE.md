@@ -12,8 +12,7 @@ license-incompatible code is rejected.
 - Record task origin, theory sources, AI-generated scope, reviewer, third-party
   exposure, test evidence, and unresolved discrepancies.
 - All autonomous Python source files use
-  `SPDX-License-Identifier: LicenseRef-AgentFEM-Native-Draft` until licensing
-  is finalized.
+  `SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0`.
 - A successful run is not scientific validation.
 
 ## Initial provenance record — 2026-09-04
@@ -30,4 +29,20 @@ license-incompatible code is rejected.
 - Verification: 23 local mathematical/independence tests, a clean wheel build,
   and artifact import without forbidden packages; exact evidence is recorded
   in `docs/verification/GATE_0_REPORT.md`.
-- Human/legal review: still required for licensing, API adoption, and release.
+- License decision: project owner selected PolyForm Noncommercial 1.0.0 with a
+  separate written commercial license requirement on 2026-09-04.
+
+## Gate 1 diffusion record — 2026-09-04
+
+- Task origin: project owner requested continued development to the next
+  milestone and clarified native Windows, macOS, and Linux equality.
+- AI-assisted scope: owned triangle mesh, named sets, element/source/boundary
+  integration, COO assembly, constrained dense solve provider, result evidence,
+  VTK writer, mathematical tests, and associated specifications.
+- Mathematical source: weak-form and P1 formulas recorded in
+  `docs/specifications/STEADY_DIFFUSION.md`; no third-party FEM source used.
+- Verification: analytical `u=x`, independent element formulas, linear patch,
+  manufactured convergence, orientation and node-renumbering invariance,
+  balance, failure, artifact, and forbidden-import tests.
+- Cross-platform status: source and CI are platform-neutral; only macOS local
+  execution evidence exists until the remote three-OS workflow runs.

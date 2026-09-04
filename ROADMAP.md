@@ -2,8 +2,7 @@
 
 This roadmap is gate-based. A gate advances only when its claims have evidence;
 calendar pressure does not lower mathematical or independence requirements.
-Linux and native Windows are required from Gate 0 onward. macOS is maintained
-as a development and verification platform. WSL may be offered as an
+Native Windows, macOS, and Linux are required from Gate 0 onward. WSL may be offered as an
 additional route but never substitutes for native Windows acceptance.
 
 ## Gate 0 — charter and independent lineage (current)
@@ -19,8 +18,9 @@ Exit criteria:
 - source package and wheel build on Linux, native Windows, and macOS;
 - the same test suite passes on all three systems.
 
-Current state: technically implemented as a draft; owner/legal approval and
-remote CI evidence remain open, so Gate 0 is **not yet passed**.
+Current state: charter and license decisions are accepted locally. Remote
+three-platform CI evidence remains open, so Gate 0 platform acceptance is not
+yet closed.
 
 ## Gate 1 — serial scalar reference kernel
 
@@ -31,11 +31,22 @@ nodal results, VTK output, and an external AgentFEM adapter prototype.
 Required evidence: constant and linear reproduction, patch tests, analytical
 1D-equivalent solution, manufactured solution, mesh convergence, boundary
 integration, reversed element orientation, and node-renumbering invariance on
-Linux and Windows.
+native Windows, macOS, and Linux.
 
 First vertical slice: solve `-div(k grad u) = f` on the unit square using two
 P1 triangles, then generalize only after the element-to-result evidence chain
 is complete.
+
+Current state: the first vertical slice is implemented and locally verified,
+including analytical, patch, convergence, orientation, renumbering, balance,
+failure, and VTK-output evidence. Gate 1 remains open for material regions,
+scalable sparse providers, a stable serialized request, and the external
+AgentFEM adapter.
+
+Before Gate 2, benchmark C++20, Rust, and Python-plus-compiled-kernel tracks
+against the NumPy oracle and complete native packaging spikes on all three
+operating systems. Prefer permissive general-purpose dependencies; do not use a
+third-party FEM implementation to substitute for Native discretization.
 
 ## Gate 2 — basic solid mechanics
 
@@ -88,9 +99,8 @@ general-purpose open-source dependency.
 
 ## Platform release tiers
 
-- Tier 1: Linux x86_64 and native Windows x86_64; release-blocking.
-- Tier 2: macOS arm64/x86_64; development and verification, release-blocking
-  for pure-Python reference layers.
+- Tier 1: native Windows x86_64, macOS arm64/x86_64, and Linux x86_64;
+  release-blocking.
 - Candidate: Linux aarch64 and Windows arm64 after reliable hosted or
   self-hosted runners exist.
 - Provider-specific capabilities (MPI, PETSc, GPU) are reported separately;

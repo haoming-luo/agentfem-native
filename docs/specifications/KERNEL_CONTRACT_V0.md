@@ -72,5 +72,8 @@ baseline.
 
 ## Initial supported subset
 
-No solve request is implemented yet. The executable reference package exposes
-only the P1 triangle and quadrature mathematics needed to implement Gate 1.
+The Python API now implements an experimental in-process steady scalar
+diffusion request using an owned triangle mesh, named node/boundary sets,
+constant conductivity, scalar source, Dirichlet/Neumann conditions, COO
+assembly, a dense NumPy provider, and nodal results. The serialized contract
+envelope and external AgentFEM lowering adapter remain design drafts.

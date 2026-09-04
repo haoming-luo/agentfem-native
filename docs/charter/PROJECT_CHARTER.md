@@ -27,7 +27,7 @@ remain replaceable providers.
   correctness oracle.
 - General libraries such as NumPy, SciPy, PETSc, MPI, BLAS/LAPACK, and HDF5
   may be used behind approved, documented boundaries.
-- Linux and native Windows are equal product targets. No OS-specific fork of
+- Native Windows, macOS, and Linux are equal product targets. No OS-specific fork of
   the mathematical kernel is permitted.
 - Correctness, provenance, and maintainability take priority over code volume
   or premature optimization.
@@ -50,5 +50,6 @@ cases, convergence evidence, and a maturity label: `experimental`,
 
 Key decisions live in ADRs. Each release records commit, dependencies,
 compiler/runtime, platform, tests, benchmarks, performance, failures,
-capabilities, license inventory, and AI/provenance statements. The licensing
-model remains a draft until owner and legal approval.
+capabilities, license inventory, and AI/provenance statements. The source-
+available boundary is PolyForm Noncommercial 1.0.0 plus a separately granted
+AgentFEM commercial license.

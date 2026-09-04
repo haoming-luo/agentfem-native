@@ -10,11 +10,11 @@ Each contribution must include:
 4. a provenance declaration stating whether AI was used and whether any
    third-party finite-element implementation was viewed;
 5. confirmation of contributor identity and agreement to the project CLA;
-6. Linux and native Windows evidence for platform-sensitive changes.
+6. native Windows, macOS, and Linux evidence for platform-sensitive changes.
 
 Do not contribute copied, translated, rearranged, or AI-paraphrased code from
 FEniCSx or another finite-element implementation. Do not include code with an
 unclear license or ownership chain.
 
-No public contribution is accepted until the project owner approves the final
-license and CLA process.
+The project owner records CLA acceptance before merging an external
+contribution.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-AgentFEM-Native-Draft
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Auditable quadrature rules for the reference triangle."""
 
 from __future__ import annotations

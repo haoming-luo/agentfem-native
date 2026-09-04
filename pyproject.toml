@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentfem-native"
-version = "0.0.0"
+version = "0.1.0a1"
 description = "The independently developed finite-element engine for AgentFEM."
 readme = "README.md"
 requires-python = ">=3.11"
-license = "LicenseRef-AgentFEM-Native-Draft"
+license = "PolyForm-Noncommercial-1.0.0"
 authors = [{ name = "AgentFEM Native contributors" }]
 dependencies = ["numpy>=1.26"]
 classifiers = [

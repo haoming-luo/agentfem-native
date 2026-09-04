@@ -1,12 +1,11 @@
 # Known limitations
 
-- There is no mesh container, global finite-element space, assembly, boundary
-  condition, linear solve, PDE solve, VTK output, or AgentFEM adapter yet.
-- Only affine 2D triangles and scalar P1 basis mathematics exist.
+- An experimental serial scalar diffusion slice exists, but there is no
+  AgentFEM adapter or stable serialized Kernel Contract yet.
+- Only affine 2D triangles, nodal scalar P1 fields, constant isotropic
+  conductivity, and a dense NumPy solve provider exist.
 - Quadrature supports exact polynomial degrees 1 and 2 only.
 - No performance, MPI, GPU, solid mechanics, time integration, nonlinear
   material, or checkpoint capability is claimed.
-- Cross-platform CI is configured but cannot be claimed until it runs on a
-  remote repository.
-- Licensing and contribution terms are drafts; the repository is not ready
-  for public distribution.
+- Cross-platform CI is configured but cannot be claimed as passing until it
+  runs remotely on native Windows, macOS, and Linux.

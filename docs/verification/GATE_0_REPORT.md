@@ -1,7 +1,7 @@
 # Gate 0 evidence report
 
 Report date: 2026-09-04. Status: local reference evidence passed; remote
-cross-platform CI and governance approval remain pending.
+cross-platform CI remains pending.
 
 ## Designed
 
@@ -29,16 +29,17 @@ cross-platform CI and governance approval remain pending.
 
 ## Cross-validated
 
-None. No PDE solve exists, and remote Linux/Windows CI has not run.
+At the Gate 0 snapshot no PDE solve existed and remote platform CI had not run.
+The subsequent Gate 1 diffusion evidence is recorded separately.
 
 ## Unresolved
 
-- Owner/legal approval of license, copyright, CLA, and commercial boundary.
 - Owner acceptance of Kernel Contract direction.
-- Remote Linux and native Windows CI evidence (workflow is configured but has
-  not run because no remote repository was created or pushed).
+- Remote native Windows, macOS, and Linux CI evidence (workflow is configured
+  but has not run because no remote repository was created or pushed).
 - AgentFEM external lowering prototype and first steady-diffusion vertical slice.
 
 ## Gate decision
 
-Gate 0 cannot pass until unresolved release-blocking items above are closed.
+The local Gate 0 foundation is accepted. Three-platform release acceptance
+remains open until remote native Windows, macOS, and Linux jobs pass.

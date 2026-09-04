@@ -1,0 +1,70 @@
+# Steady scalar diffusion specification
+
+Status: first Gate 1 vertical slice implemented and locally verified.
+
+## Strong and weak forms
+
+For scalar field `u`, positive constant conductivity `k`, source `f`, outward
+normal `n`, Dirichlet boundary `Gamma_D`, and Neumann boundary `Gamma_N`:
+
+```text
+-div(k grad u) = f                in Omega
+u = u_D                           on Gamma_D
+k grad u dot n = g                on Gamma_N
+```
+
+The P1 Galerkin problem is to find `u_h` satisfying the essential conditions
+and, for every zero-valued test function `v_h` on `Gamma_D`,
+
+```text
+integral_Omega k grad(v_h) dot grad(u_h) dOmega
+  = integral_Omega v_h f dOmega + integral_Gamma_N v_h g dGamma.
+```
+
+For one affine triangle with basis-gradient matrix `G`,
+
+```text
+K_e = k A G G^T.
+```
+
+The source is integrated by the degree-2 triangle rule. Boundary flux uses
+two-point Gauss integration on each straight edge. Element entries are emitted
+as deterministic COO triplets; the first dense NumPy provider solves the
+constrained system. Dense solution is an intentionally temporary provider,
+not an assembly shortcut.
+
+## Boundary-condition convention
+
+`NeumannCondition.flux` is the outward physical flux `k grad(u) dot n` in the
+weak-form sign above. Unspecified boundaries are homogeneous natural
+boundaries. At least one Dirichlet node is currently required; pure Neumann
+null-space handling is not implemented.
+
+## First analytical slice
+
+On the unit square, set `k=1`, `f=0`, `u=0` on the left edge, `g=1` on the
+right edge, and homogeneous natural conditions on top and bottom. The exact
+solution is `u=x`. The two-triangle mesh must reproduce nodal values exactly,
+have zero free residual within roundoff, and satisfy total applied flux plus
+total reaction equals zero.
+
+## Acceptance evidence
+
+- independent closed-form element stiffness matrix;
+- constant source and edge-flux integrals;
+- symmetry and constant null mode before constraints;
+- exact linear patch with an interior free node;
+- analytical mixed-boundary solution on two triangles;
+- element orientation, cell order, and node-renumbering invariance;
+- manufactured solution `sin(pi x) sin(pi y)` with observed nodal convergence
+  order greater than 1.5 over 4/8/16 subdivisions;
+- explicit rejection of degenerate mesh entities and unsupported pure-Neumann
+  solve;
+- portable ASCII VTK nodal output.
+
+## Current limitations
+
+Conductivity is one positive scalar, geometry is two-dimensional and affine,
+and the linear solve uses a dense NumPy provider. Variable/tensor conductivity,
+multiple material regions, scalable sparse providers, and AgentFEM lowering
+remain future Gate 1 work.

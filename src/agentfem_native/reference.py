@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-AgentFEM-Native-Draft
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Reference-cell definitions for the independent mathematical kernel."""
 
 from __future__ import annotations

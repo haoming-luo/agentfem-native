@@ -1,13 +1,12 @@
-# Commercial license boundary — draft
+# Commercial license boundary
 
-AgentFEM Native is intended to use dual licensing.
+AgentFEM Native uses dual licensing.
 
-The proposed noncommercial grant covers qualifying noncommercial research,
-teaching, and personal study under the final approved noncommercial license.
-A separate AgentFEM commercial license is required for enterprise internal
-research and development, engineering production, commercial integration,
-paid services, cloud commercial deployment, and other commercial purposes.
+The PolyForm Noncommercial License 1.0.0 applies to permitted noncommercial
+uses. Enterprise internal research and development, engineering production,
+commercial software integration, paid services, commercial cloud deployment,
+resale, and other commercial uses require a separate written commercial
+license from the AgentFEM Native licensor.
 
-This document is a governance draft, not a commercial license offer. Pricing,
-term, warranty, support, patent, export-control, and governing-law provisions
-remain undecided and require project-owner and legal approval.
+Absence of a published price or standard commercial agreement does not grant
+commercial-use permission. Contact the project owner before commercial use.

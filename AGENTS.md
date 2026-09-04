@@ -35,8 +35,8 @@ changing scientific code.
 
 ## Platforms
 
-- Linux x86_64 and native Windows x86_64 are first-class, release-blocking
-  targets. WSL is additional, not a replacement. Keep macOS reference tests.
+- Native Windows x86_64, macOS arm64/x86_64, and Linux x86_64 are first-class,
+  release-blocking targets. WSL is additional, not a replacement for Windows.
 - Use Python APIs and `pathlib`; do not require a POSIX shell for install,
   testing, or core behavior.
 - Keep optional PETSc, MPI, GPU, and vendor providers out of reference-layer

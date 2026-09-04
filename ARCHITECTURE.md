@@ -47,7 +47,7 @@ Only the reference layer exists in code today.
 
 Platform differences are isolated behind providers or packaging. Scientific
 semantics, numbering rules, file schemas, tolerance policies, and the Kernel
-Contract remain identical across Linux and Windows. Code uses Python APIs and
+Contract remain identical across native Windows, macOS, and Linux. Code uses Python APIs and
 `pathlib`, does not require a POSIX shell, treats filesystem case differences
 explicitly, and never embeds absolute developer paths in artifacts.
 

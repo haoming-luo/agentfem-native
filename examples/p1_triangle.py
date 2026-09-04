@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-AgentFEM-Native-Draft
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Inspect the small Gate 0 P1 reference capability."""
 
 from __future__ import annotations

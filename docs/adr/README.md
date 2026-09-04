@@ -11,5 +11,7 @@ owner review. Superseded decisions remain in history.
 - [ADR-0006](0006-material-state-transactions.md): transactional state
 - [ADR-0007](0007-linear-algebra-providers.md): replaceable providers
 - [ADR-0008](0008-mpi-identity.md): identity independent of partition layout
-- [ADR-0009](0009-licensing-boundary.md): draft dual-license boundary
-- [ADR-0010](0010-cross-platform-baseline.md): Linux and Windows first-class
+- [ADR-0009](0009-licensing-boundary.md): source-available dual-license boundary
+- [ADR-0010](0010-cross-platform-baseline.md): Windows, macOS, and Linux first-class
+- [ADR-0011](0011-production-kernel-language-evaluation.md): measured
+  production-language and permissive-library selection
