@@ -1,0 +1,98 @@
+# AgentFEM Native roadmap
+
+This roadmap is gate-based. A gate advances only when its claims have evidence;
+calendar pressure does not lower mathematical or independence requirements.
+Linux and native Windows are required from Gate 0 onward. macOS is maintained
+as a development and verification platform. WSL may be offered as an
+additional route but never substitutes for native Windows acceptance.
+
+## Gate 0 — charter and independent lineage (current)
+
+Exit criteria:
+
+- approved project boundary, clean-room policy, provenance process, and
+  license decision;
+- versioned Kernel Contract draft and recorded architecture decisions;
+- P1 reference triangle, affine map, and degree-1/degree-2 quadrature covered
+  by mathematical tests;
+- isolated tests prove no import of DOLFINx, UFL, Basix, or FFCx;
+- source package and wheel build on Linux, native Windows, and macOS;
+- the same test suite passes on all three systems.
+
+Current state: technically implemented as a draft; owner/legal approval and
+remote CI evidence remain open, so Gate 0 is **not yet passed**.
+
+## Gate 1 — serial scalar reference kernel
+
+Scope: 2D triangular meshes, named sets, P1 scalar space, global DOF numbering,
+Dirichlet and Neumann conditions, sparse assembly, steady diffusion/heat,
+nodal results, VTK output, and an external AgentFEM adapter prototype.
+
+Required evidence: constant and linear reproduction, patch tests, analytical
+1D-equivalent solution, manufactured solution, mesh convergence, boundary
+integration, reversed element orientation, and node-renumbering invariance on
+Linux and Windows.
+
+First vertical slice: solve `-div(k grad u) = f` on the unit square using two
+P1 triangles, then generalize only after the element-to-result evidence chain
+is complete.
+
+## Gate 2 — basic solid mechanics
+
+Scope: 2D small-strain isotropic elasticity, plane stress/strain, displacement
+constraints, traction/body force, reactions, strain energy, stress/strain
+recovery, P1 triangles, followed by P1 tetrahedra and basic 3D.
+
+Evidence: rigid-body modes, constant-strain patch tests, uniaxial/shear/bulk
+responses, cantilever, symmetry, energy, reaction balance, and convergence.
+
+## Gate 3 — time and nonlinear lifecycle
+
+Scope: consistent and lumped mass, central difference, implicit increments,
+Newton residual/tangent, begin/commit/rollback, adaptive cutback,
+checkpoint/restart, and energy/external-work ledgers.
+
+Evidence: SDOF dynamics, wave propagation, time convergence, energy behavior,
+forced cutback, and restart equivalence across supported platforms.
+
+## Gate 4 — nonlinear solids and material state
+
+Scope: finite-strain kinematics, Neo-Hookean and Mooney–Rivlin models,
+quadrature state, J2 plasticity, creep, multiple material regions, and
+consistent tangents.
+
+Evidence: material-point and element paths, uniaxial/biaxial loading,
+objectivity, volume response, rollback, and public benchmarks.
+
+## Gate 5 — higher order, mixed, and near-incompressible
+
+Scope: P2 fields and geometry, DOF transformations, mixed displacement-pressure
+spaces, near-incompressibility, C3D10H-equivalent capability targets, and
+multiple cell-block topologies. Naming equivalence alone is never acceptance.
+
+## Gate 6 — MPI and scale
+
+Scope: partitioning, ghost entities, distributed DOFs and assembly, global
+state identity, parallel checkpoint/output, and replaceable partitioners.
+
+Evidence: 1/2/4/8-rank consistency, partition independence, restart across
+partition layouts, global energy/balance, and scaling studies on Linux.
+Windows capability is reported explicitly per MPI/provider combination.
+
+## Gate 7 — GPU and domestic computing ecosystem
+
+Scope: replaceable vectorized CPU and GPU kernels, domestic CPU/GPU,
+domestic Linux distributions, compilers, MPI, and sparse solvers. The goal is
+independent interfaces, builds, and critical paths—not rejection of every
+general-purpose open-source dependency.
+
+## Platform release tiers
+
+- Tier 1: Linux x86_64 and native Windows x86_64; release-blocking.
+- Tier 2: macOS arm64/x86_64; development and verification, release-blocking
+  for pure-Python reference layers.
+- Candidate: Linux aarch64 and Windows arm64 after reliable hosted or
+  self-hosted runners exist.
+- Provider-specific capabilities (MPI, PETSc, GPU) are reported separately;
+  an unavailable provider must not make the serial NumPy reference kernel
+  unavailable.

@@ -1,0 +1,7 @@
+AgentFEM Native Engine
+
+This repository contains an independently developed finite-element reference
+kernel for AgentFEM. It is not a fork, translation, or derivative packaging of
+DOLFINx, Basix, UFL, or FFCx.
+
+License terms are in LICENSE and remain a pre-release draft.

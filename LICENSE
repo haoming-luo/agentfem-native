@@ -1,0 +1,21 @@
+# AgentFEM Native licensing status — pre-release draft
+
+SPDX-License-Identifier: LicenseRef-AgentFEM-Native-Draft
+
+No public production release is authorized by this draft file.
+
+The proposed noncommercial license is the unmodified PolyForm Noncommercial
+License 1.0.0:
+
+https://polyformproject.org/licenses/noncommercial/1.0.0
+
+The proposed commercial boundary is documented in LICENSE-COMMERCIAL.md.
+Before any distribution or publication, the project owner must:
+
+1. confirm the legal licensor and exact copyright notice;
+2. insert the complete, unmodified approved license text and Required Notice;
+3. approve commercial terms;
+4. obtain appropriate software intellectual-property legal review.
+
+Until that approval, this repository is private pre-release material and no
+license beyond rights granted by applicable law should be inferred.

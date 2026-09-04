@@ -1,0 +1,34 @@
+# Cross-platform policy
+
+Linux and native Windows are core differentiators and first-class targets.
+
+## Release acceptance
+
+For every release candidate, both `ubuntu-latest` and `windows-latest` must:
+
+1. install from the source distribution and wheel in a clean environment;
+2. run the identical mathematical and public-contract tests;
+3. pass forbidden-dependency and SPDX scans;
+4. create and reload portable evidence using relative paths;
+5. report numerical tolerances and provider capabilities explicitly.
+
+macOS runs the same checks for the pure-Python reference layer. Architecture-
+specific and provider-specific claims require their own runners and evidence.
+
+## Engineering constraints
+
+- No shell scripts are required for install, tests, or core operation.
+- Paths use `pathlib`; serialized paths use portable relative POSIX spelling.
+- Do not depend on case-sensitive filenames, symlinks, executable bits, fork,
+  Unix signals, or `/tmp` semantics in public behavior.
+- File replacement and locking behavior must be tested on Windows.
+- Floating-point comparisons are tolerance-based and justified scientifically;
+  failures are not hidden by widening tolerances per operating system.
+- Optional provider discovery fails closed with an actionable capability
+  report and never changes the mathematical contract.
+
+## Packaging stages
+
+Gate 0 uses a pure Python/NumPy wheel. If a compiled production kernel is later
+approved by ADR, CI must build and test platform wheels (manylinux and Windows)
+from the same source revision, with reproducible toolchain metadata and SBOM.
