@@ -115,13 +115,19 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact: manylinux-x86_64
+            arch: x86_64
           - os: windows-latest
             artifact: windows-x86_64
+            arch: AMD64
           - os: macos-15-intel
             artifact: macos-x86_64
+            arch: x86_64
           - os: macos-latest
             artifact: macos-arm64
+            arch: arm64
     runs-on: ${{ matrix.os }}
+    env:
+      CIBW_ARCHS: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v6
         with:
