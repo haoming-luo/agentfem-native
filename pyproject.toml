@@ -49,4 +49,4 @@ build = "cp311-*"
 skip = "*-musllinux_*"
 build-verbosity = 1
 test-requires = ["scipy>=1.12"]
-test-command = "python -m unittest discover -s {project}/tests -v"
+test-command = "python -m unittest discover -s {project}/tests -t {project} -v"
