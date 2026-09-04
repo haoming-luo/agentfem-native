@@ -5,7 +5,7 @@ calendar pressure does not lower mathematical or independence requirements.
 Native Windows, macOS, and Linux are required from Gate 0 onward. WSL may be offered as an
 additional route but never substitutes for native Windows acceptance.
 
-## Gate 0 — charter and independent lineage (current)
+## Gate 0 — charter and independent lineage
 
 Exit criteria:
 
@@ -18,9 +18,9 @@ Exit criteria:
 - source package and wheel build on Linux, native Windows, and macOS;
 - the same test suite passes on all three systems.
 
-Current state: charter and license decisions are accepted locally. Remote
-three-platform CI evidence remains open, so Gate 0 platform acceptance is not
-yet closed.
+Current state: local criteria are complete. Remote three-platform CI evidence
+remains open, so final platform acceptance is inherited by the Gate 1 release
+candidate.
 
 ## Gate 1 — serial scalar reference kernel
 
@@ -37,11 +37,14 @@ First vertical slice: solve `-div(k grad u) = f` on the unit square using two
 P1 triangles, then generalize only after the element-to-result evidence chain
 is complete.
 
-Current state: the first vertical slice is implemented and locally verified,
-including analytical, patch, convergence, orientation, renumbering, balance,
-failure, and VTK-output evidence. Gate 1 remains open for material regions,
-scalable sparse providers, a stable serialized request, and the external
-AgentFEM adapter.
+Current state: a local Gate 1 release candidate is implemented. It includes
+analytical, patch, convergence, orientation, renumbering, balance, failure,
+and VTK evidence; cell material regions; variable and anisotropic
+conductivity; NumPy and optional SciPy providers; Kernel Contract 0.1 JSON
+request/result envelopes; a cross-platform CLI; and an external public-AF-IR
+lowering prototype. Gate 1 remains open only for hosted native Windows,
+macOS, and Linux evidence and integration of the portable extension into
+AgentFEM's public exported IR.
 
 Before Gate 2, benchmark C++20, Rust, and Python-plus-compiled-kernel tracks
 against the NumPy oracle and complete native packaging spikes on all three

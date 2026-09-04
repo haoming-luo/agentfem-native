@@ -1,41 +1,47 @@
 # Steady scalar diffusion specification
 
-Status: first Gate 1 vertical slice implemented and locally verified.
+Status: Gate 1 release candidate implemented and locally verified.
 
 ## Strong and weak forms
 
-For scalar field `u`, positive constant conductivity `k`, source `f`, outward
-normal `n`, Dirichlet boundary `Gamma_D`, and Neumann boundary `Gamma_N`:
+For scalar field `u`, symmetric positive-definite conductivity tensor `K(x)`,
+source `f`, outward normal `n`, Dirichlet boundary `Gamma_D`, and Neumann
+boundary `Gamma_N`:
 
 ```text
--div(k grad u) = f                in Omega
+-div(K grad u) = f                in Omega
 u = u_D                           on Gamma_D
-k grad u dot n = g                on Gamma_N
+K grad u dot n = g                on Gamma_N
 ```
 
 The P1 Galerkin problem is to find `u_h` satisfying the essential conditions
 and, for every zero-valued test function `v_h` on `Gamma_D`,
 
 ```text
-integral_Omega k grad(v_h) dot grad(u_h) dOmega
+integral_Omega grad(v_h) dot K grad(u_h) dOmega
   = integral_Omega v_h f dOmega + integral_Gamma_N v_h g dGamma.
 ```
 
 For one affine triangle with basis-gradient matrix `G`,
 
 ```text
-K_e = k A G G^T.
+K_e = integral_element G K(x) G^T dOmega.
 ```
 
 The source is integrated by the degree-2 triangle rule. Boundary flux uses
 two-point Gauss integration on each straight edge. Element entries are emitted
-as deterministic COO triplets; the first dense NumPy provider solves the
-constrained system. Dense solution is an intentionally temporary provider,
-not an assembly shortcut.
+as deterministic COO triplets. The auditable dense NumPy provider and optional
+SciPy CSR direct provider solve the same constrained system behind one
+interface. Provider selection does not change discretization or assembly.
+
+Conductivity may be a positive scalar, a spatial scalar callable, or a
+symmetric positive-definite 2-by-2 tensor. Named cell sets may override the
+default conductivity. Material assignments must not overlap; unassigned cells
+retain the default.
 
 ## Boundary-condition convention
 
-`NeumannCondition.flux` is the outward physical flux `k grad(u) dot n` in the
+`NeumannCondition.flux` is the outward physical flux `K grad(u) dot n` in the
 weak-form sign above. Unspecified boundaries are homogeneous natural
 boundaries. At least one Dirichlet node is currently required; pure Neumann
 null-space handling is not implemented.
@@ -61,10 +67,14 @@ total reaction equals zero.
 - explicit rejection of degenerate mesh entities and unsupported pure-Neumann
   solve;
 - portable ASCII VTK nodal output.
+- variable-conductivity exact solution, anisotropic linear exact solution,
+  and a two-region layered-material exact solution;
+- numerical identity between installed NumPy and SciPy provider paths.
 
 ## Current limitations
 
-Conductivity is one positive scalar, geometry is two-dimensional and affine,
-and the linear solve uses a dense NumPy provider. Variable/tensor conductivity,
-multiple material regions, scalable sparse providers, and AgentFEM lowering
-remain future Gate 1 work.
+Geometry is two-dimensional and affine; source and boundary values in the
+serialized contract are constant scalars; and materials are stateless
+conductivity records. The SciPy path is a scalable sparse storage/direct-solve
+bridge, not the final production solver. Nonlinear, transient, 3D, higher-order,
+and stateful material behavior remain later-gate work.

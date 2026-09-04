@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from math import factorial
 import unittest
+from math import factorial
 
 import numpy as np
 
@@ -22,7 +22,9 @@ class QuadratureTests(unittest.TestCase):
             with self.subTest(a=a, b=b):
                 values = rule.points[:, 0] ** a * rule.points[:, 1] ** b
                 exact = factorial(a) * factorial(b) / factorial(a + b + 2)
-                self.assertAlmostEqual(float(rule.integrate_values(values)), exact, places=15)
+                self.assertAlmostEqual(
+                    float(rule.integrate_values(values)), exact, places=15
+                )
 
     def test_degree_one_rule_integrates_affine_vector_function(self) -> None:
         result = integrate_reference(

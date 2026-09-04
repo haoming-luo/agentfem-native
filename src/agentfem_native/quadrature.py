@@ -3,14 +3,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, TypeAlias
+from typing import TypeAlias
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from .reference import inside_reference_triangle
-
 
 FloatArray: TypeAlias = NDArray[np.float64]
 
@@ -80,7 +80,9 @@ def triangle_rule(exact_degree: int) -> TriangleQuadrature:
             weights=np.full(3, 1.0 / 6.0),
             exact_degree=2,
         )
-    raise NotImplementedError("Reference triangle quadrature above degree 2 is unavailable.")
+    raise NotImplementedError(
+        "Reference triangle quadrature above degree 2 is unavailable."
+    )
 
 
 def integrate_reference(

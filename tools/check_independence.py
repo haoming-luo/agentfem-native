@@ -6,7 +6,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-
 FORBIDDEN = {"dolfinx", "ufl", "basix", "ffcx"}
 ROOT = Path(__file__).resolve().parents[1]
 

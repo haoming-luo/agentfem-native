@@ -37,6 +37,8 @@ class MeshTests(unittest.TestCase):
             mesh.nodes("missing")
         with self.assertRaisesRegex(KeyError, "Unknown boundary set"):
             mesh.boundary_edges("missing")
+        with self.assertRaisesRegex(KeyError, "Unknown cell set"):
+            mesh.cells_in("missing")
 
     def test_structured_unit_square_counts_and_boundaries(self) -> None:
         mesh = unit_square_triangles(3, 2)
@@ -58,12 +60,28 @@ class MeshTests(unittest.TestCase):
                 cells=np.array(((0.0, 1.0, 1.5),)),
             )
 
-    def test_duplicate_boundary_edge_is_rejected_regardless_of_orientation(self) -> None:
+    def test_duplicate_boundary_edge_is_rejected_regardless_of_orientation(
+        self,
+    ) -> None:
         with self.assertRaisesRegex(ValueError, "duplicate edges"):
             TriangularMesh(
                 points=np.array(((0.0, 0.0), (1.0, 0.0), (0.0, 1.0))),
                 cells=np.array(((0, 1, 2),)),
                 boundary_sets={"edge": np.array(((0, 1), (1, 0)))},
+            )
+
+    def test_named_cell_sets_are_owned_and_validated(self) -> None:
+        mesh = TriangularMesh(
+            points=np.array(((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0))),
+            cells=np.array(((0, 1, 2), (0, 2, 3))),
+            cell_sets={"first": np.array((0,))},
+        )
+        np.testing.assert_array_equal(mesh.cells_in("first"), (0,))
+        with self.assertRaises(ValueError):
+            TriangularMesh(
+                points=mesh.points,
+                cells=mesh.cells,
+                cell_sets={"bad": np.array((2,))},
             )
 
 

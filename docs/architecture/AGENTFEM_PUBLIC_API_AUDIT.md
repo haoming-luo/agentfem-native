@@ -47,3 +47,13 @@ concepts, but some public objects remain DOLFINx-like or provider-specific.
 Native integration should therefore begin with an external lowering adapter
 and a small versioned Kernel Contract. No large change to AgentFEM main is
 justified before the Gate 1 diffusion slice proves the boundary.
+
+## Implemented external prototype
+
+Kernel Contract 0.1 and an external lowering adapter now exist in Native.
+The adapter calls only public `to_ir()`/`as_dict()` methods. AF-IR 0.1's
+current runtime mesh summary declares itself non-reconstructable, so the
+prototype requires `root.native_kernel` to carry executable portable arrays
+and conditions. The current AgentFEM repository was not modified; promotion
+of that extension into the public AgentFEM export is the next integration
+change and requires its own tests in the AgentFEM repository.

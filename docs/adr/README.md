@@ -15,3 +15,5 @@ owner review. Superseded decisions remain in history.
 - [ADR-0010](0010-cross-platform-baseline.md): Windows, macOS, and Linux first-class
 - [ADR-0011](0011-production-kernel-language-evaluation.md): measured
   production-language and permissive-library selection
+- [ADR-0012](0012-executable-kernel-contract.md): executable JSON contract and
+  external AgentFEM lowering extension

@@ -33,15 +33,17 @@ than FEniCSx objects.
 
 - `reference`: small, readable NumPy executable mathematics used as an
   independent oracle for future optimized kernels.
-- `kernel`: future mesh, topology, spaces, elements, operators, assembly, and
-  state semantics owned by AgentFEM Native.
-- `providers`: future replaceable sparse linear algebra, parallel runtime, and
-  hardware implementations.
-- `adapters`: future versioned lowering from AgentFEM and result conversion.
+- `kernel`: mesh, topology, P1 elements, diffusion operators, deterministic
+  assembly, and future state semantics owned by AgentFEM Native.
+- `providers`: replaceable dense/sparse linear algebra now, and future
+  parallel runtime and hardware implementations.
+- `contract`: versioned JSON request/result execution and public AgentFEM
+  AF-IR lowering boundary.
 - `verification`: tests and evidence that consume public results without
   becoming part of the solver.
 
-Only the reference layer exists in code today.
+The current implementation deliberately keeps these small enough to audit;
+future optimized C++20/Rust/compiled kernels must reproduce this reference.
 
 ## Cross-platform rule
 

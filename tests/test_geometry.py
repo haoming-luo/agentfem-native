@@ -15,15 +15,13 @@ class GeometryTests(unittest.TestCase):
     def test_reference_vertices_map_to_physical_vertices(self) -> None:
         vertices = np.array(((2.0, -1.0), (5.0, 0.0), (1.0, 3.0)))
         mapping = AffineTriangleMap(vertices)
-        np.testing.assert_allclose(mapping.map_points(REFERENCE_TRIANGLE_VERTICES), vertices)
+        np.testing.assert_allclose(
+            mapping.map_points(REFERENCE_TRIANGLE_VERTICES), vertices
+        )
 
     def test_area_and_orientation_are_separate(self) -> None:
-        positive = AffineTriangleMap(
-            np.array(((0.0, 0.0), (2.0, 0.0), (0.0, 3.0)))
-        )
-        negative = AffineTriangleMap(
-            np.array(((0.0, 0.0), (0.0, 3.0), (2.0, 0.0)))
-        )
+        positive = AffineTriangleMap(np.array(((0.0, 0.0), (2.0, 0.0), (0.0, 3.0))))
+        negative = AffineTriangleMap(np.array(((0.0, 0.0), (0.0, 3.0), (2.0, 0.0))))
         self.assertAlmostEqual(positive.signed_determinant, 6.0)
         self.assertAlmostEqual(negative.signed_determinant, -6.0)
         self.assertAlmostEqual(positive.area, 3.0)
@@ -67,9 +65,7 @@ class GeometryTests(unittest.TestCase):
                 AffineTriangleMap(vertices)
 
     def test_vertex_and_jacobian_views_cannot_mutate_geometry(self) -> None:
-        mapping = AffineTriangleMap(
-            np.array(((0.0, 0.0), (1.0, 0.0), (0.0, 1.0)))
-        )
+        mapping = AffineTriangleMap(np.array(((0.0, 0.0), (1.0, 0.0), (0.0, 1.0))))
         with self.assertRaises(ValueError):
             mapping.vertices[0, 0] = 4.0
         with self.assertRaises(ValueError):

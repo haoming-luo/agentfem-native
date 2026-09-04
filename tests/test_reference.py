@@ -25,8 +25,10 @@ class ReferenceTriangleTests(unittest.TestCase):
 
     def test_p1_reproduces_every_affine_scalar_function(self) -> None:
         points = np.array(((0.1, 0.2), (0.25, 0.5), (0.7, 0.1)))
-        vertex_values = 2.5 + 3.0 * REFERENCE_TRIANGLE_VERTICES[:, 0] - 4.0 * (
-            REFERENCE_TRIANGLE_VERTICES[:, 1]
+        vertex_values = (
+            2.5
+            + 3.0 * REFERENCE_TRIANGLE_VERTICES[:, 0]
+            - 4.0 * (REFERENCE_TRIANGLE_VERTICES[:, 1])
         )
         interpolated = p1_basis(points) @ vertex_values
         exact = 2.5 + 3.0 * points[:, 0] - 4.0 * points[:, 1]

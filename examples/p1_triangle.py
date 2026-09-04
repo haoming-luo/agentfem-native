@@ -7,7 +7,6 @@ import numpy as np
 
 from agentfem_native import AffineTriangleMap, p1_basis, triangle_rule
 
-
 triangle = AffineTriangleMap(np.array(((0.0, 0.0), (2.0, 0.0), (0.0, 1.0))))
 rule = triangle_rule(2)
 

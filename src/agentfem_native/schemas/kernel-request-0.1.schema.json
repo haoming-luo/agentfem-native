@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentfem.org/schemas/native/kernel-request-0.1.schema.json",
+  "title": "AgentFEM Native Kernel Request 0.1",
+  "type": "object",
+  "required": ["contract", "contract_version", "request_id", "study", "mesh", "physics", "dirichlet"],
+  "properties": {
+    "contract": {"const": "agentfem.native-kernel-request"},
+    "contract_version": {"const": "0.1.0"},
+    "request_id": {"type": "string", "minLength": 1},
+    "study": {
+      "type": "object",
+      "required": ["analysis", "physics", "dimension"],
+      "properties": {
+        "analysis": {"const": "linear_static"},
+        "physics": {"const": "heat_transfer"},
+        "dimension": {"const": 2}
+      },
+      "additionalProperties": true
+    },
+    "mesh": {
+      "type": "object",
+      "required": ["points", "cells"],
+      "properties": {
+        "points": {"type": "array", "items": {"$ref": "#/$defs/point"}, "minItems": 3},
+        "cells": {"type": "array", "items": {"$ref": "#/$defs/triangle"}, "minItems": 1},
+        "node_sets": {"$ref": "#/$defs/namedIndexArrays"},
+        "boundary_sets": {"$ref": "#/$defs/namedEdgeArrays"},
+        "cell_sets": {"$ref": "#/$defs/namedIndexArrays"}
+      },
+      "additionalProperties": false
+    },
+    "physics": {
+      "type": "object",
+      "required": ["conductivity"],
+      "properties": {
+        "conductivity": {"$ref": "#/$defs/conductivity"},
+        "source": {"type": "number"}
+      },
+      "additionalProperties": false
+    },
+    "dirichlet": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/dirichletCondition"},
+      "minItems": 1
+    },
+    "neumann": {"type": "array", "items": {"$ref": "#/$defs/neumannCondition"}},
+    "materials": {"type": "array", "items": {"$ref": "#/$defs/material"}},
+    "procedure": {
+      "type": "object",
+      "properties": {
+        "kind": {"const": "steady_diffusion"},
+        "linear_algebra": {"enum": ["numpy", "scipy", "auto"]}
+      },
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "vtk": {
+          "type": "object",
+          "required": ["path"],
+          "properties": {
+            "path": {"type": "string", "minLength": 1},
+            "field_name": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "point": {
+      "type": "array",
+      "prefixItems": [{"type": "number"}, {"type": "number"}],
+      "items": false
+    },
+    "edge": {
+      "type": "array",
+      "prefixItems": [{"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}],
+      "items": false
+    },
+    "triangle": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "integer", "minimum": 0},
+        {"type": "integer", "minimum": 0},
+        {"type": "integer", "minimum": 0}
+      ],
+      "items": false
+    },
+    "namedIndexArrays": {
+      "type": "object",
+      "additionalProperties": {"type": "array", "items": {"type": "integer", "minimum": 0}}
+    },
+    "namedEdgeArrays": {
+      "type": "object",
+      "additionalProperties": {"type": "array", "items": {"$ref": "#/$defs/edge"}}
+    },
+    "conductivity": {
+      "oneOf": [
+        {"type": "number", "exclusiveMinimum": 0},
+        {
+          "type": "array",
+          "prefixItems": [
+            {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}], "items": false},
+            {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}], "items": false}
+          ],
+          "items": false
+        }
+      ]
+    },
+    "dirichletCondition": {
+      "type": "object",
+      "required": ["node_set", "value"],
+      "properties": {"node_set": {"type": "string", "minLength": 1}, "value": {"type": "number"}},
+      "additionalProperties": false
+    },
+    "neumannCondition": {
+      "type": "object",
+      "required": ["boundary_set", "flux"],
+      "properties": {"boundary_set": {"type": "string", "minLength": 1}, "flux": {"type": "number"}},
+      "additionalProperties": false
+    },
+    "material": {
+      "type": "object",
+      "required": ["name", "cell_set", "conductivity"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "cell_set": {"type": "string", "minLength": 1},
+        "conductivity": {"$ref": "#/$defs/conductivity"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

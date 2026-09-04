@@ -3,8 +3,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, TypeAlias
+from typing import TypeAlias
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -14,9 +15,9 @@ from .mesh import TriangularMesh
 from .quadrature import triangle_rule
 from .reference import p1_basis
 
-
 FloatArray: TypeAlias = NDArray[np.float64]
 ScalarField = float | Callable[[FloatArray], ArrayLike]
+Conductivity = float | ArrayLike | Callable[[FloatArray], ArrayLike]
 
 
 def _field_values(field: ScalarField, points: FloatArray, *, name: str) -> FloatArray:
@@ -27,6 +28,34 @@ def _field_values(field: ScalarField, points: FloatArray, *, name: str) -> Float
     if values.shape != (points.shape[0],) or not np.all(np.isfinite(values)):
         raise ValueError(f"{name} must evaluate to one finite scalar per point.")
     return values
+
+
+def _conductivity_tensors(conductivity: Conductivity, points: FloatArray) -> FloatArray:
+    raw = conductivity(points) if callable(conductivity) else conductivity
+    values = np.asarray(raw, dtype=np.float64)
+    count = points.shape[0]
+    if values.ndim == 0:
+        tensors = np.broadcast_to(float(values) * np.eye(2), (count, 2, 2)).copy()
+    elif values.shape == (count,):
+        tensors = values[:, None, None] * np.broadcast_to(np.eye(2), (count, 2, 2))
+    elif values.shape == (2, 2):
+        tensors = np.broadcast_to(values, (count, 2, 2)).copy()
+    elif values.shape == (count, 2, 2):
+        tensors = values.copy()
+    else:
+        raise ValueError(
+            "Conductivity must be a scalar, a 2x2 tensor, or evaluate to one per point."
+        )
+    if not np.all(np.isfinite(tensors)):
+        raise ValueError("Conductivity must contain only finite values.")
+    for tensor in tensors:
+        scale = max(1.0, float(np.linalg.norm(tensor, ord=np.inf)))
+        tolerance = 64.0 * np.finfo(np.float64).eps * scale
+        if not np.allclose(tensor, tensor.T, rtol=0.0, atol=tolerance):
+            raise ValueError("Conductivity tensor must be symmetric.")
+        if float(np.linalg.eigvalsh(tensor).min()) <= tolerance:
+            raise ValueError("Conductivity tensor must be positive definite.")
+    return tensors
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,12 +69,16 @@ class COOMatrix:
 
     def __post_init__(self) -> None:
         if len(self.shape) != 2 or self.shape[0] < 0 or self.shape[1] < 0:
-            raise ValueError("Sparse matrix shape must contain two nonnegative dimensions.")
+            raise ValueError(
+                "Sparse matrix shape must contain two nonnegative dimensions."
+            )
         rows = np.array(self.rows, dtype=np.int64, copy=True)
         columns = np.array(self.columns, dtype=np.int64, copy=True)
         data = np.array(self.data, dtype=np.float64, copy=True)
         if rows.ndim != 1 or columns.shape != rows.shape or data.shape != rows.shape:
-            raise ValueError("COO rows, columns, and data must be equal-length vectors.")
+            raise ValueError(
+                "COO rows, columns, and data must be equal-length vectors."
+            )
         if np.any(rows < 0) or np.any(rows >= self.shape[0]):
             raise ValueError("COO row index is out of range.")
         if np.any(columns < 0) or np.any(columns >= self.shape[1]):
@@ -72,15 +105,22 @@ class COOMatrix:
         return result
 
 
-def p1_diffusion_stiffness(vertices: ArrayLike, conductivity: float) -> FloatArray:
+def p1_diffusion_stiffness(
+    vertices: ArrayLike, conductivity: Conductivity
+) -> FloatArray:
     """Return one scalar P1 diffusion element matrix."""
 
-    value = float(conductivity)
-    if not np.isfinite(value) or value <= 0.0:
-        raise ValueError("Conductivity must be finite and positive.")
     geometry = AffineTriangleMap(np.asarray(vertices, dtype=np.float64))
     gradients = geometry.p1_gradients()
-    return value * geometry.area * (gradients @ gradients.T)
+    rule = triangle_rule(2)
+    physical_points = geometry.map_points(rule.points)
+    tensors = _conductivity_tensors(conductivity, physical_points)
+    result = np.zeros((3, 3), dtype=np.float64)
+    for weight, tensor in zip(rule.weights, tensors, strict=True):
+        result += (
+            geometry.integration_scale * weight * (gradients @ tensor @ gradients.T)
+        )
+    return result
 
 
 def p1_source_load(vertices: ArrayLike, source: ScalarField) -> FloatArray:
@@ -107,7 +147,9 @@ def p1_boundary_flux_load(edge_vertices: ArrayLike, flux: ScalarField) -> FloatA
     offset = 1.0 / (2.0 * np.sqrt(3.0))
     coordinates = np.array((0.5 - offset, 0.5 + offset))
     weights = np.array((0.5, 0.5))
-    points = (1.0 - coordinates[:, None]) * vertices[0] + coordinates[:, None] * vertices[1]
+    points = (1.0 - coordinates[:, None]) * vertices[0] + coordinates[
+        :, None
+    ] * vertices[1]
     values = _field_values(flux, points, name="Boundary flux")
     basis = np.column_stack((1.0 - coordinates, coordinates))
     return length * (basis.T @ (weights * values))
@@ -116,9 +158,10 @@ def p1_boundary_flux_load(edge_vertices: ArrayLike, flux: ScalarField) -> FloatA
 def assemble_diffusion(
     mesh: TriangularMesh,
     *,
-    conductivity: float,
+    conductivity: Conductivity,
     source: ScalarField = 0.0,
     boundary_fluxes: tuple[tuple[str, ScalarField], ...] = (),
+    cell_conductivities: dict[int, Conductivity] | None = None,
 ) -> tuple[COOMatrix, FloatArray]:
     """Assemble the serial P1 diffusion matrix and load vector."""
 
@@ -129,8 +172,12 @@ def assemble_diffusion(
     load = np.zeros(mesh.node_count, dtype=np.float64)
 
     cursor = 0
-    for cell in mesh.cells:
-        local_stiffness = p1_diffusion_stiffness(mesh.points[cell], conductivity)
+    overrides = {} if cell_conductivities is None else dict(cell_conductivities)
+    if any(index < 0 or index >= mesh.cell_count for index in overrides):
+        raise ValueError("Cell conductivity override index is out of range.")
+    for cell_index, cell in enumerate(mesh.cells):
+        local_conductivity = overrides.get(cell_index, conductivity)
+        local_stiffness = p1_diffusion_stiffness(mesh.points[cell], local_conductivity)
         local_load = p1_source_load(mesh.points[cell], source)
         for local_row, global_row in enumerate(cell):
             load[global_row] += local_load[local_row]

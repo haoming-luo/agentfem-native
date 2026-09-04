@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import ast
-from pathlib import Path
 import unittest
-
+from pathlib import Path
 
 FORBIDDEN = {"dolfinx", "ufl", "basix", "ffcx"}
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -25,7 +24,9 @@ def imported_roots(path: Path) -> set[str]:
 class IndependenceTests(unittest.TestCase):
     def test_source_has_no_forbidden_finite_element_imports(self) -> None:
         offenders = {
-            str(path.relative_to(PROJECT_ROOT)): sorted(imported_roots(path) & FORBIDDEN)
+            str(path.relative_to(PROJECT_ROOT)): sorted(
+                imported_roots(path) & FORBIDDEN
+            )
             for path in (PROJECT_ROOT / "src").rglob("*.py")
             if imported_roots(path) & FORBIDDEN
         }

@@ -11,7 +11,6 @@ from numpy.typing import ArrayLike, NDArray
 
 from .reference import p1_basis_gradients
 
-
 FloatArray: TypeAlias = NDArray[np.float64]
 
 

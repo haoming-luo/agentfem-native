@@ -3,15 +3,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Mapping, TypeAlias
+from typing import TypeAlias
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from .geometry import AffineTriangleMap
-
 
 FloatArray: TypeAlias = NDArray[np.float64]
 IndexArray: TypeAlias = NDArray[np.int64]
@@ -20,7 +20,9 @@ IndexArray: TypeAlias = NDArray[np.int64]
 def _readonly_float_array(value: ArrayLike, shape_tail: tuple[int, ...]) -> FloatArray:
     array = np.array(value, dtype=np.float64, copy=True)
     if array.ndim != len(shape_tail) + 1 or array.shape[1:] != shape_tail:
-        raise ValueError(f"Expected array with shape (n, {', '.join(map(str, shape_tail))}).")
+        raise ValueError(
+            f"Expected array with shape (n, {', '.join(map(str, shape_tail))})."
+        )
     if not np.all(np.isfinite(array)):
         raise ValueError("Mesh coordinates must be finite.")
     array.setflags(write=False)
@@ -31,11 +33,15 @@ def _readonly_indices(value: ArrayLike, width: int | None = None) -> IndexArray:
     numeric = np.asarray(value, dtype=np.float64)
     if not np.all(np.isfinite(numeric)) or not np.all(numeric == np.floor(numeric)):
         raise ValueError("Mesh indices must be finite integers.")
-    if np.any(numeric < np.iinfo(np.int64).min) or np.any(numeric > np.iinfo(np.int64).max):
+    if np.any(numeric < np.iinfo(np.int64).min) or np.any(
+        numeric > np.iinfo(np.int64).max
+    ):
         raise ValueError("Mesh index cannot be represented as a 64-bit integer.")
     array = np.array(numeric, dtype=np.int64, copy=True)
     expected_dimension = 1 if width is None else 2
-    if array.ndim != expected_dimension or (width is not None and array.shape[1] != width):
+    if array.ndim != expected_dimension or (
+        width is not None and array.shape[1] != width
+    ):
         suffix = "(n,)" if width is None else f"(n, {width})"
         raise ValueError(f"Expected index array with shape {suffix}.")
     array.setflags(write=False)
@@ -74,42 +80,61 @@ class TriangularMesh:
     cells: IndexArray
     node_sets: Mapping[str, IndexArray] = field(default_factory=dict)
     boundary_sets: Mapping[str, IndexArray] = field(default_factory=dict)
+    cell_sets: Mapping[str, IndexArray] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         points = _readonly_float_array(self.points, (2,))
         cells = _readonly_indices(self.cells, 3)
         if points.shape[0] < 3 or cells.shape[0] < 1:
-            raise ValueError("A triangle mesh requires at least three points and one cell.")
+            raise ValueError(
+                "A triangle mesh requires at least three points and one cell."
+            )
         if np.any(cells < 0) or np.any(cells >= points.shape[0]):
             raise ValueError("Cell connectivity contains an out-of-range node index.")
         for cell in cells:
             if np.unique(cell).size != 3:
-                raise ValueError("Each triangle cell must reference three distinct nodes.")
+                raise ValueError(
+                    "Each triangle cell must reference three distinct nodes."
+                )
             AffineTriangleMap(points[cell])
 
-        node_sets = _named_indices(self.node_sets, width=None, node_count=points.shape[0])
+        node_sets = _named_indices(
+            self.node_sets, width=None, node_count=points.shape[0]
+        )
         boundary_sets = _named_indices(
             self.boundary_sets,
             width=2,
             node_count=points.shape[0],
+        )
+        cell_sets = _named_indices(
+            self.cell_sets,
+            width=None,
+            node_count=cells.shape[0],
         )
         boundary_edges = self._boundary_edge_keys(cells)
         for name, edges in boundary_sets.items():
             for edge in edges:
                 key = tuple(sorted((int(edge[0]), int(edge[1]))))
                 if key not in boundary_edges:
-                    raise ValueError(f"Edge {tuple(edge)} in {name!r} is not a mesh boundary edge.")
+                    raise ValueError(
+                        f"Edge {tuple(edge)} in {name!r} is not a mesh boundary edge."
+                    )
 
         object.__setattr__(self, "points", points)
         object.__setattr__(self, "cells", cells)
         object.__setattr__(self, "node_sets", node_sets)
         object.__setattr__(self, "boundary_sets", boundary_sets)
+        object.__setattr__(self, "cell_sets", cell_sets)
 
     @staticmethod
     def _boundary_edge_keys(cells: IndexArray) -> set[tuple[int, int]]:
         counts: dict[tuple[int, int], int] = {}
         for cell in cells:
-            for first, second in ((cell[0], cell[1]), (cell[1], cell[2]), (cell[2], cell[0])):
+            for first, second in (
+                (cell[0], cell[1]),
+                (cell[1], cell[2]),
+                (cell[2], cell[0]),
+            ):
                 key = tuple(sorted((int(first), int(second))))
                 counts[key] = counts.get(key, 0) + 1
         return {edge for edge, count in counts.items() if count == 1}
@@ -133,6 +158,12 @@ class TriangularMesh:
             return self.boundary_sets[name]
         except KeyError as error:
             raise KeyError(f"Unknown boundary set {name!r}.") from error
+
+    def cells_in(self, name: str) -> IndexArray:
+        try:
+            return self.cell_sets[name]
+        except KeyError as error:
+            raise KeyError(f"Unknown cell set {name!r}.") from error
 
 
 def unit_square_two_triangles() -> TriangularMesh:

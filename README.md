@@ -4,11 +4,13 @@ AgentFEM Native is the independently developed finite-element engine for
 AgentFEM. It is an official autonomous computation backend, not a FEniCSx
 fork and not a second end-user product.
 
-The repository is at **Gate 1 reference-kernel maturity**. Its first verified
-local vertical slice solves serial two-dimensional steady scalar diffusion on
-affine P1 triangles, with named boundaries, deterministic COO assembly,
-Dirichlet/Neumann conditions, a dense NumPy provider, balance evidence, and
-portable VTK output. The API remains experimental.
+The repository is at **Gate 1 release-candidate maturity**. The locally
+verified serial kernel solves two-dimensional steady scalar diffusion on
+affine P1 triangles with named node, boundary, and material regions;
+scalar, spatially varying, or symmetric positive-definite tensor
+conductivity; deterministic COO assembly; replaceable NumPy/SciPy linear
+algebra providers; balance evidence; and portable VTK output. The API remains
+experimental until native three-platform CI evidence closes the gate.
 
 ## Stable direction
 
@@ -35,16 +37,42 @@ physics forks.
 
 ## Current evidence
 
-Run the reference tests without FEniCSx:
+Create the repository-local environment on Windows, macOS, or Linux:
+
+```text
+python tools/bootstrap_env.py
+python tools/bootstrap_env.py --with-scipy  # optional sparse provider
+python tools/bootstrap_env.py --agentfem /path/to/agentfem
+```
+
+For this development checkout, the active `.venv` contains editable
+AgentFEM 0.3.1 from the clean local `agentfem-main-worktree` and editable
+AgentFEM Native 0.2.0a1. Installing both does not make AgentFEM or FEniCSx a
+Native runtime dependency; their communication remains the public contract.
+
+Then run the reference tests without FEniCSx:
 
 ```text
 python -m unittest discover -v
 python tools/check_independence.py
 ```
 
+Execute a portable Kernel Contract request:
+
+```text
+agentfem-native examples/steady_diffusion_request.json \
+  --artifact-directory work/example --result work/example-result.json
+```
+
+On Windows PowerShell, enter the same command on one line. The command and
+the Python API return a versioned, JSON-safe result envelope; failures are
+structured and the command exits nonzero.
+
 See [ROADMAP.md](ROADMAP.md), [ARCHITECTURE.md](ARCHITECTURE.md), the
 [project charter](docs/charter/PROJECT_CHARTER.md), and the
 [steady-diffusion specification](docs/specifications/STEADY_DIFFUSION.md).
+Environment details are in
+[docs/development/ENVIRONMENT.md](docs/development/ENVIRONMENT.md).
 
 ## Licensing
 

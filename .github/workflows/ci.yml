@@ -22,7 +22,26 @@ jobs:
         run: python -m pip install --upgrade pip .[dev]
       - name: Run mathematical tests
         run: python -m unittest discover -v
+      - name: Run portable contract example
+        run: python -m agentfem_native.cli examples/steady_diffusion_request.json --artifact-directory work/ci-artifacts --result work/ci-result.json
       - name: Check independent lineage
         run: python tools/check_independence.py
       - name: Build source and wheel distributions
         run: python -m build
+
+  scipy-provider:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install sparse provider
+        run: python -m pip install --upgrade pip .[scipy]
+      - name: Run sparse-provider and scientific tests
+        run: python -m unittest discover -v

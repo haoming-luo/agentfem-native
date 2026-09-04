@@ -8,7 +8,6 @@ from typing import TypeAlias
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-
 FloatArray: TypeAlias = NDArray[np.float64]
 
 REFERENCE_TRIANGLE_VERTICES: FloatArray = np.array(
@@ -69,8 +68,4 @@ def inside_reference_triangle(
     coordinates = _points(points)
     xi = coordinates[..., 0]
     eta = coordinates[..., 1]
-    return (
-        (xi >= -tolerance)
-        & (eta >= -tolerance)
-        & (xi + eta <= 1.0 + tolerance)
-    )
+    return (xi >= -tolerance) & (eta >= -tolerance) & (xi + eta <= 1.0 + tolerance)

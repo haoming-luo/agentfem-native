@@ -16,7 +16,6 @@ from agentfem_native import (
     write_legacy_vtk,
 )
 
-
 mesh = unit_square_two_triangles()
 result = solve_steady_diffusion(
     SteadyDiffusionProblem(

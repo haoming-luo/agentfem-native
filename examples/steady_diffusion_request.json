@@ -1,0 +1,23 @@
+{
+  "contract": "agentfem.native-kernel-request",
+  "contract_version": "0.1.0",
+  "request_id": "unit-square-linear-temperature",
+  "study": {
+    "analysis": "linear_static",
+    "physics": "heat_transfer",
+    "dimension": 2
+  },
+  "mesh": {
+    "points": [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+    "cells": [[0, 1, 2], [0, 2, 3]],
+    "node_sets": {"left": [0, 3]},
+    "boundary_sets": {"right": [[1, 2]]},
+    "cell_sets": {"lower": [0], "upper": [1]}
+  },
+  "physics": {"conductivity": 1.0, "source": 0.0},
+  "dirichlet": [{"node_set": "left", "value": 0.0}],
+  "neumann": [{"boundary_set": "right", "flux": 1.0}],
+  "materials": [],
+  "procedure": {"kind": "steady_diffusion", "linear_algebra": "auto"},
+  "outputs": {"vtk": {"path": "results/temperature.vtk", "field_name": "T"}}
+}

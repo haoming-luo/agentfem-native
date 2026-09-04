@@ -1,79 +1,55 @@
-# Kernel Contract v0 — draft
+# Kernel Contract 0.1
 
-Status: design draft; no compatibility guarantee before Gate 1.
+Status: implemented experimental Gate 1 boundary. Compatibility changes before
+1.0 require an explicit version change.
 
-## Purpose
+## Identity and transport
 
-The contract separates AgentFEM engineering intent from a numerical backend.
-It must be serializable, typed, versioned, deterministic, and free of FEniCSx
-objects. Version 0 intentionally describes only the shape of the boundary.
+Requests use `contract = "agentfem.native-kernel-request"` and
+`contract_version = "0.1.0"`. The representation is JSON-safe, owns no
+FEniCSx objects, and uses zero-based indices and portable forward-slash
+artifact paths. Machine-readable request and result schemas are bundled as
+`agentfem_native/schemas/kernel-request-0.1.schema.json` and
+`agentfem_native/schemas/kernel-result-0.1.schema.json` using JSON Schema
+2020-12.
 
-## Request envelope
+The `agentfem-native` command accepts a UTF-8 request file and returns one JSON
+result. Success exits with status 0; any input, capability, provider, or model
+failure exits with status 2. Python callers use `run_kernel_request`.
 
-```text
-KernelSolveRequest
-  contract_version: "0.1-draft"
-  request_id: stable string
-  study: StudySpec
-  mesh: MeshSpec
-  fields: [FieldSpec]
-  materials: [MaterialAssignment]
-  constraints: [ConstraintSpec]
-  loads: [LoadSpec]
-  procedure: ProcedureSpec
-  outputs: OutputSpec
-  provenance: RequestProvenance
-```
+## Implemented request subset
 
-Arrays use explicit dtype, shape, index base (always zero internally), entity
-dimension, and ordering. User labels are preserved separately from internal
-indices. Units and coordinate-system semantics are mandatory at the lowering
-boundary, even if the kernel operates on normalized numbers.
+- study: 2D, linear-static heat transfer;
+- mesh: owned points, P1 triangle connectivity, named node/boundary/cell sets;
+- physics: constant scalar or 2-by-2 conductivity and constant source;
+- conditions: constant Dirichlet values and outward Neumann fluxes;
+- materials: named cell-set conductivity overrides;
+- procedure: steady diffusion with `numpy`, `scipy`, or `auto` provider;
+- outputs: optional nodal legacy VTK artifact beneath an explicit root.
 
-## Response envelope
+Python's direct problem API additionally accepts spatial conductivity and
+source callables. They are intentionally excluded from JSON because executable
+code is not a portable data contract.
 
-```text
-KernelSolveResult
-  contract_version
-  request_id
-  status: success | failed | interrupted
-  backend: BackendIdentity(name="native", version, revision)
-  capabilities: exact maturity statements
-  quantities: typed scalar/tensor values
-  fields: values + association + component convention
-  histories: abscissa + values
-  artifacts: portable relative paths + digest
-  convergence: iterations, residuals, reasons
-  verification: evidence references, never an automatic validation claim
-  runtime: OS, architecture, Python, dependencies, provider identities
-  warnings: structured records
-```
+## Result and failures
 
-## Error contract
+A successful result contains contract and backend identities, request ID,
+capabilities, balance/energy quantities, nodal field values, artifact relative
+paths and SHA-256 digests, runtime OS/architecture/dependency/provider identity,
+and warnings. A failed result contains a stable error `code`, human-readable
+`message`, and JSON-style `path`.
 
-Invalid model intent, unsupported capability, numerical nonconvergence,
-provider failure, and internal error are distinct machine-readable categories.
-Unsupported capability fails before assembly. Partial results are labeled and
-cannot be mistaken for successful results.
+The result reports computation, not automatic scientific validation.
+`verified_local` means the capability has local repository evidence; it does
+not claim that a user's individual model is validated.
 
-## Capability negotiation
+## AgentFEM lowering prototype
 
-A backend publishes capability name, maturity, supported cell/element,
-dimension, scalar type, provider requirements, platform evidence, and known
-limitations. AgentFEM lowers only when every required capability matches.
+`lower_agentfem_ir` consumes the public `agentfem.af-ir` 0.1 model envelope.
+The current AgentFEM runtime mesh summary is not reconstructable, so executable
+data must be present in `root.native_kernel`; absence fails explicitly at that
+path. `lower_agentfem_model` calls only the public `to_ir()` and optional
+`as_dict()` methods and never imports AgentFEM or a FEniCSx backend.
 
-## Ownership and determinism
-
-The request owns immutable input buffers during a solve. The result owns its
-buffers. State mutation occurs only inside an explicit transaction. Stable
-entity identities survive reordering and partitioning; storage order does not
-become scientific identity. Deterministic serial assembly is the Gate 1
-baseline.
-
-## Initial supported subset
-
-The Python API now implements an experimental in-process steady scalar
-diffusion request using an owned triangle mesh, named node/boundary sets,
-constant conductivity, scalar source, Dirichlet/Neumann conditions, COO
-assembly, a dense NumPy provider, and nodal results. The serialized contract
-envelope and external AgentFEM lowering adapter remain design drafts.
+The next integration step is to make the portable extension an official
+AgentFEM export without weakening the independent Native ownership boundary.

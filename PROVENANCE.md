@@ -46,3 +46,23 @@ license-incompatible code is rejected.
   balance, failure, artifact, and forbidden-import tests.
 - Cross-platform status: source and CI are platform-neutral; only macOS local
   execution evidence exists until the remote three-OS workflow runs.
+
+## Gate 1 release-candidate extension — 2026-09-04
+
+- Task origin: project owner requested an intensive construction milestone,
+  explicit freedom to evaluate faster implementation languages and permissive
+  libraries, and a shared development environment containing AgentFEM.
+- AI-assisted scope: material cell sets, variable/tensor conductivity,
+  provider protocol, optional SciPy sparse solve, Kernel Contract 0.1 schema
+  and executor, CLI, public AF-IR lowering prototype, environment bootstrap,
+  tests, examples, CI, architecture records, and roadmap.
+- External source boundary: only official public license/documentation facts
+  and AgentFEM public AF-IR declarations were consulted. No FEniCSx, DOLFINx,
+  Basix, UFL, or FFCx implementation source was read or used.
+- Local integration environment: repository `.venv`, Python 3.12.13,
+  NumPy 2.3.5, editable AgentFEM Native 0.2.0a1, editable AgentFEM 0.3.1
+  from clean commit `5dbeee0`, h5py 3.16.0, and mpi4py 4.1.2 installed
+  without changing either repository; `pip check` reports a consistent
+  environment.
+- Platform status: macOS arm64 execution is local evidence. Native Windows and
+  Linux remain CI claims pending hosted runs; WSL is not a substitute.

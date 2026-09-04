@@ -7,6 +7,7 @@ import unittest
 import numpy as np
 
 from agentfem_native.diffusion import (
+    CellMaterial,
     DirichletCondition,
     NeumannCondition,
     SteadyDiffusionProblem,
@@ -67,7 +68,9 @@ class DiffusionTests(unittest.TestCase):
         renumbered = TriangularMesh(
             points=baseline.points[permutation],
             cells=inverse[baseline.cells],
-            node_sets={name: inverse[nodes] for name, nodes in baseline.node_sets.items()},
+            node_sets={
+                name: inverse[nodes] for name, nodes in baseline.node_sets.items()
+            },
             boundary_sets={
                 name: inverse[edges] for name, edges in baseline.boundary_sets.items()
             },
@@ -92,22 +95,134 @@ class DiffusionTests(unittest.TestCase):
                 dirichlet=(DirichletCondition("boundary", exact),),
             )
         )
-        np.testing.assert_allclose(result.nodal_values, exact(mesh.points), atol=5.0e-16)
+        np.testing.assert_allclose(
+            result.nodal_values, exact(mesh.points), atol=5.0e-16
+        )
 
     def test_pure_neumann_problem_is_rejected_before_linear_solve(self) -> None:
         with self.assertRaisesRegex(ValueError, "At least one Dirichlet"):
             solve_steady_diffusion(
-                SteadyDiffusionProblem(mesh=unit_square_two_triangles(), conductivity=1.0)
+                SteadyDiffusionProblem(
+                    mesh=unit_square_two_triangles(), conductivity=1.0
+                )
             )
+
+    def test_spatially_varying_conductivity_reproduces_linear_exact_solution(
+        self,
+    ) -> None:
+        mesh = unit_square_triangles(4)
+        result = solve_steady_diffusion(
+            SteadyDiffusionProblem(
+                mesh=mesh,
+                conductivity=lambda points: 1.0 + points[:, 0],
+                source=-1.0,
+                dirichlet=(DirichletCondition("left", 0.0),),
+                neumann=(NeumannCondition("right", 2.0),),
+            )
+        )
+        np.testing.assert_allclose(result.nodal_values, mesh.points[:, 0], atol=2.0e-15)
+
+    def test_anisotropic_conductivity_reproduces_linear_exact_solution(self) -> None:
+        mesh = unit_square_triangles(3)
+        result = solve_steady_diffusion(
+            SteadyDiffusionProblem(
+                mesh=mesh,
+                conductivity=np.array(((2.0, 0.0), (0.0, 5.0))),
+                dirichlet=(DirichletCondition("left", 0.0),),
+                neumann=(NeumannCondition("right", 2.0),),
+            )
+        )
+        np.testing.assert_allclose(result.nodal_values, mesh.points[:, 0], atol=2.0e-15)
+
+    def test_piecewise_material_regions_reproduce_layered_solution(self) -> None:
+        base = unit_square_triangles(2, 2)
+        centroids = base.points[base.cells].mean(axis=1)
+        mesh = TriangularMesh(
+            points=base.points,
+            cells=base.cells,
+            node_sets=base.node_sets,
+            boundary_sets=base.boundary_sets,
+            cell_sets={
+                "left_material": np.flatnonzero(centroids[:, 0] < 0.5),
+                "right_material": np.flatnonzero(centroids[:, 0] > 0.5),
+            },
+        )
+        result = solve_steady_diffusion(
+            SteadyDiffusionProblem(
+                mesh=mesh,
+                conductivity=1.0,
+                dirichlet=(
+                    DirichletCondition("left", 0.0),
+                    DirichletCondition("right", 1.0),
+                ),
+                materials=(
+                    CellMaterial("insulator", "left_material", 1.0),
+                    CellMaterial("conductor", "right_material", 2.0),
+                ),
+            )
+        )
+        exact = np.where(
+            mesh.points[:, 0] <= 0.5,
+            (4.0 / 3.0) * mesh.points[:, 0],
+            (2.0 / 3.0) + (2.0 / 3.0) * (mesh.points[:, 0] - 0.5),
+        )
+        np.testing.assert_allclose(result.nodal_values, exact, atol=8.0e-16)
+
+    def test_overlapping_material_regions_fail_explicitly(self) -> None:
+        base = unit_square_two_triangles()
+        mesh = TriangularMesh(
+            points=base.points,
+            cells=base.cells,
+            node_sets=base.node_sets,
+            boundary_sets=base.boundary_sets,
+            cell_sets={"all": np.array((0, 1)), "first": np.array((0,))},
+        )
+        problem = SteadyDiffusionProblem(
+            mesh=mesh,
+            conductivity=1.0,
+            dirichlet=(DirichletCondition("left", 0.0),),
+            materials=(
+                CellMaterial("one", "all", 1.0),
+                CellMaterial("two", "first", 2.0),
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "Multiple materials"):
+            solve_steady_diffusion(problem)
+
+    def test_duplicate_material_names_fail_explicitly(self) -> None:
+        base = unit_square_two_triangles()
+        mesh = TriangularMesh(
+            points=base.points,
+            cells=base.cells,
+            node_sets=base.node_sets,
+            boundary_sets=base.boundary_sets,
+            cell_sets={"first": np.array((0,)), "second": np.array((1,))},
+        )
+        problem = SteadyDiffusionProblem(
+            mesh=mesh,
+            conductivity=1.0,
+            dirichlet=(DirichletCondition("left", 0.0),),
+            materials=(
+                CellMaterial("duplicate", "first", 1.0),
+                CellMaterial("duplicate", "second", 2.0),
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "Duplicate cell material name"):
+            solve_steady_diffusion(problem)
 
     def test_manufactured_solution_has_second_order_nodal_convergence(self) -> None:
         errors = []
         for resolution in (4, 8, 16):
             mesh = unit_square_triangles(resolution)
-            exact = lambda points: np.sin(np.pi * points[:, 0]) * np.sin(
-                np.pi * points[:, 1]
+            exact = lambda points: (
+                np.sin(np.pi * points[:, 0]) * np.sin(np.pi * points[:, 1])
             )
-            source = lambda points: 2.0 * np.pi**2 * exact(points)
+            source = lambda points: (
+                2.0
+                * np.pi**2
+                * np.sin(np.pi * points[:, 0])
+                * np.sin(np.pi * points[:, 1])
+            )
             result = solve_steady_diffusion(
                 SteadyDiffusionProblem(
                     mesh=mesh,
