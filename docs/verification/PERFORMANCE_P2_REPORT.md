@@ -1,7 +1,7 @@
 # Performance P2 verification report
 
 Date: 2026-09-04
-Status: locally verified candidate; hosted three-platform evidence pending
+Status: local performance verified; hosted Tier-1 correctness and installability passed
 
 ## Outcome
 
@@ -35,11 +35,19 @@ and passed all 85 tests. C++ optimized/sanitizer tests, C-header smoke tests,
 Rust formatting/lint/tests, ABI equivalence, package checks, and SciPy-provider
 equivalence also pass locally.
 
+GitHub Actions run `33834316684` at commit `f005c8d` passed 21 jobs. The same
+scientific suite, optional SciPy provider, C++20 CMake contract, and
+C++/Rust/NumPy ABI-equivalence checks passed on Windows, macOS, and Linux.
+Strictly audited `cp311-abi3` installation wheels built, installed, and passed
+tests for Windows x86_64, Linux x86_64, macOS x86_64, and macOS arm64; the
+machine-readable SHA-256 manifest job also passed.
+
 ## Claim boundary
 
-These data demonstrate local macOS correctness, packaging feasibility, Python-minor
-ABI reuse, and material speedup. They do not claim native Windows, Linux, or
-cross-machine superiority until hosted workflows produce artifacts and
-evidence on those systems. Raw repetitions, tool versions, digests, and
-caveats are in
+These data demonstrate local macOS performance, Python-minor ABI reuse, and
+hosted Tier-1 correctness/installability. They do not claim cross-machine or
+cross-platform performance superiority: the performance measurements remain
+local macOS evidence. CI wheels are ephemeral private test artifacts retained
+for 14 days, not a PyPI or GitHub Release publication. Raw repetitions, tool
+versions, digests, and caveats are in
 `benchmarks/results/2026-09-04-darwin-arm64-performance-p2.json`.

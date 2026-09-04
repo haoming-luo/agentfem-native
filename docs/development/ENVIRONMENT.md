@@ -72,7 +72,8 @@ python -m agentfem_native.cli examples/steady_diffusion_request.json --artifact-
 The regular editable install builds the packaged C++20 extension. The separate
 CMake workflow in `native_spikes/cpp20/README.md` runs the C ABI, C-header, and
 sanitizer tests. A C++20 compiler is therefore required when building from
-source; release wheels carry the compiled extension.
+source; private CI installation-test wheels carry the compiled extension. They
+are ephemeral validation artifacts and are not an official package release.
 
 The minimal Native runtime requires only NumPy. AgentFEM and SciPy are
 integration/provider dependencies; Native source must remain importable and

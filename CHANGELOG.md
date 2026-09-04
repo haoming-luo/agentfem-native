@@ -13,9 +13,10 @@
   transferring any finite-element semantics to SciPy.
 - Added native/runtime/end-to-end sparse benchmarks, cross-language ABI tests,
   three-OS wheel CI, and Python-minor stable-ABI installation evidence.
-- Added manually dispatchable release-wheel CI for Linux x86_64, Windows
-  x86_64, macOS x86_64, and macOS arm64, with downloadable artifacts,
-  `abi3audit`, wheel-installed tests, and a deterministic SHA-256 manifest.
+- Added CI installability checks for Linux x86_64, Windows x86_64, macOS
+  x86_64, and macOS arm64, with ephemeral private artifacts, `abi3audit`,
+  wheel-installed tests, and a deterministic SHA-256 manifest. No public
+  package release is made during rapid iteration.
 
 ## Unreleased — Gate 0 foundation
 

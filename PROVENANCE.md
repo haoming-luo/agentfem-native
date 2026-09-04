@@ -121,12 +121,12 @@ license-incompatible code is rejected.
 - Exact raw results and caveats:
   `benchmarks/results/2026-09-04-darwin-arm64-performance-p2.json`.
 
-## Cross-platform release automation extension — 2026-09-04
+## Cross-platform installability automation extension — 2026-09-04
 
 - Task origin: the project owner assigned local macOS validation to the
   development workstation and future native Windows/Linux validation to
   GitHub CI.
-- AI-assisted scope: manually dispatchable four-target release-wheel matrix,
+- AI-assisted scope: manually dispatchable four-target CI installation-wheel matrix,
   wheel-installed scientific tests, strict stable-ABI auditing, downloadable
   artifacts, deterministic SHA-256 artifact manifest, and manifest tests.
 - External research: official GitHub Actions artifact/matrix documentation and
@@ -136,3 +136,11 @@ license-incompatible code is rejected.
   direct `<cstdint>` include that Apple Clang had tolerated indirectly. The
   include was corrected, but the emulated run is not claimed as native Linux
   acceptance; GitHub's Linux runner remains authoritative.
+- Hosted acceptance: GitHub Actions run `33834316684` at commit `f005c8d`
+  passed all 21 jobs. Native Windows x86_64, Linux x86_64, macOS x86_64, and
+  macOS arm64 CI wheels passed strict Stable ABI audit, installation, and the
+  scientific suite. Windows/macOS/Linux SciPy, CMake, and C++/Rust/NumPy
+  equivalence jobs also passed.
+- Distribution boundary: these wheels and their SHA-256 manifest are private,
+  ephemeral CI evidence retained for 14 days. No PyPI upload, GitHub Release,
+  public binary publication, or release compatibility commitment was made.

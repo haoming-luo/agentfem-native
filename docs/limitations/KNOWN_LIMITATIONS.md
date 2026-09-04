@@ -11,10 +11,11 @@
 - SciPy provides optional sparse storage and a direct solve. The packaged
   C++20 kernel currently accelerates only static P1 volume assembly; boundary
   flux integration and unsupported/callable fields remain in Python. C++20 is
-  selected, but hosted three-platform wheel evidence is still pending.
+  selected; hosted Tier-1 correctness and installability evidence passes.
 - Quadrature supports exact polynomial degrees 1 and 2 only.
 - No cross-platform performance superiority, MPI, GPU, solid
   mechanics, time integration, nonlinear material, or checkpoint capability is
   claimed. Local assembly microbenchmarks are recorded separately.
-- Cross-platform CI is configured but cannot be claimed as passing until it
-  runs remotely on native Windows, macOS, and Linux.
+- CI installation wheels are ephemeral private validation artifacts. No public
+  package, signed release, long-term binary archive, or compatibility promise
+  exists during the current rapid-iteration phase.

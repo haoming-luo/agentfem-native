@@ -18,9 +18,9 @@ Exit criteria:
 - source package and wheel build on Linux, native Windows, and macOS;
 - the same test suite passes on all three systems.
 
-Current state: local criteria are complete. Remote three-platform CI evidence
-remains open, so final platform acceptance is inherited by the Gate 1 release
-candidate.
+Current state: complete. Hosted native Windows, macOS, and Linux tests and
+installability checks passed in GitHub Actions run `33834316684` at commit
+`f005c8d`.
 
 ## Gate 1 — serial scalar reference kernel
 
@@ -42,9 +42,9 @@ analytical, patch, convergence, orientation, renumbering, balance, failure,
 and VTK evidence; cell material regions; variable and anisotropic
 conductivity; NumPy and optional SciPy providers; Kernel Contract 0.1 JSON
 request/result envelopes; a cross-platform CLI; and an external public-AF-IR
-lowering prototype. Gate 1 remains open only for hosted native Windows,
-macOS, and Linux evidence and integration of the portable extension into
-AgentFEM's public exported IR.
+lowering prototype. The same scientific suite passes on hosted native Windows,
+macOS, and Linux. Gate 1 remains open only for integration of the portable
+extension into AgentFEM's public exported IR.
 
 ## Performance milestone P1 — bounded serial throughput (complete locally)
 
@@ -59,7 +59,7 @@ AgentFEM's public exported IR.
 - Completed locally: sanitizer builds, compiled-wheel packaging, a dependency-
   free Rust equivalent, material-region ABI, and sparse end-to-end timing.
 
-## Performance milestone P2 — packaged compiled kernel (current)
+## Performance milestone P2 — packaged compiled kernel (complete)
 
 - Completed locally: a hand-written CPython stable-ABI adapter packages the
   C++20 kernel in a `cp311-abi3` wheel without pybind11, nanobind, Cython, or
@@ -73,14 +73,18 @@ AgentFEM's public exported IR.
 - Completed locally: SciPy 1.18.1 was installed from an official wheel after
   SHA-256 verification and passes provider equivalence; SciPy remains optional
   infrastructure and owns no finite-element semantics.
-- Open: hosted native Windows/macOS/Linux wheel evidence, platform artifact
-  publication, binary provenance/SBOM, and broader field/operator coverage.
+- Completed in CI: native installation wheels build, pass strict Stable ABI
+  auditing, install, and pass the scientific suite on Windows x86_64, Linux
+  x86_64, macOS x86_64, and macOS arm64. These are ephemeral private CI test
+  artifacts, not a PyPI or GitHub Release publication.
+- Deferred until an actual release milestone: public artifact publication,
+  signing, binary SBOM policy, and broader field/operator coverage.
 
 Execution policy: the local development machine runs macOS builds and tests.
 GitHub CI is the required execution environment for native Windows and Linux;
 local emulation is diagnostic only and never substitutes for those runners.
 
-Before Gate 2, close the open P2 release evidence. Prefer permissive
+Before Gate 2, keep the hosted P2 installability evidence green. Prefer permissive
 general-purpose dependencies; do not use a third-party FEM implementation to
 substitute for Native discretization.
 

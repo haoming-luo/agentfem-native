@@ -107,8 +107,8 @@ jobs:
       - name: Compare C++20, Rust, and NumPy complete outputs
         run: python tools/verify_language_equivalence.py
 
-  release-wheels:
-    name: wheel-${{ matrix.artifact }}
+  ci-install-wheels:
+    name: ci-install-${{ matrix.artifact }}
     strategy:
       fail-fast: false
       matrix:
@@ -138,18 +138,18 @@ jobs:
           cache: pip
       - name: Install pinned wheel builder
         run: python -m pip install cibuildwheel==4.1.1
-      - name: Build and test native release wheel
+      - name: Build and test CI installation wheel
         run: python -m cibuildwheel --output-dir wheelhouse
-      - name: Upload native wheel
+      - name: Upload ephemeral CI wheel
         uses: actions/upload-artifact@v6
         with:
-          name: agentfem-native-${{ matrix.artifact }}
+          name: agentfem-native-ci-wheel-${{ matrix.artifact }}
           path: wheelhouse/*.whl
           if-no-files-found: error
           retention-days: 14
 
   wheel-manifest:
-    needs: release-wheels
+    needs: ci-install-wheels
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -157,7 +157,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v6
         with:
-          pattern: agentfem-native-*
+          pattern: agentfem-native-ci-wheel-*
           path: wheelhouse
           merge-multiple: true
       - name: Create machine-readable artifact manifest
@@ -165,7 +165,7 @@ jobs:
       - name: Upload artifact manifest
         uses: actions/upload-artifact@v6
         with:
-          name: agentfem-native-wheel-manifest
+          name: agentfem-native-ci-wheel-manifest
           path: wheel-manifest.json
           if-no-files-found: error
           retention-days: 14
