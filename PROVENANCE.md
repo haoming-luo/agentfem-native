@@ -243,7 +243,7 @@ license-incompatible code is rejected.
   passed 151 tests. Strict C++20 warnings, AddressSanitizer,
   UndefinedBehaviorSanitizer, Ruff, and the independence scanner pass. The
   `0.6.0a1` sdist and macOS arm64 CPython Stable-ABI wheel build locally.
-- Hosted acceptance: commit `db33958` passed all 20 jobs in GitHub Actions run
+- Hosted acceptance: commit `db33958` passed all 21 jobs in GitHub Actions run
   `34099397789`, including native Windows, Linux, macOS x86_64/arm64 wheels,
   CPython 3.11/3.13 tests, C++20 contracts/sanitizers, optional SciPy, Rust
   formatting/lints/tests, three-platform ABI equivalence, and independence.

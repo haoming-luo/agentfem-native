@@ -61,7 +61,7 @@ Compression created implemented candidates early; it did not automatically
 satisfy every tranche exit. Threaded/SIMD sparse execution, full engineering
 benchmark coverage, constrained wave dynamics, global Newton/cutback, and
 MPI/GPU experiments remain explicit acceptance work. Commit `db33958` passed
-all 20 Windows, Linux, and macOS jobs in hosted run `34099397789`.
+all 21 Windows, Linux, and macOS jobs in hosted run `34099397789`.
 
 ## Tranche 2 — production 2D mechanics
 

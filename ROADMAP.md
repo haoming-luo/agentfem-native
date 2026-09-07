@@ -130,7 +130,7 @@ Gate and maturity boundary.
   block-Jacobi for vector mechanics; C++20 ABI 1.1 T3 volume assembly; hosted
   three-platform evidence for the scalar sparse/T3 reference foundation at
   commit `5230970` in run `34091224291`.
-- Completed hosted: commit `db33958` passed all 20 Windows, Linux, and macOS
+- Completed hosted: commit `db33958` passed all 21 Windows, Linux, and macOS
   jobs in run `34099397789`, including native installation wheels.
 - Remaining: C++20 sparse operations, production CPU threading/SIMD, and
   stronger preconditioners.

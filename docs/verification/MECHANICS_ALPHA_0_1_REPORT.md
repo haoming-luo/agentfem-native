@@ -65,7 +65,7 @@ CSR matvec differed by `2.51e-14` relatively due to reduction ordering.
 - Rust was not locally compiled because Cargo is unavailable on this host. The
   Rust spike truthfully remains an ABI 1.0 diffusion comparator; hosted CI
   exercised its formatting, lints, tests, and three-platform ABI comparison.
-- Commit `db33958` passed all 20 jobs in hosted run `34099397789`: native
+- Commit `db33958` passed all 21 jobs in hosted run `34099397789`: native
   Windows, Linux, macOS x86_64/arm64 installation wheels, CPython 3.11/3.13,
   C++20 contracts/sanitizers, optional SciPy, ABI comparison, and independence.
 - No public package was published.
