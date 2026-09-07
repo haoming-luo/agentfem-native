@@ -59,8 +59,9 @@ the architecture and executable vertical slices from all four tranches:
 
 Compression created implemented candidates early; it did not automatically
 satisfy every tranche exit. Threaded/SIMD sparse execution, full engineering
-benchmark coverage, constrained wave dynamics, global Newton/cutback, MPI/GPU
-experiments, and hosted revision-0.6 evidence remain explicit acceptance work.
+benchmark coverage, constrained wave dynamics, global Newton/cutback, and
+MPI/GPU experiments remain explicit acceptance work. Commit `db33958` passed
+all 20 Windows, Linux, and macOS jobs in hosted run `34099397789`.
 
 ## Tranche 2 — production 2D mechanics
 

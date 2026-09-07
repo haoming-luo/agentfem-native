@@ -130,8 +130,10 @@ Gate and maturity boundary.
   block-Jacobi for vector mechanics; C++20 ABI 1.1 T3 volume assembly; hosted
   three-platform evidence for the scalar sparse/T3 reference foundation at
   commit `5230970` in run `34091224291`.
-- Remaining: C++20 sparse operations, production CPU threading/SIMD, stronger
-  preconditioners, and hosted three-platform evidence for revision 0.6.
+- Completed hosted: commit `db33958` passed all 20 Windows, Linux, and macOS
+  jobs in run `34099397789`, including native installation wheels.
+- Remaining: C++20 sparse operations, production CPU threading/SIMD, and
+  stronger preconditioners.
 - Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
   narrow contracts and after license, platform, determinism, and performance
   evidence.
@@ -164,7 +166,7 @@ suite. A readable T4/3D path now owns tetrahedral topology, loads, constraints,
 reactions, energy, recovery, uniaxial/patch/orientation/provider evidence, and a
 second-order manufactured trend. Gate 2 remains `implemented`, not verified:
 the remaining engineering benchmark corpus, compiled T4/sparse execution,
-contract admission, and hosted evidence for revision 0.6 are still required.
+  contract admission, and the remaining engineering corpus are still required.
 
 ## Gate 3 — time and nonlinear lifecycle
 
@@ -180,7 +182,7 @@ lumped mass, centered explicit integration, Newmark average acceleration,
 energy histories, accepted-state progress/cancellation/budgets, and digest-bound
 restart. SDOF order/energy and exact restart evidence pass. Constrained FEM
 dynamics, wave propagation, external-work ledgers, implicit checkpoint coverage,
-and hosted platform evidence remain before Gate 3 verification.
+and wider constrained-FEM platform evidence remain before Gate 3 verification.
 
 ## Gate 4 — nonlinear solids and material state
 

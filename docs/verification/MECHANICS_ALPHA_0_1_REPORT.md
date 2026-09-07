@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-07
 
-**Revision maturity:** implemented locally; hosted Tier-1 evidence pending
+**Revision maturity:** implemented; hosted Tier-1 foundation accepted
 
 ## Delivered vertical slices
 
@@ -50,7 +50,7 @@ CSR matvec differed by `2.51e-14` relatively due to reduction ordering.
   integration, sparse matvec/solve, or threading.
 - T4 and dynamics are readable implementations, not production-optimized paths.
 - Gate 2 remains open pending the remaining engineering benchmark corpus and
-  hosted acceptance of this revision.
+  compiled T4/sparse execution; hosted acceptance of this revision passed.
 - Gate 3 remains open pending constrained FEM dynamics, wave evidence,
   external-work ledgers, and broader restart/platform evidence.
 - Nonlinear materials are experimental material points only.
@@ -63,6 +63,9 @@ CSR matvec differed by `2.51e-14` relatively due to reduction ordering.
 - Ruff lint and formatting, the clean-room independence scanner, strict C++20
   compilation, AddressSanitizer, and UndefinedBehaviorSanitizer passed.
 - Rust was not locally compiled because Cargo is unavailable on this host. The
-  Rust spike truthfully remains an ABI 1.0 diffusion comparator; hosted CI must
-  exercise it after this revision is pushed.
-- No public package was published and no revision-0.6 hosted claim is made.
+  Rust spike truthfully remains an ABI 1.0 diffusion comparator; hosted CI
+  exercised its formatting, lints, tests, and three-platform ABI comparison.
+- Commit `db33958` passed all 20 jobs in hosted run `34099397789`: native
+  Windows, Linux, macOS x86_64/arm64 installation wheels, CPython 3.11/3.13,
+  C++20 contracts/sanitizers, optional SciPy, ABI comparison, and independence.
+- No public package was published.

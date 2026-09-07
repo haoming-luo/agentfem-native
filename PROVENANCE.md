@@ -242,9 +242,12 @@ license-incompatible code is rejected.
 - Local evidence: the final source and isolated wheel-installed suites each
   passed 151 tests. Strict C++20 warnings, AddressSanitizer,
   UndefinedBehaviorSanitizer, Ruff, and the independence scanner pass. The
-  `0.6.0a1` sdist and macOS arm64 CPython Stable-ABI wheel build locally. Hosted
-  status is recorded separately because this revision has not yet been pushed.
+  `0.6.0a1` sdist and macOS arm64 CPython Stable-ABI wheel build locally.
+- Hosted acceptance: commit `db33958` passed all 20 jobs in GitHub Actions run
+  `34099397789`, including native Windows, Linux, macOS x86_64/arm64 wheels,
+  CPython 3.11/3.13 tests, C++20 contracts/sanitizers, optional SciPy, Rust
+  formatting/lints/tests, three-platform ABI equivalence, and independence.
 - Maturity boundary: this pass implements every tranche's central vertical
   slice but does not claim every tranche exit. Gate 2, Gate 3, global nonlinear
-  mechanics, production threading/SIMD, MPI, GPU, and hosted revision-0.6
-  acceptance remain open until their stated evidence passes.
+  mechanics, production threading/SIMD, MPI, and GPU remain open until their
+  stated evidence passes.
