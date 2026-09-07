@@ -8,14 +8,21 @@ import unittest
 from agentfem_native import (
     DirichletCondition,
     DisplacementCondition,
+    LinearElastic3DProblem,
     LinearElasticMaterial,
     LinearElasticProblem,
+    LinearSecondOrderSystem,
+    SolidElasticMaterial,
     SteadyDiffusionProblem,
     native_capabilities,
+    plan_linear_dynamics,
     plan_linear_elasticity,
+    plan_linear_elasticity_3d,
     plan_steady_diffusion,
+    unit_cube_tetrahedra,
     unit_square_triangles,
 )
+from agentfem_native.sparse import CSRMatrix
 
 
 class PlanningTests(unittest.TestCase):
@@ -70,9 +77,32 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual(
             scientific["linear_elasticity_t3_plane_stress_strain"], "implemented"
         )
+        self.assertEqual(scientific["linear_elasticity_t4_3d"], "implemented")
+        self.assertEqual(
+            scientific["linear_dynamics_central_difference_newmark"], "implemented"
+        )
         providers = {item["name"]: item for item in capabilities["linear_algebra"]}
         self.assertTrue(providers["native_sparse"]["available"])
+        self.assertIn("block_jacobi", providers["native_sparse"]["preconditioners"])
         json.dumps(capabilities, allow_nan=False, sort_keys=True)
+
+    def test_t4_and_dynamics_plans_are_deterministic(self) -> None:
+        solid = plan_linear_elasticity_3d(
+            LinearElastic3DProblem(
+                unit_cube_tetrahedra(), SolidElasticMaterial(10.0, 0.2)
+            )
+        )
+        self.assertEqual(solid.dof_count, 24)
+        self.assertEqual(solid.coo_entry_count, 6 * 144)
+        diagonal = CSRMatrix.from_coo((1, 1), [0], [0], [1.0])
+        dynamics = plan_linear_dynamics(
+            LinearSecondOrderSystem(diagonal, diagonal, [0.0], 0.1, 10, [0.0], [0.0])
+        )
+        self.assertEqual(dynamics.dof_count, 1)
+        self.assertGreater(
+            dynamics.peak_bytes_upper_bound, dynamics.csr_bytes_upper_bound
+        )
+        self.assertEqual(len(dynamics.digest), 64)
 
 
 if __name__ == "__main__":

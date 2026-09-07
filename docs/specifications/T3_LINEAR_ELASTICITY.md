@@ -91,5 +91,10 @@ applied force, total reaction, energy, provider identity, and solver report.
   constraints, and under-constrained systems;
 - dense-oracle and Native sparse provider equivalence on small problems.
 
-This is an implemented reference slice only. It does not claim Gate 2 closure,
-3D mechanics, heterogeneous elasticity, Q4/H8, dynamics, or nonlinear state.
+The admitted implementation has readable, bounded vectorized, and C++20 ABI
+1.1 volume paths. Static elastic material regions provide per-cell constitutive
+matrices; callable body forces retain the readable path. All paths reproduce the
+same owned COO/load semantics.
+
+This remains an implemented Gate 2 slice. It does not by itself claim complete
+Gate 2 closure, compiled 3D mechanics, Q4/H8, or nonlinear state.

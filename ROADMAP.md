@@ -116,7 +116,7 @@ The project owner subsequently requested calendar compression. The active
 compresses this program into four concurrent tranches while preserving every
 Gate and maturity boundary.
 
-## Performance milestone P3 — end-to-end sparse spine (active)
+## Performance milestone P3 — end-to-end sparse spine (active, expanded)
 
 - Completed locally: deterministic scalar CSR and canonical COO conversion;
   SpMV, residual/norm operations, sparse constraints, CG, and Jacobi with
@@ -126,8 +126,12 @@ Gate and maturity boundary.
   bounded oracle, while SciPy remains optional.
 - Completed locally: execution-free resource plans, deterministic plan digests,
   capability reporting, and a reproducible sparse-memory/performance record.
-- Remaining: Native BSR, block-Jacobi, C++20 sparse operations, CPU threading,
-  and hosted three-platform evidence for the new revision.
+- Completed locally: deterministic BSR grouping/round-trip/matvec and
+  block-Jacobi for vector mechanics; C++20 ABI 1.1 T3 volume assembly; hosted
+  three-platform evidence for the scalar sparse/T3 reference foundation at
+  commit `5230970` in run `34091224291`.
+- Remaining: C++20 sparse operations, production CPU threading/SIMD, stronger
+  preconditioners, and hosted three-platform evidence for revision 0.6.
 - Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
   narrow contracts and after license, platform, determinism, and performance
   evidence.
@@ -153,13 +157,14 @@ recovery, P1 triangles, followed by P1 tetrahedra and basic 3D.
 Evidence: rigid-body modes, constant-strain patch tests, uniaxial/shear/bulk
 responses, cantilever, symmetry, energy, reaction balance, and convergence.
 
-Current state: the readable 2D T3 plane-stress/plane-strain slice is
-implemented locally with vector DOFs, body/traction loads, component
-constraints, Native sparse solve, stress/strain recovery, reactions, energy,
-rigid modes, affine patch, uniaxial traction, orientation, provider equivalence,
-node-renumbering, and failure evidence. It remains `implemented`, not Gate-2 verified; optimized
-T3, remaining benchmark/convergence packs, output/contract integration, T4/3D,
-and hosted evidence are still required.
+Current state: T3 now has readable, vectorized, and C++20 volume assembly,
+material regions, BSR/block-Jacobi, vector/tensor VTK, pure-shear, dilation, and
+second-order manufactured evidence in addition to the original reference
+suite. A readable T4/3D path now owns tetrahedral topology, loads, constraints,
+reactions, energy, recovery, uniaxial/patch/orientation/provider evidence, and a
+second-order manufactured trend. Gate 2 remains `implemented`, not verified:
+the remaining engineering benchmark corpus, compiled T4/sparse execution,
+contract admission, and hosted evidence for revision 0.6 are still required.
 
 ## Gate 3 — time and nonlinear lifecycle
 
@@ -169,6 +174,13 @@ checkpoint/restart, and energy/external-work ledgers.
 
 Evidence: SDOF dynamics, wave propagation, time convergence, energy behavior,
 forced cutback, and restart equivalence across supported platforms.
+
+Current state: the linear foundation is implemented locally: T3 consistent and
+lumped mass, centered explicit integration, Newmark average acceleration,
+energy histories, accepted-state progress/cancellation/budgets, and digest-bound
+restart. SDOF order/energy and exact restart evidence pass. Constrained FEM
+dynamics, wave propagation, external-work ledgers, implicit checkpoint coverage,
+and hosted platform evidence remain before Gate 3 verification.
 
 ## Gate 4 — nonlinear solids and material state
 

@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define AFN_P1_ABI_VERSION 0x00010000u
+#define AFN_P1_ABI_VERSION 0x00010001u
 
 typedef enum AfnP1Status {
   AFN_P1_SUCCESS = 0,
@@ -49,6 +49,19 @@ AFN_API int afn_p1_diffusion_assemble_cells(
     const int64_t* cells,
     const double* conductivity_cells_2x2,
     double source,
+    int64_t* rows,
+    int64_t* columns,
+    double* data,
+    double* load);
+
+AFN_API int afn_t3_elasticity_assemble_cells(
+    size_t node_count,
+    size_t cell_count,
+    const double* points_xy,
+    const int64_t* cells,
+    const double* constitutive_cells_3x3,
+    const double* body_force_xy,
+    double thickness,
     int64_t* rows,
     int64_t* columns,
     double* data,

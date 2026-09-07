@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Independent executable mathematics for the AgentFEM Native Engine."""
 
-__version__ = "0.5.0a1"
+__version__ = "0.6.0a1"
 
 from .contract import (
     CONTRACT_NAME,
@@ -22,8 +22,16 @@ from .diffusion import (
     solve_steady_diffusion,
 )
 from .dofs import VectorDofMap
+from .dynamics import (
+    DynamicCheckpoint,
+    LinearDynamicsResult,
+    LinearSecondOrderSystem,
+    assemble_t3_mass,
+    integrate_linear_dynamics,
+)
 from .elasticity import (
     DisplacementCondition,
+    ElasticCellMaterial,
     LinearElasticMaterial,
     LinearElasticProblem,
     LinearElasticResult,
@@ -36,12 +44,22 @@ from .elasticity import (
     solve_linear_elasticity,
 )
 from .geometry import AffineTriangleMap
+from .materials import (
+    J2MaterialPoint,
+    J2Response,
+    J2State,
+    NeoHookeanMaterial,
+    NeoHookeanResponse,
+    SmallStrainJ2Material,
+)
 from .mesh import TriangularMesh, unit_square_triangles, unit_square_two_triangles
 from .native import native_kernel_available, native_kernel_identity
 from .planning import (
     ExecutionPlan,
     native_capabilities,
+    plan_linear_dynamics,
     plan_linear_elasticity,
+    plan_linear_elasticity_3d,
     plan_steady_diffusion,
 )
 from .providers import (
@@ -59,41 +77,92 @@ from .reference import (
     p1_basis,
     p1_basis_gradients,
 )
-from .results import write_legacy_vtk
-from .sparse import CGReport, CGResult, CSRMatrix, conjugate_gradient
+from .results import write_legacy_vtk, write_mechanics_vtk
+from .runtime import (
+    CancellationToken,
+    ExecutionContext,
+    NativeExecutionError,
+    ProgressEvent,
+    ResourceBudget,
+    enforce_plan_budget,
+)
+from .solid import (
+    LinearElastic3DProblem,
+    LinearElastic3DResult,
+    SolidCellMaterial,
+    SolidDisplacementCondition,
+    SolidElasticMaterial,
+    SolidTractionCondition,
+    assemble_linear_elasticity_3d,
+    solve_linear_elasticity_3d,
+    t4_body_force_load,
+    t4_boundary_traction_load,
+    t4_elastic_stiffness,
+    t4_geometry,
+    t4_strain_displacement,
+)
+from .sparse import BSRMatrix, CGReport, CGResult, CSRMatrix, conjugate_gradient
+from .volume_mesh import TetrahedralMesh, unit_cube_tetrahedra
 
 __all__ = (
     "CONTRACT_NAME",
     "CONTRACT_VERSION",
     "REFERENCE_TRIANGLE_VERTICES",
     "AffineTriangleMap",
+    "BSRMatrix",
     "CGReport",
     "CGResult",
     "CSRMatrix",
+    "CancellationToken",
     "CellMaterial",
     "DiffusionResult",
     "DirichletCondition",
     "DisplacementCondition",
+    "DynamicCheckpoint",
+    "ElasticCellMaterial",
+    "ExecutionContext",
     "ExecutionPlan",
+    "J2MaterialPoint",
+    "J2Response",
+    "J2State",
     "KernelRequestError",
+    "LinearDynamicsResult",
+    "LinearElastic3DProblem",
+    "LinearElastic3DResult",
     "LinearElasticMaterial",
     "LinearElasticProblem",
     "LinearElasticResult",
+    "LinearSecondOrderSystem",
     "LinearSolveError",
+    "NativeExecutionError",
     "NativeSparseProvider",
+    "NeoHookeanMaterial",
+    "NeoHookeanResponse",
     "NeumannCondition",
     "NumpyDenseProvider",
+    "ProgressEvent",
     "ProviderIdentity",
     "ProviderUnavailableError",
+    "ResourceBudget",
     "ScipySparseProvider",
+    "SmallStrainJ2Material",
+    "SolidCellMaterial",
+    "SolidDisplacementCondition",
+    "SolidElasticMaterial",
+    "SolidTractionCondition",
     "SteadyDiffusionProblem",
+    "TetrahedralMesh",
     "TractionCondition",
     "TriangleQuadrature",
     "TriangularMesh",
     "VectorDofMap",
     "assemble_linear_elasticity",
+    "assemble_linear_elasticity_3d",
+    "assemble_t3_mass",
     "conjugate_gradient",
+    "enforce_plan_budget",
     "inside_reference_triangle",
+    "integrate_linear_dynamics",
     "integrate_reference",
     "kernel_request_schema",
     "kernel_result_schema",
@@ -108,13 +177,23 @@ __all__ = (
     "p1_boundary_traction_load",
     "p1_elastic_stiffness",
     "p1_strain_displacement",
+    "plan_linear_dynamics",
     "plan_linear_elasticity",
+    "plan_linear_elasticity_3d",
     "plan_steady_diffusion",
     "run_kernel_request",
     "solve_linear_elasticity",
+    "solve_linear_elasticity_3d",
     "solve_steady_diffusion",
+    "t4_body_force_load",
+    "t4_boundary_traction_load",
+    "t4_elastic_stiffness",
+    "t4_geometry",
+    "t4_strain_displacement",
     "triangle_rule",
+    "unit_cube_tetrahedra",
     "unit_square_triangles",
     "unit_square_two_triangles",
     "write_legacy_vtk",
+    "write_mechanics_vtk",
 )

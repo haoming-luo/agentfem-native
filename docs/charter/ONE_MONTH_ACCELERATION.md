@@ -41,8 +41,26 @@ Disconnected element, GPU, or material demos do not outrank this spine.
 - Execution-free capability and resource plans with deterministic digests.
 - Local analytical, patch, provider, independence, and performance evidence.
 
-Remaining acceptance boundary: GitHub CI must establish Windows and Linux
-evidence for this revision. T3 is `implemented`, not yet complete Gate 2.
+Acceptance closed: GitHub Actions run `34091224291` established native Windows,
+Linux, and macOS evidence for commit `5230970`. T3 remained `implemented`, not
+yet complete Gate 2, at that revision.
+
+## Compressed implementation pass — 2026-09-07
+
+The owner authorized an immediate full-month acceleration pass. It delivered
+the architecture and executable vertical slices from all four tranches:
+
+- Tranche 2: BSR/block-Jacobi, C++20 ABI 1.1 T3 assembly, material regions,
+  vector/tensor VTK, and expanded 2D response/convergence evidence;
+- Tranche 3: owned T4/3D mesh-to-result mechanics, T3 mass, explicit and
+  implicit linear dynamics, energy history, and deterministic restart;
+- Tranche 4: resource budgets, progress/cancellation, structured errors, and
+  experimental Neo-Hookean/J2 material-point transactions.
+
+Compression created implemented candidates early; it did not automatically
+satisfy every tranche exit. Threaded/SIMD sparse execution, full engineering
+benchmark coverage, constrained wave dynamics, global Newton/cutback, MPI/GPU
+experiments, and hosted revision-0.6 evidence remain explicit acceptance work.
 
 ## Tranche 2 — production 2D mechanics
 

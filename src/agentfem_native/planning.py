@@ -11,12 +11,15 @@ from typing import TYPE_CHECKING
 
 from . import __version__
 from .assembly import select_assembly_mode
+from .elasticity import select_elasticity_assembly_mode
 from .native import native_kernel_identity
 from .providers import ScipySparseProvider
 
 if TYPE_CHECKING:
     from .diffusion import SteadyDiffusionProblem
+    from .dynamics import LinearSecondOrderSystem
     from .elasticity import LinearElasticProblem
+    from .solid import LinearElastic3DProblem
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,9 +157,64 @@ def plan_linear_elasticity(
         dof_count=2 * problem.mesh.node_count,
         entries_per_cell=36,
         provider=_provider_name(provider),
+        assembly_mode=select_elasticity_assembly_mode(problem),
+        warnings=warnings,
+    )
+
+
+def plan_linear_elasticity_3d(
+    problem: LinearElastic3DProblem, *, provider: str | object | None = None
+) -> ExecutionPlan:
+    """Estimate the readable T4 three-dimensional vertical slice."""
+
+    warnings = (
+        "T4 linear elasticity is implemented but Gate 2 verification is incomplete.",
+    )
+    if _provider_name(provider) == "numpy_dense":
+        warnings += ("Dense provider is intended only for bounded oracle problems.",)
+    return _plan(
+        problem_kind="linear_elasticity_3d",
+        maturity="implemented",
+        cell_type="tetrahedron_p1_vector3",
+        node_count=problem.mesh.node_count,
+        cell_count=problem.mesh.cell_count,
+        dof_count=3 * problem.mesh.node_count,
+        entries_per_cell=144,
+        provider=_provider_name(provider),
         assembly_mode="reference",
         warnings=warnings,
     )
+
+
+def plan_linear_dynamics(system: LinearSecondOrderSystem) -> ExecutionPlan:
+    """Estimate an owned linear second-order procedure without executing it."""
+
+    dofs = system.stiffness.shape[0]
+    entries = system.stiffness.nnz + system.mass.nnz
+    csr_upper = entries
+    csr_bytes = 16 * entries + 16 * (dofs + 1)
+    history_bytes = 8 * (system.steps + 1) * (3 * dofs + 4)
+    payload: dict[str, object] = {
+        "problem_kind": "linear_dynamics",
+        "maturity": "implemented",
+        "cell_type": "preassembled_second_order_system",
+        "node_count": 0,
+        "cell_count": 0,
+        "dof_count": dofs,
+        "coo_entry_count": entries,
+        "csr_nnz_upper_bound": csr_upper,
+        "csr_bytes_upper_bound": csr_bytes,
+        "peak_bytes_upper_bound": csr_bytes + history_bytes + 12 * 8 * dofs,
+        "provider": "native_sparse",
+        "assembly_mode": "preassembled",
+        "warnings": (
+            "Linear dynamics is implemented but Gate 3 verification is incomplete.",
+        ),
+    }
+    digest = sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return ExecutionPlan(**payload, digest=digest)  # type: ignore[arg-type]
 
 
 def native_capabilities() -> dict[str, object]:
@@ -178,14 +236,22 @@ def native_capabilities() -> dict[str, object]:
                 "name": "linear_elasticity_t3_plane_stress_strain",
                 "maturity": "implemented",
             },
+            {
+                "name": "linear_elasticity_t4_3d",
+                "maturity": "implemented",
+            },
+            {
+                "name": "linear_dynamics_central_difference_newmark",
+                "maturity": "implemented",
+            },
         ],
         "linear_algebra": [
             {
                 "name": "native_sparse",
                 "available": True,
-                "format": "csr",
+                "format": "csr_bsr",
                 "solvers": ["cg"],
-                "preconditioners": ["jacobi"],
+                "preconditioners": ["jacobi", "block_jacobi"],
             },
             {
                 "name": "numpy_dense",

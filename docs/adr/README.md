@@ -29,3 +29,5 @@ owner review. Superseded decisions remain in history.
   an optional AgentFEM integration track rather than a Native gate blocker
 - [ADR-0018](0018-sparse-first-mechanics-acceleration.md): make the owned sparse
   spine and Agent-native Mechanics Alpha the six-month execution priority
+- [ADR-0019](0019-compressed-mechanics-alpha-spine.md): implement the compressed
+  BSR/T3/T4/dynamics/control spine while preserving Gate maturity boundaries

@@ -4,6 +4,8 @@
 use std::ffi::{c_double, c_int};
 use std::slice;
 
+// This comparison spike intentionally implements only the ABI 1.0 diffusion
+// subset. It must not advertise the production C++ ABI 1.1 T3 entry point.
 pub const AFN_P1_ABI_VERSION: u32 = 0x0001_0000;
 pub const AFN_P1_SUCCESS: c_int = 0;
 pub const AFN_P1_NULL_POINTER: c_int = 1;

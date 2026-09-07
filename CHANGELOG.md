@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.0a1 — compressed Mechanics Alpha implementation
+
+- Added deterministic BSR, block matvec/diagonals/CSR conversion, and
+  block-Jacobi CG for vector mechanics.
+- Extended the C++20 Stable ABI to 1.1 with per-cell-constitutive T3 volume
+  assembly; added reference/vectorized/native equivalence, elastic material
+  regions, response/convergence evidence, and vector/tensor VTK.
+- Added owned tetrahedral meshes and a readable T4/3D small-strain elasticity
+  mesh-to-result path with loads, constraints, reactions, energy, recovery,
+  patch, uniaxial, orientation, provider, and manufactured-convergence tests.
+- Added T3 consistent/lumped mass, centered explicit and Newmark linear
+  dynamics, energy histories, digest-bound checkpoint/restart, resource plans,
+  budgets, progress, cancellation, and structured failures.
+- Added experimental Neo-Hookean and J2 material-point candidates with
+  objectivity, energy derivative, yield consistency, and transaction evidence.
+- Recorded a local Mechanics Alpha benchmark. No public package release,
+  cross-platform performance claim, Gate 4, MPI, or GPU claim is made.
+
 ## 0.5.0a1 — sparse foundation and T3 reference candidate
 
 - Added immutable deterministic scalar CSR, canonical COO reduction, SpMV,

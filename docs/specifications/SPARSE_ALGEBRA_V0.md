@@ -105,14 +105,18 @@ The production provider raises on nonconvergence and includes the report in a
 successful outcome. Lower-level CG may return a nonconverged report so tests and
 future procedures can inspect controlled failure.
 
-## BSR direction
+## BSR contract
 
-Mechanics uses node-major, component-minor interleaved DOFs. Version 0.1 admits
-scalar CSR as the executable baseline while preserving vector DOF ordering and
-an explicit `block_size` capability field. Native BSR storage and block-Jacobi
-are the next optimized representation; providers may consume scalar CSR in the
-interim. No API may claim BSR merely because a scalar CSR graph has block-like
-ordering.
+Mechanics uses node-major, component-minor interleaved DOFs. BSR groups a
+canonical scalar CSR matrix into square dense blocks with ordered block columns,
+immutable float64 block data, and int64 pointers/indices. Scalar dimensions must
+be divisible by block size. BSR matvec, diagonal-block extraction, scalar-CSR
+round trip, exact storage reporting, and missing-diagonal failures are owned.
+
+Block-Jacobi inverts only the small symmetric positive-definite diagonal blocks
+and applies them inside CG. A singular or non-positive diagonal block fails
+before iteration. Scalar CSR remains the canonical constraint representation;
+BSR is not claimed merely from interleaved numbering.
 
 ## Acceptance evidence
 

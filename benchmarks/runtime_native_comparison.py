@@ -59,9 +59,7 @@ def main() -> int:
     matrix_difference = float(
         np.max(np.abs(native_matrix.data - vectorized_matrix.data), initial=0.0)
     )
-    load_difference = float(
-        np.max(np.abs(native_load - vectorized_load), initial=0.0)
-    )
+    load_difference = float(np.max(np.abs(native_load - vectorized_load), initial=0.0))
     equivalent = (
         row_identity
         and column_identity

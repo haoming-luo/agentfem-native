@@ -9,8 +9,8 @@ import agentfem_native
 
 class PackageTests(unittest.TestCase):
     def test_public_version_and_gate_one_api(self) -> None:
-        self.assertEqual(agentfem_native.__version__, "0.5.0a1")
-        self.assertEqual(
+        self.assertEqual(agentfem_native.__version__, "0.6.0a1")
+        self.assertGreaterEqual(
             set(agentfem_native.__all__),
             {
                 "AffineTriangleMap",

@@ -8,7 +8,7 @@ from typing import Final
 import numpy as np
 from numpy.typing import NDArray
 
-NATIVE_P1_ABI_VERSION: Final = 0x0001_0000
+NATIVE_P1_ABI_VERSION: Final = 0x0001_0001
 
 try:
     from . import _p1_native
@@ -109,4 +109,68 @@ def assemble_p1_volume(
     if status != 0:
         message = messages.get(status, f"Native assembly failed with status {status}.")
         raise ValueError(message)
+    return rows, columns, data, load
+
+
+def assemble_t3_volume(
+    points: NDArray[np.float64],
+    cells: NDArray[np.int64],
+    constitutive: NDArray[np.float64],
+    body_force: NDArray[np.float64],
+    thickness: float,
+) -> tuple[
+    NDArray[np.int64],
+    NDArray[np.int64],
+    NDArray[np.float64],
+    NDArray[np.float64],
+]:
+    """Assemble static T3 volume terms through the versioned C++20 ABI."""
+
+    if not native_kernel_available():
+        detail = f": {_IMPORT_ERROR}" if _IMPORT_ERROR is not None else ""
+        raise NativeKernelUnavailableError(
+            f"The AgentFEM Native C++20 accelerator is unavailable{detail}."
+        )
+    point_values = np.ascontiguousarray(points, dtype=np.float64)
+    cell_values = np.ascontiguousarray(cells, dtype=np.int64)
+    constitutive_values = np.ascontiguousarray(constitutive, dtype=np.float64)
+    body_values = np.ascontiguousarray(body_force, dtype=np.float64)
+    if point_values.ndim != 2 or point_values.shape[1] != 2:
+        raise ValueError("Native points must have shape (node_count, 2).")
+    if cell_values.ndim != 2 or cell_values.shape[1] != 3:
+        raise ValueError("Native cells must have shape (cell_count, 3).")
+    if constitutive_values.shape != (cell_values.shape[0], 3, 3):
+        raise ValueError("Native constitutive data must have shape (cell_count, 3, 3).")
+    if body_values.shape != (2,):
+        raise ValueError("Native body force must have shape (2,).")
+    entry_count = cell_values.shape[0] * 36
+    rows = np.empty(entry_count, dtype=np.int64)
+    columns = np.empty(entry_count, dtype=np.int64)
+    data = np.empty(entry_count, dtype=np.float64)
+    load = np.empty(point_values.shape[0] * 2, dtype=np.float64)
+    status = int(
+        _p1_native.assemble_t3_into(
+            point_values.shape[0],
+            cell_values.shape[0],
+            point_values,
+            cell_values,
+            constitutive_values,
+            body_values,
+            float(thickness),
+            rows,
+            columns,
+            data,
+            load,
+        )
+    )
+    messages = {
+        1: "Native T3 assembly received a null or empty buffer.",
+        2: "Native T3 constitutive matrix must be finite, symmetric, and positive definite.",
+        3: "Native T3 cell connectivity or geometry is invalid.",
+        4: "Native T3 assembly input must be finite with positive thickness.",
+    }
+    if status != 0:
+        raise ValueError(
+            messages.get(status, f"Native T3 assembly failed with status {status}.")
+        )
     return rows, columns, data, load

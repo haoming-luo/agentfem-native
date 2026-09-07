@@ -1,0 +1,58 @@
+{
+  "claim_boundary": "Local warm-process medians; no cross-platform performance claim.",
+  "dynamics": {
+    "maximum_energy_drift": 1.9999999916198163e-06,
+    "median_seconds": 0.14981212496059015,
+    "steps": 10000
+  },
+  "environment": {
+    "agentfem_native": "0.6.0a1",
+    "architecture": "arm64",
+    "native_kernel": {
+      "abi_version": "1.1",
+      "available": true,
+      "name": "cpp20",
+      "required_abi_version": "1.1"
+    },
+    "numpy": "2.3.5",
+    "os": "Darwin",
+    "python": "3.12.13"
+  },
+  "repetitions": 5,
+  "schema": "agentfem-native.mechanics-alpha-benchmark/0.1",
+  "t3": {
+    "bsr_bytes": 1196088,
+    "bsr_matvec_difference": 1.7881393432617188e-06,
+    "bsr_relative_matvec_difference": 2.5064300797069285e-14,
+    "cells": 8192,
+    "csr_bytes": 1927256,
+    "dofs": 8450,
+    "native_max_load_difference": 4.336808689942018e-19,
+    "native_max_matrix_difference": 4.76837158203125e-06,
+    "native_relative_matrix_difference": 7.652942045235333e-16,
+    "native_speedup_over_reference": 483.1015195805478,
+    "nodes": 4225,
+    "resolution": 64,
+    "timings": {
+      "native": {
+        "median_seconds": 0.0007862080237828195
+      },
+      "reference": {
+        "median_seconds": 0.3798182909958996
+      },
+      "vectorized": {
+        "median_seconds": 0.0030995409470051527
+      }
+    },
+    "vectorized_max_matrix_difference": 4.76837158203125e-06,
+    "vectorized_relative_matrix_difference": 7.652942045235333e-16
+  },
+  "t4": {
+    "balance_norm": 1.7111613202317666e-14,
+    "cells": 162,
+    "dofs": 192,
+    "free_residual_norm": 2.0821746170003864e-13,
+    "nodes": 64,
+    "solve_median_seconds": 0.013101332995574921
+  }
+}

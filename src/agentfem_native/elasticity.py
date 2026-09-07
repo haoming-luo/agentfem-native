@@ -14,7 +14,8 @@ from .assembly import COOMatrix
 from .dofs import VectorDofMap
 from .geometry import AffineTriangleMap
 from .mesh import TriangularMesh
-from .providers import LinearAlgebraProvider, resolve_provider
+from .native import assemble_t3_volume, native_kernel_available
+from .providers import LinearAlgebraProvider, NativeSparseProvider, resolve_provider
 from .quadrature import triangle_rule
 from .reference import p1_basis
 from .sparse import CGReport
@@ -24,6 +25,7 @@ VectorField = ArrayLike | Callable[[FloatArray], ArrayLike]
 ScalarBoundaryField = float | Callable[[FloatArray], ArrayLike]
 VectorBoundaryField = ArrayLike | Callable[[FloatArray], ArrayLike]
 PlaneModel = Literal["plane_stress", "plane_strain"]
+ElasticAssemblyMode = Literal["auto", "reference", "vectorized", "native"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +92,12 @@ class TractionCondition:
 
 
 @dataclass(frozen=True, slots=True)
+class ElasticCellMaterial:
+    cell_set: str
+    material: LinearElasticMaterial
+
+
+@dataclass(frozen=True, slots=True)
 class LinearElasticProblem:
     mesh: TriangularMesh
     material: LinearElasticMaterial
@@ -97,6 +105,8 @@ class LinearElasticProblem:
     body_force: VectorField = (0.0, 0.0)
     dirichlet: tuple[DisplacementCondition, ...] = ()
     traction: tuple[TractionCondition, ...] = ()
+    materials: tuple[ElasticCellMaterial, ...] = ()
+    assembly_mode: ElasticAssemblyMode = "auto"
 
     def __post_init__(self) -> None:
         if isinstance(self.thickness, (bool, np.bool_)):
@@ -107,6 +117,10 @@ class LinearElasticProblem:
             raise ValueError("Elasticity thickness must be a finite scalar.") from error
         if not np.isfinite(thickness) or thickness <= 0.0:
             raise ValueError("Elasticity thickness must be finite and positive.")
+        if self.assembly_mode not in {"auto", "reference", "vectorized", "native"}:
+            raise ValueError(
+                f"Unknown elasticity assembly mode {self.assembly_mode!r}."
+            )
         object.__setattr__(self, "thickness", thickness)
 
 
@@ -250,33 +264,161 @@ def p1_boundary_traction_load(
     return (float(thickness) * length * (basis.T @ (weights[:, None] * values))).ravel()
 
 
-def assemble_linear_elasticity(
-    problem: LinearElasticProblem,
-) -> tuple[COOMatrix, FloatArray, VectorDofMap]:
-    """Assemble the readable deterministic T3 elasticity system."""
+def _cell_constitutive(problem: LinearElasticProblem) -> FloatArray:
+    values = np.broadcast_to(
+        problem.material.constitutive_matrix,
+        (problem.mesh.cell_count, 3, 3),
+    ).copy()
+    assigned = np.zeros(problem.mesh.cell_count, dtype=bool)
+    for override in problem.materials:
+        cells = problem.mesh.cells_in(override.cell_set)
+        if np.any(assigned[cells]):
+            conflict = int(cells[np.flatnonzero(assigned[cells])[0]])
+            raise ValueError(
+                f"Multiple elastic materials are assigned to cell {conflict}."
+            )
+        values[cells] = override.material.constitutive_matrix
+        assigned[cells] = True
+    return values
 
+
+def _static_body_force(field: VectorField) -> FloatArray | None:
+    if callable(field):
+        return None
+    try:
+        values = np.asarray(field, dtype=np.float64)
+    except (TypeError, ValueError):
+        return None
+    if values.shape != (2,) or not np.all(np.isfinite(values)):
+        return None
+    return values
+
+
+def select_elasticity_assembly_mode(problem: LinearElasticProblem) -> str:
+    """Choose the fastest semantics-preserving T3 volume path."""
+
+    mode = problem.assembly_mode
+    static = _static_body_force(problem.body_force) is not None
+    if mode == "reference":
+        return mode
+    if mode in {"vectorized", "native"} and not static:
+        raise ValueError(
+            f"{mode.capitalize()} T3 assembly requires a static body-force vector."
+        )
+    if mode == "native" and not native_kernel_available():
+        raise ValueError("Native T3 assembly is unavailable in this installation.")
+    if mode == "auto":
+        if static and native_kernel_available():
+            return "native"
+        return "vectorized" if static else "reference"
+    return mode
+
+
+def _assemble_t3_reference(
+    problem: LinearElasticProblem,
+    constitutive: FloatArray,
+    cell_dofs: NDArray[np.int64],
+) -> tuple[NDArray[np.int64], NDArray[np.int64], FloatArray, FloatArray]:
     mesh = problem.mesh
-    dofs = VectorDofMap(mesh.node_count, 2)
-    cell_dofs = dofs.cell_dofs(mesh.cells)
-    entry_count = mesh.cell_count * 36
-    rows = np.empty(entry_count, dtype=np.int64)
-    columns = np.empty(entry_count, dtype=np.int64)
-    data = np.empty(entry_count, dtype=np.float64)
-    load = np.zeros(dofs.size, dtype=np.float64)
+    rows = np.empty(mesh.cell_count * 36, dtype=np.int64)
+    columns = np.empty_like(rows)
+    data = np.empty(rows.size, dtype=np.float64)
+    load = np.zeros(2 * mesh.node_count, dtype=np.float64)
     for cell_index, cell in enumerate(mesh.cells):
         local_dofs = cell_dofs[cell_index]
-        local_stiffness = p1_elastic_stiffness(
-            mesh.points[cell], problem.material, thickness=problem.thickness
+        geometry = AffineTriangleMap(mesh.points[cell])
+        strain_displacement = p1_strain_displacement(mesh.points[cell])
+        local_stiffness = (
+            problem.thickness
+            * geometry.area
+            * strain_displacement.T
+            @ constitutive[cell_index]
+            @ strain_displacement
         )
         local_load = p1_body_force_load(
             mesh.points[cell], problem.body_force, thickness=problem.thickness
         )
         start = cell_index * 36
-        stop = start + 36
-        rows[start:stop] = np.repeat(local_dofs, 6)
-        columns[start:stop] = np.tile(local_dofs, 6)
-        data[start:stop] = local_stiffness.ravel()
+        rows[start : start + 36] = np.repeat(local_dofs, 6)
+        columns[start : start + 36] = np.tile(local_dofs, 6)
+        data[start : start + 36] = local_stiffness.ravel()
         load[local_dofs] += local_load
+    return rows, columns, data, load
+
+
+def _assemble_t3_vectorized(
+    problem: LinearElasticProblem,
+    constitutive: FloatArray,
+    cell_dofs: NDArray[np.int64],
+) -> tuple[NDArray[np.int64], NDArray[np.int64], FloatArray, FloatArray]:
+    mesh = problem.mesh
+    vertices = mesh.points[mesh.cells]
+    first = vertices[:, 1] - vertices[:, 0]
+    second = vertices[:, 2] - vertices[:, 0]
+    determinants = first[:, 0] * second[:, 1] - second[:, 0] * first[:, 1]
+    inverse = 1.0 / determinants
+    gradients = np.empty((mesh.cell_count, 3, 2), dtype=np.float64)
+    gradients[:, 0, 0] = (first[:, 1] - second[:, 1]) * inverse
+    gradients[:, 0, 1] = (second[:, 0] - first[:, 0]) * inverse
+    gradients[:, 1, 0] = second[:, 1] * inverse
+    gradients[:, 1, 1] = -second[:, 0] * inverse
+    gradients[:, 2, 0] = -first[:, 1] * inverse
+    gradients[:, 2, 1] = first[:, 0] * inverse
+    strain_displacement = np.zeros((mesh.cell_count, 3, 6), dtype=np.float64)
+    strain_displacement[:, 0, 0::2] = gradients[:, :, 0]
+    strain_displacement[:, 1, 1::2] = gradients[:, :, 1]
+    strain_displacement[:, 2, 0::2] = gradients[:, :, 1]
+    strain_displacement[:, 2, 1::2] = gradients[:, :, 0]
+    scale = 0.5 * problem.thickness * np.abs(determinants)
+    local_stiffness = scale[:, None, None] * np.einsum(
+        "mai,mab,mbj->mij",
+        strain_displacement,
+        constitutive,
+        strain_displacement,
+        optimize=True,
+    )
+    body = _static_body_force(problem.body_force)
+    assert body is not None
+    local_load = scale[:, None, None] * body[None, None, :] / 3.0
+    local_load = np.broadcast_to(local_load, (mesh.cell_count, 3, 2))
+    load = np.zeros(2 * mesh.node_count, dtype=np.float64)
+    np.add.at(load, cell_dofs.ravel(), local_load.ravel())
+    return (
+        np.repeat(cell_dofs, 6, axis=1).ravel(),
+        np.tile(cell_dofs, (1, 6)).ravel(),
+        local_stiffness.ravel(),
+        load,
+    )
+
+
+def assemble_linear_elasticity(
+    problem: LinearElasticProblem,
+) -> tuple[COOMatrix, FloatArray, VectorDofMap]:
+    """Assemble deterministic T3 elasticity through an admitted volume path."""
+
+    mesh = problem.mesh
+    dofs = VectorDofMap(mesh.node_count, 2)
+    cell_dofs = dofs.cell_dofs(mesh.cells)
+    constitutive = _cell_constitutive(problem)
+    mode = select_elasticity_assembly_mode(problem)
+    if mode == "reference":
+        rows, columns, data, load = _assemble_t3_reference(
+            problem, constitutive, cell_dofs
+        )
+    elif mode == "vectorized":
+        rows, columns, data, load = _assemble_t3_vectorized(
+            problem, constitutive, cell_dofs
+        )
+    else:
+        body = _static_body_force(problem.body_force)
+        assert body is not None
+        rows, columns, data, load = assemble_t3_volume(
+            mesh.points,
+            mesh.cells,
+            constitutive,
+            body,
+            problem.thickness,
+        )
     for condition in problem.traction:
         for edge in mesh.boundary_edges(condition.boundary_set):
             local_load = p1_boundary_traction_load(
@@ -350,9 +492,12 @@ def solve_linear_elasticity(
 
     matrix, load, dofs = assemble_linear_elasticity(problem)
     constrained, values = _collect_displacements(problem, dofs)
-    outcome = resolve_provider(provider).solve_constrained(
-        matrix, load, constrained, values
+    selected_provider = (
+        NativeSparseProvider(block_size=2)
+        if provider is None
+        else resolve_provider(provider)
     )
+    outcome = selected_provider.solve_constrained(matrix, load, constrained, values)
     solution = np.asarray(outcome.solution, dtype=np.float64)
     if solution.shape != (dofs.size,) or not np.all(np.isfinite(solution)):
         raise ValueError("Linear algebra provider returned an invalid solution vector.")
@@ -361,13 +506,13 @@ def solve_linear_elasticity(
     cell_dofs = dofs.cell_dofs(problem.mesh.cells)
     strain = np.empty((problem.mesh.cell_count, 3), dtype=np.float64)
     stress = np.empty_like(strain)
-    constitutive = problem.material.constitutive_matrix
+    constitutive = _cell_constitutive(problem)
     for cell_index, cell in enumerate(problem.mesh.cells):
         strain[cell_index] = (
             p1_strain_displacement(problem.mesh.points[cell])
             @ solution[cell_dofs[cell_index]]
         )
-        stress[cell_index] = constitutive @ strain[cell_index]
+        stress[cell_index] = constitutive[cell_index] @ strain[cell_index]
     reaction_vector = np.zeros(2, dtype=np.float64)
     np.add.at(reaction_vector, constrained % 2, residual[constrained])
     return LinearElasticResult(

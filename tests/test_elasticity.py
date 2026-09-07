@@ -8,16 +8,22 @@ import numpy as np
 
 from agentfem_native.elasticity import (
     DisplacementCondition,
+    ElasticCellMaterial,
     LinearElasticMaterial,
     LinearElasticProblem,
     TractionCondition,
+    assemble_linear_elasticity,
     p1_body_force_load,
     p1_boundary_traction_load,
     p1_elastic_stiffness,
     p1_strain_displacement,
     solve_linear_elasticity,
 )
-from agentfem_native.mesh import TriangularMesh, unit_square_triangles
+from agentfem_native.mesh import (
+    TriangularMesh,
+    unit_square_triangles,
+    unit_square_two_triangles,
+)
 from agentfem_native.reference import REFERENCE_TRIANGLE_VERTICES
 
 
@@ -107,6 +113,133 @@ class T3ElementTests(unittest.TestCase):
 
 
 class LinearElasticitySolveTests(unittest.TestCase):
+    def test_pure_shear_and_uniform_dilatation_patches(self) -> None:
+        mesh = unit_square_triangles(3)
+        modulus, ratio = 120.0, 0.25
+        material = LinearElasticMaterial(modulus, ratio, "plane_strain")
+        shear = 0.02
+
+        def shear_field(points):
+            return np.column_stack(
+                (0.5 * shear * points[:, 1], 0.5 * shear * points[:, 0])
+            )
+
+        shear_result = solve_linear_elasticity(
+            LinearElasticProblem(
+                mesh,
+                material,
+                dirichlet=(DisplacementCondition("boundary", None, shear_field),),
+            )
+        )
+        expected_shear = material.constitutive_matrix @ np.array((0.0, 0.0, shear))
+        np.testing.assert_allclose(
+            shear_result.cell_stress,
+            np.tile(expected_shear, (mesh.cell_count, 1)),
+            atol=2.0e-12,
+        )
+        alpha = 0.01
+
+        def dilation(points):
+            return alpha * points
+
+        bulk_result = solve_linear_elasticity(
+            LinearElasticProblem(
+                mesh,
+                material,
+                dirichlet=(DisplacementCondition("boundary", None, dilation),),
+            )
+        )
+        expected_bulk = material.constitutive_matrix @ np.array((alpha, alpha, 0.0))
+        np.testing.assert_allclose(
+            bulk_result.cell_stress,
+            np.tile(expected_bulk, (mesh.cell_count, 1)),
+            atol=2.0e-12,
+        )
+
+    def test_manufactured_interpolation_error_converges_second_order(self) -> None:
+        modulus, ratio = 100.0, 0.2
+        scale = modulus / (1.0 - ratio * ratio)
+        shear = modulus / (2.0 * (1.0 + ratio))
+        coefficient = 2.0 * scale * (1.0 + ratio) + 2.0 * shear
+
+        def exact(points):
+            return np.column_stack(
+                (points[:, 0] ** 2 * points[:, 1], points[:, 0] * points[:, 1] ** 2)
+            )
+
+        def body(points):
+            return np.column_stack(
+                (-coefficient * points[:, 1], -coefficient * points[:, 0])
+            )
+
+        errors = []
+        for resolution in (4, 8, 16):
+            mesh = unit_square_triangles(resolution)
+            result = solve_linear_elasticity(
+                LinearElasticProblem(
+                    mesh,
+                    LinearElasticMaterial(modulus, ratio),
+                    body_force=body,
+                    dirichlet=(DisplacementCondition("boundary", None, exact),),
+                )
+            )
+            centroids = mesh.points[mesh.cells].mean(axis=1)
+            interpolated = result.displacements[mesh.cells].mean(axis=1)
+            errors.append(
+                float(np.sqrt(np.mean((interpolated - exact(centroids)) ** 2)))
+            )
+        self.assertGreater(errors[0] / errors[1], 3.9)
+        self.assertGreater(errors[1] / errors[2], 3.9)
+
+    def test_reference_vectorized_and_native_assembly_are_equivalent(self) -> None:
+        mesh = unit_square_triangles(3)
+        matrices = []
+        loads = []
+        for mode in ("reference", "vectorized", "native"):
+            problem = LinearElasticProblem(
+                mesh,
+                LinearElasticMaterial(91.0, 0.27, "plane_strain"),
+                thickness=0.4,
+                body_force=(1.2, -0.7),
+                assembly_mode=mode,
+            )
+            matrix, load, _ = assemble_linear_elasticity(problem)
+            matrices.append(matrix.to_dense())
+            loads.append(load)
+        for matrix in matrices[1:]:
+            np.testing.assert_allclose(matrix, matrices[0], atol=3.0e-14)
+        for load in loads[1:]:
+            np.testing.assert_allclose(load, loads[0], atol=3.0e-17)
+
+    def test_cell_material_regions_change_only_assigned_cells(self) -> None:
+        base = unit_square_two_triangles()
+        mesh = TriangularMesh(
+            base.points,
+            base.cells,
+            node_sets=base.node_sets,
+            boundary_sets=base.boundary_sets,
+            cell_sets={"stiff": np.array((1,))},
+        )
+        default = LinearElasticMaterial(10.0, 0.2)
+        stiff = LinearElasticMaterial(30.0, 0.2)
+        baseline, _, _ = assemble_linear_elasticity(
+            LinearElasticProblem(mesh, default, assembly_mode="reference")
+        )
+        heterogeneous = []
+        for mode in ("reference", "vectorized", "native"):
+            matrix, _, _ = assemble_linear_elasticity(
+                LinearElasticProblem(
+                    mesh,
+                    default,
+                    materials=(ElasticCellMaterial("stiff", stiff),),
+                    assembly_mode=mode,
+                )
+            )
+            heterogeneous.append(matrix.to_dense())
+        np.testing.assert_allclose(heterogeneous[1], heterogeneous[0], atol=2.0e-14)
+        np.testing.assert_allclose(heterogeneous[2], heterogeneous[0], atol=2.0e-14)
+        self.assertFalse(np.allclose(heterogeneous[0], baseline.to_dense()))
+
     def test_constant_strain_patch_with_interior_node_is_exact(self) -> None:
         points = np.array(((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.5, 0.5)))
         mesh = TriangularMesh(

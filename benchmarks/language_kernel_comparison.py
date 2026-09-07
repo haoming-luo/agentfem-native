@@ -16,7 +16,7 @@ import numpy as np
 from agentfem_native import unit_square_triangles
 from agentfem_native.assembly import assemble_diffusion_vectorized
 
-ABI_VERSION = 0x0001_0000
+ABI_MAJOR = 1
 
 
 def _load(path: Path):
@@ -24,8 +24,9 @@ def _load(path: Path):
     version = library.afn_p1_abi_version
     version.argtypes = []
     version.restype = ctypes.c_uint32
-    if int(version()) != ABI_VERSION:
-        raise RuntimeError(f"{path} does not implement AgentFEM P1 ABI 1.0.")
+    encoded = int(version())
+    if encoded >> 16 != ABI_MAJOR:
+        raise RuntimeError(f"{path} does not implement AgentFEM P1 ABI major 1.")
     function = library.afn_p1_diffusion_assemble
     function.argtypes = [
         ctypes.c_size_t,
@@ -158,7 +159,7 @@ def main() -> int:
     numpy_median = median(numpy_times)
     record = {
         "benchmark": "cpp20_rust_numpy_p1_abi",
-        "abi_version": "1.0",
+        "abi_compatibility": "major 1 diffusion subset",
         "resolution": arguments.resolution,
         "nodes": mesh.node_count,
         "cells": mesh.cell_count,

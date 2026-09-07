@@ -101,6 +101,7 @@ class NativeSparseProvider:
     relative_tolerance: float = 1.0e-12
     absolute_tolerance: float = 1.0e-14
     maximum_iterations: int | None = None
+    block_size: int | None = None
 
     def solve_constrained(
         self,
@@ -121,7 +122,8 @@ class NativeSparseProvider:
             relative_tolerance=self.relative_tolerance,
             absolute_tolerance=self.absolute_tolerance,
             maximum_iterations=self.maximum_iterations,
-            preconditioner="jacobi",
+            preconditioner="block_jacobi" if self.block_size else "jacobi",
+            block_size=self.block_size,
         )
         if not result.report.converged:
             raise LinearSolveError(
@@ -132,7 +134,11 @@ class NativeSparseProvider:
             )
         return LinearSolveOutcome(
             solution=result.solution,
-            provider=ProviderIdentity("native_sparse", "0.1", "csr"),
+            provider=ProviderIdentity(
+                "native_sparse",
+                "0.2",
+                "bsr-block-jacobi" if self.block_size else "csr",
+            ),
             convergence=result.report,
         )
 

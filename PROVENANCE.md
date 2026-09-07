@@ -214,3 +214,37 @@ license-incompatible code is rejected.
 - Maturity boundary: the sparse scalar baseline and T3 reference slice are
   implemented and locally evidenced. P3, Gate 2, native Windows/Linux evidence,
   BSR, compiled sparse/T3 kernels, 3D, dynamics, MPI, and GPU remain open.
+
+## Compressed Mechanics Alpha 0.1 implementation — 2026-09-07
+
+- Task origin: the project owner requested immediate execution of the complete
+  one-month acceleration plan in one sustained development pass.
+- Prior hosted evidence: commit `5230970` passed all 19 Windows, Linux, and
+  macOS jobs in GitHub Actions run `34091224291`, closing the hosted boundary
+  for the preceding sparse/T3 reference revision.
+- Independent specifications: BSR extended the owned sparse specification;
+  T4/3D elasticity, linear dynamics, and nonlinear material-point formulas are
+  recorded in `docs/specifications/` alongside their maturity boundaries.
+- AI-assisted implementation: deterministic BSR and block-Jacobi; C++20 ABI
+  1.1 T3 volume assembly; T3 material regions and three-way assembly
+  equivalence; owned T4 mesh/element/solve/recovery; mechanics VTK; T3 mass;
+  explicit/Newmark dynamics; checkpoint digest and restart; budgets, progress,
+  cancellation, and structured failures; experimental Neo-Hookean and J2
+  material points; tests, benchmarks, roadmap, ADR, and evidence report.
+- Mathematical sources: standard affine simplex interpolation, isotropic
+  Hooke elasticity, consistent P1 mass, centered/velocity-Verlet integration,
+  Newmark average acceleration, compressible Neo-Hookean energy, and radial-
+  return J2 equations as written in the repository specifications. No external
+  FEM implementation source was consulted or used.
+- Third-party exposure: NumPy array and linear-algebra primitives only in the
+  reference layer; the C++20 path uses the standard library and the CPython
+  Stable ABI. No runtime dependency was added.
+- Local evidence: the final source and isolated wheel-installed suites each
+  passed 151 tests. Strict C++20 warnings, AddressSanitizer,
+  UndefinedBehaviorSanitizer, Ruff, and the independence scanner pass. The
+  `0.6.0a1` sdist and macOS arm64 CPython Stable-ABI wheel build locally. Hosted
+  status is recorded separately because this revision has not yet been pushed.
+- Maturity boundary: this pass implements every tranche's central vertical
+  slice but does not claim every tranche exit. Gate 2, Gate 3, global nonlinear
+  mechanics, production threading/SIMD, MPI, GPU, and hosted revision-0.6
+  acceptance remain open until their stated evidence passes.

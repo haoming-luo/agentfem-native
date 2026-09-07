@@ -33,20 +33,25 @@ than FEniCSx objects.
 
 - `reference`: small, readable NumPy executable mathematics used as an
   independent oracle for future optimized kernels.
-- `kernel`: mesh, topology, scalar/vector DOFs, P1 diffusion and T3 linear-
-  elasticity operators, deterministic assembly, and future state semantics
+- `kernel`: triangle/tetrahedron topology, scalar/vector DOFs, P1 diffusion,
+  T3/T4 linear-elasticity operators, deterministic assembly, and linear state
   owned by AgentFEM Native.
 - `fast path`: a packaged standard-library C++20 kernel for supported static
   volume data, bounded vectorized NumPy fallback, and the readable oracle;
   every optimized path reproduces the oracle without becoming the source of
   mathematical meaning.
-- `providers`: an owned dependency-free CSR/CG/Jacobi baseline, replaceable
+- `providers`: an owned dependency-free CSR/BSR/CG/Jacobi/block-Jacobi baseline, replaceable
   dense/sparse linear algebra, and future parallel runtime and hardware
   implementations. Dense NumPy is a bounded oracle, not the production default.
 - `contract`: versioned JSON request/result execution and public AgentFEM
   AF-IR lowering boundary.
 - `verification`: tests and evidence that consume public results without
   becoming part of the solver.
+
+The procedure layer now owns centered explicit and Newmark average-acceleration
+linear dynamics, immutable histories, digest-bound restart, progress,
+cancellation, and budgets. Experimental nonlinear material points remain
+separate from admitted element and procedure capabilities.
 
 The current implementation deliberately keeps these small enough to audit.
 C++20 is the selected production compiled language; Rust remains a

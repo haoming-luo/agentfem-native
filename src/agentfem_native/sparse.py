@@ -266,6 +266,180 @@ class CSRMatrix:
 
 
 @dataclass(frozen=True, slots=True)
+class BSRMatrix:
+    """Immutable square-block CSR matrix for node-major vector fields."""
+
+    block_shape: tuple[int, int]
+    block_size: int
+    indptr: IndexArray
+    indices: IndexArray
+    data: FloatArray
+
+    def __post_init__(self) -> None:
+        block_shape = _validate_shape(self.block_shape)
+        if (
+            isinstance(self.block_size, (bool, np.bool_))
+            or not isinstance(self.block_size, (int, np.integer))
+            or int(self.block_size) < 1
+        ):
+            raise ValueError("BSR block size must be a positive integer.")
+        block_size = int(self.block_size)
+        indptr = _readonly_indices(self.indptr, name="BSR indptr")
+        indices = _readonly_indices(self.indices, name="BSR indices")
+        values = np.array(self.data, dtype=np.float64, copy=True)
+        if values.ndim != 3 or values.shape[1:] != (block_size, block_size):
+            raise ValueError("BSR data must have shape (nnzb, block_size, block_size).")
+        if not np.all(np.isfinite(values)):
+            raise ValueError("BSR data must contain only finite values.")
+        if indptr.shape != (block_shape[0] + 1,):
+            raise ValueError("BSR indptr length must equal block rows plus one.")
+        if indices.shape != (values.shape[0],):
+            raise ValueError("BSR indices and data must have equal block counts.")
+        if indptr[0] != 0 or indptr[-1] != values.shape[0]:
+            raise ValueError("BSR indptr endpoints do not match stored blocks.")
+        if np.any(np.diff(indptr) < 0):
+            raise ValueError("BSR indptr must be nondecreasing.")
+        if np.any(indices < 0) or np.any(indices >= block_shape[1]):
+            raise ValueError("BSR block-column index is out of range.")
+        for row in range(block_shape[0]):
+            row_indices = indices[indptr[row] : indptr[row + 1]]
+            if np.any(np.diff(row_indices) <= 0):
+                raise ValueError(
+                    "BSR block-column indices must be strictly increasing per row."
+                )
+        values.setflags(write=False)
+        object.__setattr__(self, "block_shape", block_shape)
+        object.__setattr__(self, "block_size", block_size)
+        object.__setattr__(self, "indptr", indptr)
+        object.__setattr__(self, "indices", indices)
+        object.__setattr__(self, "data", values)
+
+    @classmethod
+    def from_csr(cls, matrix: CSRMatrix, block_size: int) -> BSRMatrix:
+        """Group a canonical scalar CSR graph into deterministic dense blocks."""
+
+        if (
+            isinstance(block_size, (bool, np.bool_))
+            or not isinstance(block_size, (int, np.integer))
+            or int(block_size) < 1
+        ):
+            raise ValueError("BSR block size must be a positive integer.")
+        size = int(block_size)
+        if matrix.shape[0] % size or matrix.shape[1] % size:
+            raise ValueError("Scalar CSR dimensions must be divisible by block size.")
+        rows = matrix.row_indices()
+        block_rows = rows // size
+        block_columns = matrix.indices // size
+        local_rows = rows % size
+        local_columns = matrix.indices % size
+        if matrix.nnz == 0:
+            shape = (matrix.shape[0] // size, matrix.shape[1] // size)
+            return cls(
+                shape,
+                size,
+                np.zeros(shape[0] + 1, dtype=np.int64),
+                np.empty(0, dtype=np.int64),
+                np.empty((0, size, size), dtype=np.float64),
+            )
+        order = np.lexsort((block_columns, block_rows))
+        ordered_rows = block_rows[order]
+        ordered_columns = block_columns[order]
+        starts_mask = np.empty(order.size, dtype=bool)
+        starts_mask[0] = True
+        starts_mask[1:] = (ordered_rows[1:] != ordered_rows[:-1]) | (
+            ordered_columns[1:] != ordered_columns[:-1]
+        )
+        starts = np.flatnonzero(starts_mask)
+        block_count = starts.size
+        group = np.cumsum(starts_mask, dtype=np.int64) - 1
+        blocks = np.zeros((block_count, size, size), dtype=np.float64)
+        np.add.at(
+            blocks,
+            (group, local_rows[order], local_columns[order]),
+            matrix.data[order],
+        )
+        canonical_rows = ordered_rows[starts]
+        canonical_columns = ordered_columns[starts]
+        shape = (matrix.shape[0] // size, matrix.shape[1] // size)
+        indptr = np.zeros(shape[0] + 1, dtype=np.int64)
+        indptr[1:] = np.cumsum(
+            np.bincount(canonical_rows, minlength=shape[0]), dtype=np.int64
+        )
+        return cls(shape, size, indptr, canonical_columns, blocks)
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return (
+            self.block_shape[0] * self.block_size,
+            self.block_shape[1] * self.block_size,
+        )
+
+    @property
+    def nnzb(self) -> int:
+        return int(self.data.shape[0])
+
+    @property
+    def storage_nbytes(self) -> int:
+        return int(self.indptr.nbytes + self.indices.nbytes + self.data.nbytes)
+
+    def matvec(self, vector: ArrayLike) -> FloatArray:
+        values = np.asarray(vector, dtype=np.float64)
+        if values.shape != (self.shape[1],) or not np.all(np.isfinite(values)):
+            raise ValueError("Vector must contain one finite scalar per BSR column.")
+        blocked = values.reshape(self.block_shape[1], self.block_size)
+        result = np.zeros((self.block_shape[0], self.block_size), dtype=np.float64)
+        for row in range(self.block_shape[0]):
+            start, stop = int(self.indptr[row]), int(self.indptr[row + 1])
+            if start != stop:
+                result[row] = np.einsum(
+                    "bij,bj->i",
+                    self.data[start:stop],
+                    blocked[self.indices[start:stop]],
+                    optimize=True,
+                )
+        if not np.all(np.isfinite(result)):
+            raise ValueError("BSR matrix-vector result is non-finite.")
+        return result.ravel()
+
+    def diagonal_blocks(self) -> FloatArray:
+        if self.block_shape[0] != self.block_shape[1]:
+            raise ValueError("BSR diagonal blocks require a square matrix.")
+        result = np.empty(
+            (self.block_shape[0], self.block_size, self.block_size),
+            dtype=np.float64,
+        )
+        for row in range(self.block_shape[0]):
+            start, stop = int(self.indptr[row]), int(self.indptr[row + 1])
+            position = int(np.searchsorted(self.indices[start:stop], row)) + start
+            if position >= stop or self.indices[position] != row:
+                raise ValueError(f"BSR matrix has no diagonal block at row {row}.")
+            result[row] = self.data[position]
+        return result
+
+    def to_csr(self) -> CSRMatrix:
+        block_rows = np.repeat(
+            np.arange(self.block_shape[0], dtype=np.int64), np.diff(self.indptr)
+        )
+        local = np.arange(self.block_size, dtype=np.int64)
+        rows = (
+            block_rows[:, None, None] * self.block_size
+            + local[None, :, None]
+            + np.zeros((self.nnzb, 1, self.block_size), dtype=np.int64)
+        )
+        columns = (
+            self.indices[:, None, None] * self.block_size
+            + local[None, None, :]
+            + np.zeros((self.nnzb, self.block_size, 1), dtype=np.int64)
+        )
+        return CSRMatrix.from_coo(
+            self.shape, rows.ravel(), columns.ravel(), self.data.ravel()
+        )
+
+    def to_dense(self) -> FloatArray:
+        return self.to_csr().to_dense()
+
+
+@dataclass(frozen=True, slots=True)
 class CGReport:
     converged: bool
     reason: CGReason
@@ -323,7 +497,8 @@ def conjugate_gradient(
     relative_tolerance: float = 1.0e-12,
     absolute_tolerance: float = 1.0e-14,
     maximum_iterations: int | None = None,
-    preconditioner: Literal["none", "jacobi"] = "jacobi",
+    preconditioner: Literal["none", "jacobi", "block_jacobi"] = "jacobi",
+    block_size: int | None = None,
 ) -> CGResult:
     """Solve an SPD system and return explicit convergence or breakdown evidence."""
 
@@ -347,7 +522,7 @@ def conjugate_gradient(
     ):
         raise ValueError("Maximum iterations must be a nonnegative integer.")
     maximum_iterations = int(maximum_iterations)
-    if preconditioner not in {"none", "jacobi"}:
+    if preconditioner not in {"none", "jacobi", "block_jacobi"}:
         raise ValueError(f"Unknown CG preconditioner {preconditioner!r}.")
 
     if initial_guess is None:
@@ -376,13 +551,35 @@ def conjugate_gradient(
         )
 
     inverse_diagonal: FloatArray | None = None
+    inverse_blocks: FloatArray | None = None
     if preconditioner == "jacobi":
         diagonal = matrix.diagonal()
         if not np.all(np.isfinite(diagonal)) or np.any(diagonal <= 0.0):
             raise ValueError("Jacobi preconditioning requires a positive diagonal.")
         inverse_diagonal = 1.0 / diagonal
+    elif preconditioner == "block_jacobi":
+        if block_size is None:
+            raise ValueError("Block-Jacobi requires an explicit block size.")
+        blocks = BSRMatrix.from_csr(matrix, block_size).diagonal_blocks()
+        try:
+            eigenvalues = np.linalg.eigvalsh(blocks)
+            if np.any(eigenvalues <= 0.0):
+                raise ValueError(
+                    "Block-Jacobi requires symmetric positive-definite diagonal blocks."
+                )
+            inverse_blocks = np.linalg.inv(blocks)
+        except np.linalg.LinAlgError as error:
+            raise ValueError("Block-Jacobi diagonal block is singular.") from error
 
-    z = residual.copy() if inverse_diagonal is None else inverse_diagonal * residual
+    def apply_preconditioner(values: FloatArray) -> FloatArray:
+        if inverse_diagonal is not None:
+            return inverse_diagonal * values
+        if inverse_blocks is not None:
+            blocked = values.reshape(inverse_blocks.shape[0], inverse_blocks.shape[1])
+            return np.einsum("bij,bj->bi", inverse_blocks, blocked).ravel()
+        return values.copy()
+
+    z = apply_preconditioner(residual)
     rho = float(residual @ z)
     if not np.isfinite(rho) or rho <= 0.0:
         return _cg_result(
@@ -441,7 +638,7 @@ def conjugate_gradient(
                 rtol=float(relative_tolerance),
                 atol=float(absolute_tolerance),
             )
-        z = residual.copy() if inverse_diagonal is None else inverse_diagonal * residual
+        z = apply_preconditioner(residual)
         next_rho = float(residual @ z)
         if not np.isfinite(next_rho) or next_rho <= 0.0:
             return _cg_result(

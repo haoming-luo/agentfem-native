@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-from agentfem_native.sparse import CSRMatrix, conjugate_gradient
+from agentfem_native.sparse import BSRMatrix, CSRMatrix, conjugate_gradient
 
 
 class CSRMatrixTests(unittest.TestCase):
@@ -114,6 +114,58 @@ class ConjugateGradientTests(unittest.TestCase):
         matrix = CSRMatrix.from_coo((2, 2), [0, 1], [0, 1], [1.0, 0.0])
         with self.assertRaisesRegex(ValueError, "positive diagonal"):
             conjugate_gradient(matrix, [1.0, 1.0])
+
+
+class BSRMatrixTests(unittest.TestCase):
+    def test_scalar_csr_round_trip_and_matvec(self) -> None:
+        dense = np.array(
+            (
+                (4.0, 1.0, -1.0, 0.0),
+                (1.0, 3.0, 0.0, -2.0),
+                (-1.0, 0.0, 5.0, 1.0),
+                (0.0, -2.0, 1.0, 6.0),
+            )
+        )
+        rows, columns = np.nonzero(dense)
+        scalar = CSRMatrix.from_coo(dense.shape, rows, columns, dense[rows, columns])
+        blocked = BSRMatrix.from_csr(scalar, 2)
+        self.assertEqual(blocked.block_shape, (2, 2))
+        self.assertEqual(blocked.nnzb, 4)
+        np.testing.assert_array_equal(blocked.to_dense(), dense)
+        vector = np.array((1.0, -2.0, 0.5, 3.0))
+        np.testing.assert_allclose(blocked.matvec(vector), dense @ vector)
+        np.testing.assert_array_equal(
+            blocked.diagonal_blocks(),
+            np.array((dense[:2, :2], dense[2:, 2:])),
+        )
+
+    def test_block_jacobi_cg_solves_vector_system(self) -> None:
+        dense = np.array(
+            (
+                (4.0, 1.0, -1.0, 0.0),
+                (1.0, 3.0, 0.0, -0.5),
+                (-1.0, 0.0, 4.0, 1.0),
+                (0.0, -0.5, 1.0, 3.0),
+            )
+        )
+        rows, columns = np.nonzero(dense)
+        matrix = CSRMatrix.from_coo(dense.shape, rows, columns, dense[rows, columns])
+        exact = np.array((1.0, -2.0, 3.0, -4.0))
+        outcome = conjugate_gradient(
+            matrix,
+            dense @ exact,
+            preconditioner="block_jacobi",
+            block_size=2,
+        )
+        self.assertTrue(outcome.report.converged)
+        np.testing.assert_allclose(outcome.solution, exact, atol=2.0e-14)
+
+    def test_invalid_block_contracts_fail(self) -> None:
+        matrix = CSRMatrix.from_coo((3, 3), [0, 1, 2], [0, 1, 2], [1, 1, 1])
+        with self.assertRaisesRegex(ValueError, "divisible"):
+            BSRMatrix.from_csr(matrix, 2)
+        with self.assertRaisesRegex(ValueError, "explicit block size"):
+            conjugate_gradient(matrix, [1, 1, 1], preconditioner="block_jacobi")
 
 
 if __name__ == "__main__":

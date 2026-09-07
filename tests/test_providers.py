@@ -37,7 +37,7 @@ class ProviderTests(unittest.TestCase):
     def test_default_provider_is_owned_sparse_baseline(self) -> None:
         result = solve_steady_diffusion(_problem())
         self.assertEqual(result.provider_name, "native_sparse")
-        self.assertEqual(result.provider_version, "0.1")
+        self.assertEqual(result.provider_version, "0.2")
 
     def test_unknown_provider_fails_explicitly(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unknown linear algebra provider"):

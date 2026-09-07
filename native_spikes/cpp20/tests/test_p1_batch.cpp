@@ -16,7 +16,7 @@ bool close(const double left, const double right, const double tolerance = 1e-15
 }  // namespace
 
 int main() {
-  static_assert(AFN_P1_ABI_VERSION == 0x00010000u);
+  static_assert(AFN_P1_ABI_VERSION == 0x00010001u);
   assert(afn_p1_abi_version() == AFN_P1_ABI_VERSION);
   const std::array<double, 8> points{{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}};
   const std::array<std::int64_t, 6> cells{{0, 1, 2, 0, 2, 3}};
@@ -86,5 +86,25 @@ int main() {
              4, 2, nonfinite_points.data(), cells.data(), conductivity.data(),
              0.0, rows.data(), columns.data(), data.data(), load.data()) ==
          AFN_P1_NONFINITE_INPUT);
+
+  const std::array<double, 18> constitutive{{
+      106.66666666666667, 26.666666666666668, 0.0,
+      26.666666666666668, 106.66666666666667, 0.0,
+      0.0, 0.0, 40.0,
+      106.66666666666667, 26.666666666666668, 0.0,
+      26.666666666666668, 106.66666666666667, 0.0,
+      0.0, 0.0, 40.0}};
+  const std::array<double, 2> body{{2.0, -1.0}};
+  std::array<std::int64_t, 72> elasticity_rows{};
+  std::array<std::int64_t, 72> elasticity_columns{};
+  std::array<double, 72> elasticity_data{};
+  std::array<double, 8> elasticity_load{};
+  assert(afn_t3_elasticity_assemble_cells(
+             4, 2, points.data(), cells.data(), constitutive.data(), body.data(),
+             0.5, elasticity_rows.data(), elasticity_columns.data(),
+             elasticity_data.data(), elasticity_load.data()) == AFN_P1_SUCCESS);
+  assert(elasticity_rows[0] == 0 && elasticity_columns[35] == 5);
+  assert(close(elasticity_load[0], 1.0 / 3.0));
+  assert(close(elasticity_load[1], -1.0 / 6.0));
   return 0;
 }
