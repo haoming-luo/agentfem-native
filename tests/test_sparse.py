@@ -1,0 +1,120 @@
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+
+from __future__ import annotations
+
+import unittest
+
+import numpy as np
+
+from agentfem_native.sparse import CSRMatrix, conjugate_gradient
+
+
+class CSRMatrixTests(unittest.TestCase):
+    def test_coo_canonicalization_sorts_and_reduces_duplicates(self) -> None:
+        matrix = CSRMatrix.from_coo(
+            (3, 3),
+            np.array((2, 0, 2, 0, 2, 0)),
+            np.array((2, 1, 0, 1, 2, 0)),
+            np.array((4.0, 2.0, 3.0, -2.0, -4.0, 1.0)),
+        )
+        np.testing.assert_array_equal(matrix.indptr, (0, 2, 2, 4))
+        np.testing.assert_array_equal(matrix.indices, (0, 1, 0, 2))
+        np.testing.assert_array_equal(matrix.data, (1.0, 0.0, 3.0, 0.0))
+        self.assertEqual(matrix.nnz, 4)
+        self.assertEqual(matrix.storage_nbytes, 8 * (4 + 4 + 4))
+        for array in (matrix.indptr, matrix.indices, matrix.data):
+            self.assertFalse(array.flags.writeable)
+
+    def test_empty_rows_and_matrix_vector_product_match_dense_oracle(self) -> None:
+        matrix = CSRMatrix.from_coo(
+            (4, 4),
+            np.array((0, 0, 2, 3)),
+            np.array((0, 2, 1, 3)),
+            np.array((2.0, -1.0, 4.0, 5.0)),
+        )
+        vector = np.array((3.0, 2.0, -2.0, 0.5))
+        expected = matrix.to_dense() @ vector
+        np.testing.assert_array_equal(matrix.matvec(vector), expected)
+        np.testing.assert_array_equal(matrix.residual(vector, expected), np.zeros(4))
+
+    def test_malformed_csr_contract_fails_explicitly(self) -> None:
+        invalid = (
+            ((2, 2), [1, 1, 1], [], []),
+            ((2, 2), [0, 2, 1], [0], [1.0]),
+            ((2, 2), [0, 1, 1], [2], [1.0]),
+            ((1, 3), [0, 2], [1, 1], [1.0, 2.0]),
+            ((1, 1), [0, 1], [0], [np.nan]),
+        )
+        for arguments in invalid:
+            with self.subTest(arguments=arguments), self.assertRaises(ValueError):
+                CSRMatrix(*arguments)
+
+    def test_shape_outside_signed_64_bit_range_fails(self) -> None:
+        with self.assertRaisesRegex(ValueError, "dimensions"):
+            CSRMatrix.from_coo((np.iinfo(np.int64).max + 1, 0), [], [], [])
+
+    def test_symmetric_dirichlet_transform_matches_dense_elimination(self) -> None:
+        dense = np.array(((4.0, -1.0, 0.0), (-1.0, 4.0, -1.0), (0.0, -1.0, 3.0)))
+        rows, columns = np.nonzero(np.ones_like(dense))
+        matrix = CSRMatrix.from_coo((3, 3), rows, columns, dense.ravel())
+        rhs = np.array((1.0, 2.0, 3.0))
+        transformed, transformed_rhs = matrix.with_dirichlet(rhs, [1], [2.5])
+        expected_matrix = dense.copy()
+        expected_rhs = rhs - dense[:, 1] * 2.5
+        expected_matrix[:, 1] = 0.0
+        expected_matrix[1, :] = 0.0
+        expected_matrix[1, 1] = 1.0
+        expected_rhs[1] = 2.5
+        np.testing.assert_array_equal(transformed.to_dense(), expected_matrix)
+        np.testing.assert_array_equal(transformed_rhs, expected_rhs)
+        np.testing.assert_array_equal(matrix.to_dense(), dense)
+
+    def test_dirichlet_inserts_a_missing_diagonal(self) -> None:
+        matrix = CSRMatrix.from_coo((2, 2), [0, 1], [1, 0], [1.0, 1.0])
+        transformed, rhs = matrix.with_dirichlet([0.0, 0.0], [0], [3.0])
+        np.testing.assert_array_equal(transformed.to_dense(), ((1.0, 0.0), (0.0, 0.0)))
+        np.testing.assert_array_equal(rhs, (3.0, -3.0))
+
+
+class ConjugateGradientTests(unittest.TestCase):
+    @staticmethod
+    def _spd() -> tuple[CSRMatrix, np.ndarray, np.ndarray]:
+        dense = np.array(((4.0, 1.0, 0.0), (1.0, 3.0, 1.0), (0.0, 1.0, 2.0)))
+        rows, columns = np.nonzero(dense)
+        matrix = CSRMatrix.from_coo((3, 3), rows, columns, dense[rows, columns])
+        exact = np.array((1.0, -2.0, 3.0))
+        return matrix, dense @ exact, exact
+
+    def test_cg_jacobi_solves_spd_system(self) -> None:
+        matrix, rhs, exact = self._spd()
+        result = conjugate_gradient(matrix, rhs)
+        self.assertTrue(result.report.converged)
+        self.assertEqual(result.report.reason, "converged")
+        self.assertLessEqual(result.report.iterations, 3)
+        np.testing.assert_allclose(result.solution, exact, atol=2.0e-15)
+        self.assertLessEqual(result.report.residual_norm, result.report.threshold)
+
+    def test_initial_solution_and_iteration_limit_are_distinct(self) -> None:
+        matrix, rhs, exact = self._spd()
+        initial = conjugate_gradient(matrix, rhs, initial_guess=exact)
+        self.assertEqual(initial.report.reason, "initial_residual")
+        limited = conjugate_gradient(matrix, rhs, maximum_iterations=0)
+        self.assertFalse(limited.report.converged)
+        self.assertEqual(limited.report.reason, "iteration_limit")
+
+    def test_non_positive_curvature_reports_breakdown(self) -> None:
+        matrix = CSRMatrix.from_coo((2, 2), [0, 1], [0, 1], [1.0, -1.0])
+        result = conjugate_gradient(
+            matrix, [1.0, 1.0], preconditioner="none", maximum_iterations=3
+        )
+        self.assertFalse(result.report.converged)
+        self.assertEqual(result.report.reason, "breakdown")
+
+    def test_invalid_jacobi_diagonal_fails(self) -> None:
+        matrix = CSRMatrix.from_coo((2, 2), [0, 1], [0, 1], [1.0, 0.0])
+        with self.assertRaisesRegex(ValueError, "positive diagonal"):
+            conjugate_gradient(matrix, [1.0, 1.0])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -18,6 +18,7 @@ from .assembly import (
 )
 from .mesh import TriangularMesh
 from .providers import LinearAlgebraProvider, resolve_provider
+from .sparse import CGReport
 
 FloatArray: TypeAlias = NDArray[np.float64]
 BoundaryValue = float | Callable[[FloatArray], ArrayLike]
@@ -66,6 +67,8 @@ class DiffusionResult:
     potential_energy: float
     provider_name: str
     provider_version: str
+    provider_matrix_format: str
+    convergence: CGReport | None
     assembly_mode: str
 
     def __post_init__(self) -> None:
@@ -181,5 +184,7 @@ def solve_steady_diffusion(
         potential_energy=potential,
         provider_name=outcome.provider.name,
         provider_version=outcome.provider.version,
+        provider_matrix_format=outcome.provider.matrix_format,
+        convergence=outcome.convergence,
         assembly_mode=assembly_mode,
     )

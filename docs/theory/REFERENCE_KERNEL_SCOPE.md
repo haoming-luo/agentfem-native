@@ -13,5 +13,14 @@ mesh topology -> affine cell geometry -> P1 basis/quadrature
 -> boundary conditions -> linear provider -> nodal result -> evidence
 ```
 
-The current implementation ends after basis/quadrature/geometry. Mesh,
-assembly, boundary conditions, solve, and result writing remain Gate 1 work.
+That chain is complete and verified for Gate 1. The Gate 2 reference extension
+is:
+
+```text
+triangle mesh -> node-major vector DOFs -> T3 B and isotropic D
+-> element stiffness/vector loads -> deterministic COO -> owned CSR
+-> sparse constraints and CG/Jacobi -> displacement/stress/reaction evidence
+```
+
+This second chain is implemented with local analytical and patch evidence. It
+is not yet Gate-2 verified and remains the oracle for future C++20/BSR paths.

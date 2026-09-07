@@ -33,14 +33,16 @@ than FEniCSx objects.
 
 - `reference`: small, readable NumPy executable mathematics used as an
   independent oracle for future optimized kernels.
-- `kernel`: mesh, topology, P1 elements, diffusion operators, deterministic
-  assembly, and future state semantics owned by AgentFEM Native.
+- `kernel`: mesh, topology, scalar/vector DOFs, P1 diffusion and T3 linear-
+  elasticity operators, deterministic assembly, and future state semantics
+  owned by AgentFEM Native.
 - `fast path`: a packaged standard-library C++20 kernel for supported static
   volume data, bounded vectorized NumPy fallback, and the readable oracle;
   every optimized path reproduces the oracle without becoming the source of
   mathematical meaning.
-- `providers`: replaceable dense/sparse linear algebra now, and future
-  parallel runtime and hardware implementations.
+- `providers`: an owned dependency-free CSR/CG/Jacobi baseline, replaceable
+  dense/sparse linear algebra, and future parallel runtime and hardware
+  implementations. Dense NumPy is a bounded oracle, not the production default.
 - `contract`: versioned JSON request/result execution and public AgentFEM
   AF-IR lowering boundary.
 - `verification`: tests and evidence that consume public results without

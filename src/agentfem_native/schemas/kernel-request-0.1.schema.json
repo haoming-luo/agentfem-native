@@ -50,7 +50,7 @@
       "type": "object",
       "properties": {
         "kind": {"const": "steady_diffusion"},
-        "linear_algebra": {"enum": ["numpy", "scipy", "auto"]},
+        "linear_algebra": {"enum": ["native", "native_sparse", "numpy", "scipy", "auto"]},
         "assembly": {"enum": ["auto", "reference", "vectorized", "native"]}
       },
       "additionalProperties": false

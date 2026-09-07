@@ -160,3 +160,57 @@ license-incompatible code is rejected.
   reconstructable public export.
 - Consequence: Gate 2 basic solid mechanics becomes the next active scientific
   milestone. No numerical code or evidence threshold was changed.
+
+## Six-month Mechanics Alpha product plan — 2026-09-07
+
+- Task origin: the project owner requested a bold estimate of what a large
+  development team should achieve in six months, emphasizing both serious
+  high-performance computing and fitness for AgentFEM.
+- Planning assumption: 28–36 experienced contributors, approximately 15
+  person-years during the window. This is a capacity model, not a staffing or
+  delivery claim.
+- Decision: target an internal Mechanics Alpha with an owned sparse spine,
+  verified Gate 2, verified linear Gate 3 capability, high-performance CPU
+  execution, Agent-native planning/evidence, and maturity-labelled nonlinear,
+  MPI, matrix-free, and GPU research tracks. No public package release is
+  implied.
+- Official research consulted: PETSc feature/install/license documentation;
+  Ginkgo documentation and license/platform metadata; Kokkos/Kokkos Kernels
+  documentation and release/license information; hypre documentation; RAJA
+  repository/documentation; and libCEED public user documentation.
+- Clean-room boundary: this research was limited to public architecture,
+  capability, platform, and license information for general-purpose
+  infrastructure. No DOLFINx, Basix, UFL, FFCx, or other third-party FEM
+  implementation source was read or incorporated. No scientific code changed
+  in this planning step.
+- Durable artifacts: `docs/charter/SIX_MONTH_PRODUCT_ROADMAP.md`, ADR-0018, and
+  synchronized roadmap, vision, changelog, and ADR index entries.
+
+## Compressed Sparse Foundation and T3 reference slice — 2026-09-07
+
+- Task origin: the project owner compressed the six-month program into one
+  month, its first month into one week, and requested that the nominal first
+  week be completed in one sustained development run.
+- Independent mathematical sources: standard CSR definitions, symmetric
+  strong-Dirichlet elimination, preconditioned conjugate gradient, small-strain
+  kinematics, and isotropic plane-stress/plane-strain formulas were written into
+  `SPARSE_ALGEBRA_V0.md` and `T3_LINEAR_ELASTICITY.md` before implementation.
+- AI-assisted scope: Native scalar CSR, COO canonicalization, sparse operations,
+  CG/Jacobi, default-provider migration, vector DOFs, T3 elasticity, loads,
+  constraints, recovery, result evidence, execution-free planning, capability
+  manifest, tests, benchmark, documentation, and acceleration roadmap.
+- Third-party exposure: NumPy public array operations and the already admitted
+  optional SciPy provider interface. No third-party finite-element source was
+  read, copied, translated, or used; no new runtime dependency was added.
+- Local evidence: 115 tests and 47 subtests passed before documentation
+  finalization; the independence scan passed. Exact sparse/mechanics benchmark
+  repetitions and environment are recorded in
+  `benchmarks/results/2026-09-07-darwin-arm64-sparse-foundation.json`.
+- Packaging evidence: the `0.5.0a1` sdist and macOS arm64 `cp311-abi3` wheel
+  built successfully. A clean Python 3.11 environment installed the wheel with
+  no broken requirements, loaded every new module from `site-packages`, exposed
+  the packaged C++ kernel, and passed all 115 repository tests plus installed
+  sparse-diffusion and T3-mechanics smoke solves.
+- Maturity boundary: the sparse scalar baseline and T3 reference slice are
+  implemented and locally evidenced. P3, Gate 2, native Windows/Linux evidence,
+  BSR, compiled sparse/T3 kernels, 3D, dynamics, MPI, and GPU remain open.

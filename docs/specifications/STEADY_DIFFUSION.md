@@ -30,9 +30,11 @@ K_e = integral_element G K(x) G^T dOmega.
 
 The source is integrated by the degree-2 triangle rule. Boundary flux uses
 two-point Gauss integration on each straight edge. Element entries are emitted
-as deterministic COO triplets. The auditable dense NumPy provider and optional
-SciPy CSR direct provider solve the same constrained system behind one
-interface. Provider selection does not change discretization or assembly.
+as deterministic COO triplets. The default owned provider canonicalizes them
+into immutable CSR and applies symmetric strong constraints before CG/Jacobi
+execution without dense conversion. The auditable dense NumPy oracle and
+optional SciPy CSR direct provider solve the same constrained problem behind
+one interface. Provider selection does not change discretization or assembly.
 
 For static scalar/tensor conductivity and scalar source, `auto` selects the
 packaged C++20 kernel when its ABI matches and otherwise a bounded vectorized
@@ -78,7 +80,9 @@ total reaction equals zero.
 - portable ASCII VTK nodal output;
 - variable-conductivity exact solution, anisotropic linear exact solution,
   and a two-region layered-material exact solution;
-- numerical identity between installed NumPy and SciPy provider paths.
+- numerical identity across Native sparse, NumPy dense, and installed SciPy
+  provider paths;
+- explicit Native CG convergence/failure evidence and a no-densification guard;
 - triplet-by-triplet reference/vectorized comparison for scalar, anisotropic,
   material-region, boundary-flux, orientation, and multiple chunk-size cases;
 - exact packaged C++20/reference/vectorized comparison, plus a dependency-free
@@ -88,6 +92,8 @@ total reaction equals zero.
 
 Geometry is two-dimensional and affine; source and boundary values in the
 serialized contract are constant scalars; and materials are stateless
-conductivity records. The SciPy path is a scalable sparse storage/direct-solve
-bridge, not the final production solver. Nonlinear, transient, 3D, higher-order,
-and stateful material behavior remain later-gate work.
+conductivity records. The Native path currently uses scalar CSR and readable
+NumPy-orchestrated CG; BSR, compiled sparse kernels, and advanced
+preconditioners remain P3 work. SciPy is an optional sparse direct bridge.
+Nonlinear, transient, 3D, higher-order, and stateful material behavior remain
+later-gate work.

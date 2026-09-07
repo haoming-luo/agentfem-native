@@ -16,6 +16,7 @@ import numpy as np
 from . import __version__
 from .diffusion import (
     CellMaterial,
+    DiffusionResult,
     DirichletCondition,
     NeumannCondition,
     SteadyDiffusionProblem,
@@ -23,7 +24,7 @@ from .diffusion import (
 )
 from .mesh import TriangularMesh
 from .native import native_kernel_identity
-from .providers import ProviderUnavailableError
+from .providers import LinearSolveError, ProviderUnavailableError
 from .results import write_legacy_vtk
 
 JsonMapping: TypeAlias = Mapping[str, object]
@@ -196,9 +197,9 @@ def _problem_from_request(
             path="$.procedure.kind",
         )
     provider = _text(
-        procedure.get("linear_algebra", "numpy"), "$.procedure.linear_algebra"
+        procedure.get("linear_algebra", "native"), "$.procedure.linear_algebra"
     )
-    if provider not in {"numpy", "scipy", "auto"}:
+    if provider not in {"native", "native_sparse", "numpy", "scipy", "auto"}:
         raise KernelRequestError(
             "unsupported_provider",
             f"Unknown linear algebra provider {provider!r}.",
@@ -245,10 +246,9 @@ def _artifact_path(directory: Path, portable_path: object) -> tuple[Path, str]:
     return directory.joinpath(*pure.parts), pure.as_posix()
 
 
-def _runtime(
-    provider_name: str, provider_version: str, assembly_mode: str
-) -> dict[str, object]:
-    return {
+def _runtime(result: DiffusionResult, assembly_mode: str) -> dict[str, object]:
+    convergence = result.convergence
+    runtime = {
         "os": platform.system(),
         "architecture": platform.machine(),
         "python": platform.python_version(),
@@ -256,10 +256,21 @@ def _runtime(
         "assembly": {"name": assembly_mode},
         "native_kernel": native_kernel_identity(),
         "linear_algebra_provider": {
-            "name": provider_name,
-            "version": provider_version,
+            "name": result.provider_name,
+            "version": result.provider_version,
+            "matrix_format": result.provider_matrix_format,
         },
     }
+    if convergence is not None:
+        runtime["linear_algebra_provider"]["convergence"] = {  # type: ignore[index]
+            "converged": convergence.converged,
+            "reason": convergence.reason,
+            "iterations": convergence.iterations,
+            "initial_residual_norm": convergence.initial_residual_norm,
+            "residual_norm": convergence.residual_norm,
+            "threshold": convergence.threshold,
+        }
+    return runtime
 
 
 def run_kernel_request(
@@ -307,7 +318,11 @@ def run_kernel_request(
             "request_id": request_id,
             "status": "success",
             "backend": {"name": "native", "version": __version__},
-            "capabilities": ["steady_diffusion_p1_triangle:verified_local"],
+            "capabilities": [
+                "steady_diffusion_p1_triangle:verified",
+                "native_sparse_cg:implemented",
+                "linear_elasticity_t3_plane_stress_strain:implemented",
+            ],
             "quantities": {
                 "free_residual_norm": result.free_residual_norm,
                 "total_applied_load": result.total_applied_load,
@@ -322,9 +337,7 @@ def run_kernel_request(
                 }
             },
             "artifacts": artifacts,
-            "runtime": _runtime(
-                result.provider_name, result.provider_version, result.assembly_mode
-            ),
+            "runtime": _runtime(result, result.assembly_mode),
             "warnings": [],
         }
     except KernelRequestError as error:
@@ -332,6 +345,10 @@ def run_kernel_request(
     except ProviderUnavailableError as error:
         failure = KernelRequestError(
             "provider_unavailable", str(error), path="$.procedure"
+        )
+    except LinearSolveError as error:
+        failure = KernelRequestError(
+            "linear_solve_failed", str(error), path="$.procedure.linear_algebra"
         )
     except OSError as error:
         failure = KernelRequestError(

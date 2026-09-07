@@ -17,3 +17,9 @@ BSD license. This adoption does not delegate finite-element topology,
 quadrature, basis evaluation, material assignment, or assembly to SciPy.
 PETSc and vendor providers remain future candidates and require separate
 dependency inventories, platform evidence, and performance justification.
+
+Update 2026-09-07: ADR-0018 introduces `native_sparse` as the dependency-free
+default. It owns scalar CSR, CG, and Jacobi. `auto` now resolves to this Native
+baseline rather than changing behavior according to whether SciPy happens to
+be installed. NumPy dense and SciPy direct remain explicitly selectable oracle
+and optional-provider paths.

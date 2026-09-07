@@ -12,6 +12,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .assembly import COOMatrix
+from .sparse import CGReport, CSRMatrix, conjugate_gradient
 
 FloatArray: TypeAlias = NDArray[np.float64]
 IndexArray: TypeAlias = NDArray[np.int64]
@@ -19,6 +20,14 @@ IndexArray: TypeAlias = NDArray[np.int64]
 
 class ProviderUnavailableError(RuntimeError):
     """Raised when an explicitly requested optional provider is unavailable."""
+
+
+class LinearSolveError(ValueError):
+    """Raised when a provider reaches an explicit nonconverged solve outcome."""
+
+    def __init__(self, message: str, report: CGReport | None = None) -> None:
+        super().__init__(message)
+        self.report = report
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +41,7 @@ class ProviderIdentity:
 class LinearSolveOutcome:
     solution: FloatArray
     provider: ProviderIdentity
+    convergence: CGReport | None = None
 
 
 class LinearAlgebraProvider(Protocol):
@@ -75,10 +85,55 @@ class NumpyDenseProvider:
             try:
                 solution[free] = np.linalg.solve(reduced, right_hand_side)
             except np.linalg.LinAlgError as error:
-                raise ValueError("Constrained diffusion system is singular.") from error
+                raise LinearSolveError(
+                    "Constrained linear system is singular."
+                ) from error
         return LinearSolveOutcome(
             solution=solution,
             provider=ProviderIdentity("numpy_dense", np.__version__, "dense"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class NativeSparseProvider:
+    """Dependency-free CSR, CG, and Jacobi production baseline."""
+
+    relative_tolerance: float = 1.0e-12
+    absolute_tolerance: float = 1.0e-14
+    maximum_iterations: int | None = None
+
+    def solve_constrained(
+        self,
+        matrix: COOMatrix,
+        load: FloatArray,
+        constrained: IndexArray,
+        values: FloatArray,
+    ) -> LinearSolveOutcome:
+        sparse = CSRMatrix.from_coo(
+            matrix.shape, matrix.rows, matrix.columns, matrix.data
+        )
+        constrained_matrix, constrained_load = sparse.with_dirichlet(
+            load, constrained, values
+        )
+        result = conjugate_gradient(
+            constrained_matrix,
+            constrained_load,
+            relative_tolerance=self.relative_tolerance,
+            absolute_tolerance=self.absolute_tolerance,
+            maximum_iterations=self.maximum_iterations,
+            preconditioner="jacobi",
+        )
+        if not result.report.converged:
+            raise LinearSolveError(
+                "Native sparse solve did not converge: "
+                f"{result.report.reason} after {result.report.iterations} iterations "
+                f"with residual {result.report.residual_norm:.6e}.",
+                result.report,
+            )
+        return LinearSolveOutcome(
+            solution=result.solution,
+            provider=ProviderIdentity("native_sparse", "0.1", "csr"),
+            convergence=result.report,
         )
 
 
@@ -120,7 +175,9 @@ class ScipySparseProvider:
                     warnings.simplefilter("error", MatrixRankWarning)
                     solved = spsolve(reduced, right_hand_side)
             except MatrixRankWarning as error:
-                raise ValueError("Constrained diffusion system is singular.") from error
+                raise LinearSolveError(
+                    "Constrained linear system is singular."
+                ) from error
             solution[free] = np.asarray(solved, dtype=np.float64)
             if not np.all(np.isfinite(solution[free])):
                 raise ValueError("Sparse provider returned a non-finite solution.")
@@ -136,18 +193,16 @@ def resolve_provider(
     """Resolve a provider without making optional libraries import requirements."""
 
     if provider is None:
-        return NumpyDenseProvider()
+        return NativeSparseProvider()
     if isinstance(provider, str):
         if provider == "numpy":
             return NumpyDenseProvider()
+        if provider in {"native", "native_sparse"}:
+            return NativeSparseProvider()
         if provider == "scipy":
             return ScipySparseProvider()
         if provider == "auto":
-            return (
-                ScipySparseProvider()
-                if ScipySparseProvider.available()
-                else NumpyDenseProvider()
-            )
+            return NativeSparseProvider()
         raise ValueError(f"Unknown linear algebra provider {provider!r}.")
     solve = getattr(provider, "solve_constrained", None)
     if not callable(solve):

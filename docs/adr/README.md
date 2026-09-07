@@ -27,3 +27,5 @@ owner review. Superseded decisions remain in history.
   compiled-kernel language after an exact Rust comparison
 - [ADR-0017](0017-decouple-af-ir-from-native-gates.md): keep AF-IR promotion as
   an optional AgentFEM integration track rather than a Native gate blocker
+- [ADR-0018](0018-sparse-first-mechanics-acceleration.md): make the owned sparse
+  spine and Agent-native Mechanics Alpha the six-month execution priority

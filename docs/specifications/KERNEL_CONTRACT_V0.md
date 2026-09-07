@@ -24,8 +24,10 @@ failure exits with status 2. Python callers use `run_kernel_request`.
 - physics: constant scalar or 2-by-2 conductivity and constant source;
 - conditions: constant Dirichlet values and outward Neumann fluxes;
 - materials: named cell-set conductivity overrides;
-- procedure: steady diffusion with `numpy`, `scipy`, or `auto` provider, and
-  `auto`, `reference`, `vectorized`, or `native` assembly selection;
+- procedure: steady diffusion with `native`/`native_sparse`, `numpy`, `scipy`,
+  or `auto` provider, and `auto`, `reference`, `vectorized`, or `native`
+  assembly selection; `native_sparse` is the dependency-free default and
+  NumPy dense is the explicit bounded oracle;
 - outputs: optional nodal legacy VTK artifact beneath an explicit root.
 
 Python's direct problem API additionally accepts spatial conductivity and
@@ -44,7 +46,8 @@ records the actual assembly path and native ABI identity.
 A successful result contains contract and backend identities, request ID,
 capabilities, balance/energy quantities, nodal field values, artifact relative
 paths and SHA-256 digests, runtime OS/architecture/dependency/provider identity,
-and warnings. A failed result contains a stable error `code`, human-readable
+matrix format, iterative convergence evidence when available, and warnings. A
+failed result contains a stable error `code`, human-readable
 `message`, and JSON-style `path`.
 
 The result reports computation, not automatic scientific validation.

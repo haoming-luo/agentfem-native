@@ -4,12 +4,16 @@ AgentFEM Native is the independently developed finite-element engine for
 AgentFEM. It is an official autonomous computation backend, not a FEniCSx
 fork and not a second end-user product.
 
-The repository has **completed Gate 1** and is entering Gate 2 planning. The
+The repository has **completed Gate 1** and now has an implemented Gate 2 T3
+reference slice. The
 verified serial kernel solves two-dimensional steady scalar diffusion on
 affine P1 triangles with named node, boundary, and material regions;
 scalar, spatially varying, or symmetric positive-definite tensor
-conductivity; deterministic COO assembly; replaceable NumPy/SciPy linear
-algebra providers; balance evidence; and portable VTK output. Static problems
+conductivity; deterministic COO assembly; an owned dependency-free CSR/CG/
+Jacobi solve path; optional NumPy/SciPy oracle/providers; balance evidence; and
+portable VTK output. The initial mechanics slice adds vector DOFs, T3 plane
+stress/strain, body and traction loads, displacement constraints, reactions,
+energy, and cell stress/strain recovery. Static diffusion problems
 automatically use the packaged C++20 kernel when its ABI is available, with
 bounded vectorized NumPy as the portable fallback; callable fields retain the
 element-by-element oracle. A measured C++/Rust comparison selected C++20 as
@@ -56,7 +60,7 @@ python tools/bootstrap_env.py --agentfem /path/to/agentfem
 
 For this development checkout, the active `.venv` contains editable
 AgentFEM 0.3.1 from the clean local `agentfem-main-worktree` and editable
-AgentFEM Native 0.4.0a1 with its C++20 extension and optional SciPy provider.
+AgentFEM Native 0.5.0a1 with its C++20 extension and optional SciPy provider.
 Installing both does not make AgentFEM or FEniCSx a Native runtime dependency;
 their communication remains the public contract.
 
@@ -87,6 +91,10 @@ The compiled boundary is specified in
 [docs/specifications/NATIVE_P1_ABI.md](docs/specifications/NATIVE_P1_ABI.md),
 and the P2 evidence is summarized in
 [docs/verification/PERFORMANCE_P2_REPORT.md](docs/verification/PERFORMANCE_P2_REPORT.md).
+The owned sparse and first mechanics evidence is in
+[docs/verification/PERFORMANCE_P3_REPORT.md](docs/verification/PERFORMANCE_P3_REPORT.md)
+and
+[docs/verification/GATE_2_T3_REFERENCE_REPORT.md](docs/verification/GATE_2_T3_REFERENCE_REPORT.md).
 The long-term technical thesis is recorded in
 [docs/charter/NATIVE_VISION_2035.md](docs/charter/NATIVE_VISION_2035.md).
 

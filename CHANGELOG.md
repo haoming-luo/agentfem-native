@@ -1,10 +1,32 @@
 # Changelog
 
+## 0.5.0a1 — sparse foundation and T3 reference candidate
+
+- Added immutable deterministic scalar CSR, canonical COO reduction, SpMV,
+  residual/diagonal/storage operations, and symmetric sparse Dirichlet handling.
+- Added dependency-free CG/Jacobi with machine-readable convergence, iteration-
+  limit, and breakdown outcomes; made `native_sparse` the default provider and
+  retained dense NumPy as an explicitly selected small-problem oracle.
+- Added vector DOF numbering and a readable T3 plane-stress/plane-strain
+  elasticity vertical slice with loads, constraints, reactions, energy, and
+  cell stress/strain recovery.
+- Added execution-free resource plans, deterministic plan digests, installed
+  capability reporting, analytical/patch/failure/provider tests, and local
+  sparse memory/performance evidence.
+- Added the one-month acceleration overlay. T3 is `implemented`; Gate 2 and P3
+  remain open until their wider scientific, optimized, and hosted evidence pass.
+
 ## Unreleased — Gate 2 preparation
 
 - Closed Gate 1 from its native three-platform scientific and installability
   evidence. Reclassified public AF-IR promotion as an optional, non-blocking
   AgentFEM integration track while it is not an upstream development priority.
+- Accepted a large-team six-month Mechanics Alpha roadmap: owned end-to-end
+  sparse execution, verified 2D/3D linear mechanics, linear dynamics/state,
+  high-performance CPU work, evidence-gated MPI/GPU research, and Agent-native
+  planning/diagnostic/evidence interfaces.
+- Made the Sparse Foundation Sprint and performance milestone P3 the immediate
+  Gate 2 prerequisite under ADR-0018.
 
 ## 0.4.0a1 — packaged native kernel candidate
 

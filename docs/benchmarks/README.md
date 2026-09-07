@@ -17,6 +17,8 @@ failure tests establish equivalent work. Timings never replace verification.
   bounded-vectorized path, including output ownership cost.
 - `end_to_end_sparse_comparison.py`: native versus vectorized assembly through
   the same optional SciPy sparse solve with solution/reaction/energy checks.
+- `sparse_foundation.py`: owned CSR memory, COO canonicalization, Native
+  CG/Jacobi end-to-end diffusion, and T3 uniaxial mechanics evidence.
 
 Run from the repository environment. Raw-language comparison additionally
 requires the C++ library built from `native_spikes/cpp20` and the Rust library

@@ -1,0 +1,164 @@
+{
+  "diffusion": [
+    {
+      "assembly_median_seconds": 0.00035037501947954297,
+      "assembly_seconds": [
+        0.0006618750048801303,
+        0.0003901669988408685,
+        0.0003483330365270376,
+        0.00035037501947954297,
+        0.00034529203549027443
+      ],
+      "balance_error": 0.0,
+      "cells": 2048,
+      "cg_iterations": 32,
+      "cg_reported_residual_norm": 0.0,
+      "coo_entries": 18432,
+      "coo_to_csr_median_seconds": 0.002759166993200779,
+      "coo_to_csr_seconds": [
+        0.0026935000205412507,
+        0.002759166993200779,
+        0.0028844159678556025,
+        0.002657042001374066,
+        0.002767666010186076
+      ],
+      "csr_nnz": 7361,
+      "csr_storage_bytes": 126496,
+      "dense_storage_bytes": 9487368,
+      "dense_to_csr_storage_ratio": 75.00132810523652,
+      "end_to_end_solve_median_seconds": 0.008327666961122304,
+      "end_to_end_solve_seconds": [
+        0.008171374967787415,
+        0.008163499995134771,
+        0.008648624992929399,
+        0.008497167029418051,
+        0.008327666961122304
+      ],
+      "free_residual_norm": 0.0,
+      "matrix_format": "csr",
+      "maximum_analytical_error": 0.0,
+      "nodes_dofs": 1089,
+      "plan_peak_bytes_upper_bound": 833120,
+      "provider": "native_sparse",
+      "resolution": 32
+    },
+    {
+      "assembly_median_seconds": 0.0007984170224517584,
+      "assembly_seconds": [
+        0.0010732090449891984,
+        0.0008664169581606984,
+        0.0007984170224517584,
+        0.0007560829981230199,
+        0.0007532910094596446
+      ],
+      "balance_error": 0.0,
+      "cells": 8192,
+      "cg_iterations": 64,
+      "cg_reported_residual_norm": 0.0,
+      "coo_entries": 73728,
+      "coo_to_csr_median_seconds": 0.010815792018547654,
+      "coo_to_csr_seconds": [
+        0.010534583998378366,
+        0.010815792018547654,
+        0.010926124989055097,
+        0.010746624961029738,
+        0.011041291989386082
+      ],
+      "csr_nnz": 29057,
+      "csr_storage_bytes": 498720,
+      "dense_storage_bytes": 142805000,
+      "dense_to_csr_storage_ratio": 286.343038177735,
+      "end_to_end_solve_median_seconds": 0.032043499988503754,
+      "end_to_end_solve_seconds": [
+        0.03136187500786036,
+        0.03266020800219849,
+        0.032043499988503754,
+        0.0325042920303531,
+        0.03135862498311326
+      ],
+      "free_residual_norm": 0.0,
+      "matrix_format": "csr",
+      "maximum_analytical_error": 0.0,
+      "nodes_dofs": 4225,
+      "plan_peak_bytes_upper_bound": 3320928,
+      "provider": "native_sparse",
+      "resolution": 64
+    },
+    {
+      "assembly_median_seconds": 0.002289790951181203,
+      "assembly_seconds": [
+        0.00227145804092288,
+        0.002301707980223,
+        0.002289790951181203,
+        0.0025292090140283108,
+        0.002277916995808482
+      ],
+      "balance_error": 0.0,
+      "cells": 32768,
+      "cg_iterations": 128,
+      "cg_reported_residual_norm": 0.0,
+      "coo_entries": 294912,
+      "coo_to_csr_median_seconds": 0.04398816701723263,
+      "coo_to_csr_seconds": [
+        0.04369820898864418,
+        0.04427679203217849,
+        0.04354995902394876,
+        0.04398816701723263,
+        0.04514004098018631
+      ],
+      "csr_nnz": 115457,
+      "csr_storage_bytes": 1980448,
+      "dense_storage_bytes": 2215383048,
+      "dense_to_csr_storage_ratio": 1118.6272237392752,
+      "end_to_end_solve_median_seconds": 0.154739250021521,
+      "end_to_end_solve_seconds": [
+        0.15356195799540728,
+        0.15524687501601875,
+        0.154739250021521,
+        0.16115545795764774,
+        0.15215966699179262
+      ],
+      "free_residual_norm": 0.0,
+      "matrix_format": "csr",
+      "maximum_analytical_error": 0.0,
+      "nodes_dofs": 16641,
+      "plan_peak_bytes_upper_bound": 13260896,
+      "provider": "native_sparse",
+      "resolution": 128
+    }
+  ],
+  "elasticity": {
+    "cells": 1152,
+    "cg_iterations": 300,
+    "displacement_dofs": 1250,
+    "end_to_end_solve_median_seconds": 0.0963988330331631,
+    "end_to_end_solve_seconds": [
+      0.09180425002705306,
+      0.09322937502292916,
+      0.0963988330331631,
+      0.09903225000016391,
+      0.09742787497816607
+    ],
+    "force_balance_norm": 1.1780907446857124e-12,
+    "free_residual_norm": 1.8659752057169224e-12,
+    "maturity": "implemented",
+    "maximum_analytical_error": 3.0704605524789486e-15,
+    "provider": "native_sparse",
+    "resolution": 24
+  },
+  "environment": {
+    "architecture": "arm64",
+    "numpy": "2.4.6",
+    "os": "Darwin",
+    "python": "3.11.15",
+    "release": "25.6.0"
+  },
+  "method": {
+    "claim_boundary": "local evidence only; not a cross-platform claim",
+    "clock": "time.perf_counter",
+    "repeats": 5,
+    "timing": "warm-process repeated wall time; medians reported"
+  },
+  "schema": "agentfem.native-sparse-foundation-benchmark",
+  "schema_version": "0.1.0"
+}

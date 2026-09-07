@@ -89,6 +89,51 @@ Before Gate 2, keep the hosted P2 installability evidence green. Prefer permissi
 general-purpose dependencies; do not use a third-party FEM implementation to
 substitute for Native discretization.
 
+## Six-month acceleration program — active
+
+The detailed execution plan for 2026-09-07 through 2027-03-07 is
+[the six-month product roadmap](docs/charter/SIX_MONTH_PRODUCT_ROADMAP.md).
+It assumes a 28–36-person large-team equivalent and targets an internal
+Mechanics Alpha rather than a public package release.
+
+Committed end state:
+
+- Gate 2 verified in 2D and 3D on native Windows, macOS, and Linux;
+- the linear dynamics and state/restart portion of Gate 3 verified;
+- owned end-to-end CSR/BSR sparse execution and a transparent solver baseline;
+- production CPU threading/SIMD, with optional provider comparisons;
+- Agent-native capability, resource-planning, diagnostics, cancellation, and
+  evidence surfaces independent of current AF-IR promotion;
+- limited nonlinear, MPI, matrix-free, and GPU work reported as candidates or
+  experiments until their actual gates pass.
+
+Priority order is P0 sparse/vector DOF/T3/T4/three-platform/Agent preflight;
+P1 dynamics/state/threading/providers; then stretch elements, nonlinear paths,
+MPI, and GPU. Breadth stops when it threatens the verified mesh-to-result spine.
+
+The project owner subsequently requested calendar compression. The active
+[one-month acceleration overlay](docs/charter/ONE_MONTH_ACCELERATION.md)
+compresses this program into four concurrent tranches while preserving every
+Gate and maturity boundary.
+
+## Performance milestone P3 — end-to-end sparse spine (active)
+
+- Completed locally: deterministic scalar CSR and canonical COO conversion;
+  SpMV, residual/norm operations, sparse constraints, CG, and Jacobi with
+  explicit convergence and failure reports.
+- Completed locally: dependency-free `native_sparse` is the default provider;
+  tests prove it does not call dense conversion. Dense NumPy is now an explicit
+  bounded oracle, while SciPy remains optional.
+- Completed locally: execution-free resource plans, deterministic plan digests,
+  capability reporting, and a reproducible sparse-memory/performance record.
+- Remaining: Native BSR, block-Jacobi, C++20 sparse operations, CPU threading,
+  and hosted three-platform evidence for the new revision.
+- Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
+  narrow contracts and after license, platform, determinism, and performance
+  evidence.
+- Begin vector DOFs and the readable T3 plane-stress/plane-strain oracle in the
+  same sprint so the sparse design serves mechanics rather than a scalar demo.
+
 ## AgentFEM integration track — deferred, non-blocking
 
 - Retain the external Kernel Contract/AF-IR lowering prototype as boundary
@@ -99,7 +144,7 @@ substitute for Native discretization.
   prioritized, reconstructable, versioned contract. This track does not block
   Gate 2 or later Native scientific work.
 
-## Gate 2 — basic solid mechanics (next active milestone)
+## Gate 2 — basic solid mechanics (active after P3 foundation)
 
 Scope: 2D small-strain isotropic elasticity, plane stress/strain, displacement
 constraints, traction/body force, reactions, strain energy, stress/strain
@@ -107,6 +152,14 @@ recovery, P1 triangles, followed by P1 tetrahedra and basic 3D.
 
 Evidence: rigid-body modes, constant-strain patch tests, uniaxial/shear/bulk
 responses, cantilever, symmetry, energy, reaction balance, and convergence.
+
+Current state: the readable 2D T3 plane-stress/plane-strain slice is
+implemented locally with vector DOFs, body/traction loads, component
+constraints, Native sparse solve, stress/strain recovery, reactions, energy,
+rigid modes, affine patch, uniaxial traction, orientation, provider equivalence,
+node-renumbering, and failure evidence. It remains `implemented`, not Gate-2 verified; optimized
+T3, remaining benchmark/convergence packs, output/contract integration, T4/3D,
+and hosted evidence are still required.
 
 ## Gate 3 — time and nonlinear lifecycle
 

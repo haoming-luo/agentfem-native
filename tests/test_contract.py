@@ -67,6 +67,21 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(values, [0.0, 1.0, 1.0, 0.0])
         json.dumps(result, allow_nan=False, sort_keys=True)
 
+    def test_native_sparse_contract_reports_convergence_evidence(self) -> None:
+        request = request_record()
+        request["procedure"] = {
+            "kind": "steady_diffusion",
+            "linear_algebra": "native",
+        }
+        result = run_kernel_request(request)
+        provider = result["runtime"]["linear_algebra_provider"]  # type: ignore[index]
+        self.assertEqual(provider["name"], "native_sparse")
+        self.assertEqual(provider["matrix_format"], "csr")
+        self.assertTrue(provider["convergence"]["converged"])
+        self.assertIn(
+            provider["convergence"]["reason"], {"converged", "initial_residual"}
+        )
+
     def test_contract_version_failure_is_addressable(self) -> None:
         request = request_record()
         request["contract_version"] = "99.0"

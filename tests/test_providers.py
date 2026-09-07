@@ -17,7 +17,11 @@ from agentfem_native import (
     solve_steady_diffusion,
     unit_square_triangles,
 )
-from agentfem_native.providers import LinearSolveOutcome, ProviderIdentity
+from agentfem_native.providers import (
+    LinearSolveOutcome,
+    NativeSparseProvider,
+    ProviderIdentity,
+)
 
 
 def _problem() -> SteadyDiffusionProblem:
@@ -30,10 +34,10 @@ def _problem() -> SteadyDiffusionProblem:
 
 
 class ProviderTests(unittest.TestCase):
-    def test_default_provider_is_explicit_numpy_baseline(self) -> None:
+    def test_default_provider_is_owned_sparse_baseline(self) -> None:
         result = solve_steady_diffusion(_problem())
-        self.assertEqual(result.provider_name, "numpy_dense")
-        self.assertEqual(result.provider_version, np.__version__)
+        self.assertEqual(result.provider_name, "native_sparse")
+        self.assertEqual(result.provider_version, "0.1")
 
     def test_unknown_provider_fails_explicitly(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unknown linear algebra provider"):
@@ -61,9 +65,26 @@ class ProviderTests(unittest.TestCase):
     @unittest.skipUnless(
         importlib.util.find_spec("scipy") is not None, "SciPy unavailable"
     )
-    def test_auto_provider_selects_installed_sparse_backend(self) -> None:
+    def test_auto_provider_keeps_dependency_free_sparse_baseline(self) -> None:
         automatic = solve_steady_diffusion(_problem(), provider="auto")
-        self.assertEqual(automatic.provider_name, "scipy_sparse")
+        self.assertEqual(automatic.provider_name, "native_sparse")
+
+    def test_native_sparse_matches_numpy_without_densification(self) -> None:
+        dense = solve_steady_diffusion(_problem(), provider="numpy")
+        with patch(
+            "agentfem_native.assembly.COOMatrix.to_dense",
+            side_effect=AssertionError("production path densified"),
+        ):
+            sparse = solve_steady_diffusion(_problem(), provider="native")
+        np.testing.assert_allclose(sparse.nodal_values, dense.nodal_values, atol=2e-13)
+        self.assertLess(sparse.free_residual_norm, 2e-12)
+
+    def test_native_sparse_iteration_limit_fails_with_report(self) -> None:
+        provider = NativeSparseProvider(maximum_iterations=0)
+        with self.assertRaisesRegex(ValueError, "iteration_limit") as captured:
+            solve_steady_diffusion(_problem(), provider=provider)
+        self.assertIsNotNone(captured.exception.report)
+        self.assertFalse(captured.exception.report.converged)
 
     def test_availability_probe_does_not_import_scipy(self) -> None:
         self.assertEqual(

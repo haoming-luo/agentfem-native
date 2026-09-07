@@ -24,7 +24,8 @@ topology through results. The versioned Kernel Contract connects them.
    algebraic identities, failure tests, analytical/manufactured solutions,
    convergence, conservation, energy, restart, and platform evidence.
 4. **Two-speed implementation.** A compact executable oracle defines meaning;
-   vectorized, C++20, Rust, GPU, and vendor paths compete to reproduce it faster.
+   vectorized, C++20, threaded, distributed, GPU, and vendor paths compete to
+   reproduce it faster. Rust remains a non-shipping design comparator.
 5. **Machine-readable trust.** Requests, results, capabilities, errors,
    provider identities, artifact hashes, and verification evidence are data,
    enabling agents to reason about what ran and what remains unproven.
@@ -106,9 +107,12 @@ experimental truth. The product must never collapse these meanings.
 
 ### 2026–2027: trusted serial core
 
-Close Gate 1 on all three operating systems; productionize the compiled ABI;
-add 2D/3D linear solids, recovery, mesh import, robust constraints, sparse
-provider selection, and end-to-end AgentFEM lowering.
+Build on the completed Gate 1 and packaged ABI with an owned sparse execution
+spine; add verified 2D/3D linear solids, recovery, mesh interchange, robust
+constraints, linear dynamics/state/restart, and measured sparse provider
+selection. Add Agent-native capability, preflight, execution, diagnostic, and
+evidence surfaces through the Kernel Contract; AF-IR promotion remains an
+optional upstream integration track rather than a Native gate dependency.
 
 ### 2027–2029: nonlinear stateful mechanics
 
