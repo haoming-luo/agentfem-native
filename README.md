@@ -47,7 +47,7 @@ build, and independence checks passing on each operating system; it is not
 implemented as separate physics forks. Local development validates macOS;
 GitHub CI owns the authoritative native Windows and Linux acceptance runs.
 The current hosted baseline is GitHub Actions run `34566488847` at commit
-`4f3da30`; all 13 explicit Tier-1 acceptance jobs passed, including ABI 1.2 on
+`4f3da30`; all 14 explicit Tier-1 acceptance jobs passed, including ABI 1.2 on
 native Windows, Linux, macOS x86_64, and macOS arm64. CI wheels are short-lived
 installation-test artifacts, not a public package release; the project is still
 in rapid iteration and has not published to PyPI or GitHub Releases.

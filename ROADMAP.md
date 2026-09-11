@@ -139,7 +139,7 @@ Gate and maturity boundary.
   jobs in run `34099397789`, including native installation wheels.
 - Completed and accepted: C++20 ABI 1.2 T4 volume assembly and canonical CSR
   SpMV, with permanent readable differential oracles. Commit `4f3da30` passed
-  the 13-job explicit Tier-1 Windows/Linux/macOS acceptance in run
+  the 14-job explicit Tier-1 Windows/Linux/macOS acceptance in run
   `34566488847`, including Stable ABI reuse on Python 3.13.
 - Remaining: production CPU threading/SIMD and stronger preconditioners.
 - Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind

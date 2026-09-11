@@ -58,7 +58,7 @@ free residual was `2.08e-13` and resultant-balance norm was `1.78e-14`.
 
 - These performance numbers apply only to the recorded local environment.
 - Commit `4f3da30` passed the complete Tier-1 acceptance in GitHub Actions run
-  `34566488847`: 13 acceptance jobs succeeded across native Windows, Linux,
+  `34566488847`: 14 acceptance jobs succeeded across native Windows, Linux,
   macOS x86_64, and macOS arm64. The ordinary Linux fast job was intentionally
   skipped in the explicit acceptance run. ABI 1.2 wheels, Python 3.13 Stable
   ABI reuse, C++20 contracts, sanitizers, the Rust comparator, and the artifact

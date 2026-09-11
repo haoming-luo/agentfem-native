@@ -278,7 +278,7 @@ license-incompatible code is rejected.
   warnings-as-errors C++20/C11 builds, ASan/UBSan, `0.7.0a1` sdist/wheel build,
   and an isolated wheel-installed smoke workflow pass. Exact performance data
   are in `benchmarks/results/2026-09-11-darwin-arm64-mechanics-alpha-0.2.json`.
-- Hosted acceptance: commit `4f3da30` passed all 13 explicit Tier-1 acceptance
+- Hosted acceptance: commit `4f3da30` passed all 14 explicit Tier-1 acceptance
   jobs in GitHub Actions run `34566488847`. Native Windows, Linux, macOS
   x86_64, and macOS arm64 wheels passed their installed scientific tests;
   Python 3.13 Stable ABI reuse passed on Windows, Linux, and macOS arm64; all
@@ -310,6 +310,6 @@ license-incompatible code is rejected.
   cross-platform policy, workflow definitions, README, and changelog.
 - First policy evidence: the ordinary push run `34566483839` used one Linux
   fast job and passed. The explicitly dispatched Tier-1 run `34566488847`
-  completed successfully with 13 acceptance jobs at commit `4f3da30`; this
+  completed successfully with 14 acceptance jobs at commit `4f3da30`; this
   replaces the pending hosted boundary for ABI 1.2 without publishing a
   package.
