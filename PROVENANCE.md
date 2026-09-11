@@ -278,9 +278,13 @@ license-incompatible code is rejected.
   warnings-as-errors C++20/C11 builds, ASan/UBSan, `0.7.0a1` sdist/wheel build,
   and an isolated wheel-installed smoke workflow pass. Exact performance data
   are in `benchmarks/results/2026-09-11-darwin-arm64-mechanics-alpha-0.2.json`.
-- Hosted boundary: ABI 1.2 and this candidate still require GitHub CI. The last
-  hosted predecessor, commit `07b39e9`, passed all 21 jobs in run
-  `34099971074`.
+- Hosted acceptance: commit `4f3da30` passed all 13 explicit Tier-1 acceptance
+  jobs in GitHub Actions run `34566488847`. Native Windows, Linux, macOS
+  x86_64, and macOS arm64 wheels passed their installed scientific tests;
+  Python 3.13 Stable ABI reuse passed on Windows, Linux, and macOS arm64; all
+  three C++20 platform contracts, Linux sanitizers, the Rust comparator, and
+  the artifact manifest passed. The ordinary Linux fast job was intentionally
+  skipped for this explicit full run.
 - Maturity boundary: Gate 2 and the linear portion of Gate 3 remain
   `implemented`, not `verified`. Production CPU threading/SIMD, million-DOF
   evidence, global nonlinear mechanics, MPI, and GPU remain open.
@@ -304,3 +308,8 @@ license-incompatible code is rejected.
   maturity, and commercial-use permissions did not change.
 - Durable policy: `docs/development/CI_GOVERNANCE.md`, repository instructions,
   cross-platform policy, workflow definitions, README, and changelog.
+- First policy evidence: the ordinary push run `34566483839` used one Linux
+  fast job and passed. The explicitly dispatched Tier-1 run `34566488847`
+  completed successfully with 13 acceptance jobs at commit `4f3da30`; this
+  replaces the pending hosted boundary for ABI 1.2 without publishing a
+  package.

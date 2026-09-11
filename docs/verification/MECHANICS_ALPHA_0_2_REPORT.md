@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-11
 
-**Revision maturity:** implemented locally; Tier-1 hosted acceptance pending
+**Revision maturity:** implemented; Tier-1 hosted platform acceptance passed
 
 ## Delivered chain
 
@@ -57,13 +57,17 @@ free residual was `2.08e-13` and resultant-balance norm was `1.78e-14`.
 ## Claim boundary and remaining work
 
 - These performance numbers apply only to the recorded local environment.
-- The latest accepted hosted predecessor is commit `07b39e9`, whose run
-  `34099971074` passed all 21 Windows, Linux, and macOS jobs. ABI 1.2 has not yet
-  received hosted acceptance.
-- Gate 2 remains open for hosted ABI 1.2 evidence, broader engineering and
-  convergence corpus, contract admission, and production CPU parallel work.
+- Commit `4f3da30` passed the complete Tier-1 acceptance in GitHub Actions run
+  `34566488847`: 13 acceptance jobs succeeded across native Windows, Linux,
+  macOS x86_64, and macOS arm64. The ordinary Linux fast job was intentionally
+  skipped in the explicit acceptance run. ABI 1.2 wheels, Python 3.13 Stable
+  ABI reuse, C++20 contracts, sanitizers, the Rust comparator, and the artifact
+  manifest all passed.
+- Gate 2 remains open for a broader engineering and convergence corpus,
+  contract admission, and production CPU parallel work.
 - The linear Gate 3 slice remains open for wave propagation, implicit restart,
-  additional time-refinement evidence, and native three-platform evidence.
+  additional time-refinement evidence, and dedicated transient platform
+  evidence beyond the shared installed scientific suite.
 - CPU threading/SIMD, stronger preconditioning/provider comparison, million-
   DOF solve evidence, global nonlinear procedures, MPI, and GPU remain work,
   not implied capabilities.

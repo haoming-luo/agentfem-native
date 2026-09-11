@@ -137,10 +137,11 @@ Gate and maturity boundary.
   commit `5230970` in run `34091224291`.
 - Completed hosted: commit `db33958` passed all 21 Windows, Linux, and macOS
   jobs in run `34099397789`, including native installation wheels.
-- Completed locally for the next candidate: C++20 ABI 1.2 T4 volume assembly
-  and canonical CSR SpMV, with permanent readable differential oracles.
-- Remaining: production CPU threading/SIMD, stronger preconditioners, and
-  hosted acceptance of ABI 1.2.
+- Completed and accepted: C++20 ABI 1.2 T4 volume assembly and canonical CSR
+  SpMV, with permanent readable differential oracles. Commit `4f3da30` passed
+  the 13-job explicit Tier-1 Windows/Linux/macOS acceptance in run
+  `34566488847`, including Stable ABI reuse on Python 3.13.
+- Remaining: production CPU threading/SIMD and stronger preconditioners.
 - Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
   narrow contracts and after license, platform, determinism, and performance
   evidence.
@@ -172,9 +173,10 @@ second-order manufactured evidence in addition to the original reference
 suite. Readable and C++20 ABI 1.2 T4/3D paths now own tetrahedral topology,
 volume assembly, loads, constraints,
 reactions, energy, recovery, uniaxial/patch/orientation/provider evidence, and a
-second-order manufactured trend. Gate 2 remains `implemented`, not verified:
-hosted ABI 1.2 acceptance, wider engineering/convergence evidence, contract
-admission, and production CPU parallel evidence are still required.
+second-order manufactured trend. ABI 1.2 has passed hosted Tier-1 acceptance.
+Gate 2 remains `implemented`, not verified: wider engineering/convergence
+evidence, contract admission, and production CPU parallel evidence are still
+required.
 
 ## Gate 3 — time and nonlinear lifecycle
 
