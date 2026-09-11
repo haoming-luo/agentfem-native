@@ -284,3 +284,23 @@ license-incompatible code is rejected.
 - Maturity boundary: Gate 2 and the linear portion of Gate 3 remain
   `implemented`, not `verified`. Production CPU threading/SIMD, million-DOF
   evidence, global nonlinear mechanics, MPI, and GPU remain open.
+
+## CI economy and temporary visibility — 2026-09-11
+
+- Task origin: the owner supplied a GitHub Actions billing audit and explicitly
+  authorized making `haoming-luo/agentfem-native` public for September 2026 to
+  continue development.
+- Observed cause: the prior workflow launched 21 jobs for every push, including
+  a documentation-only evidence update. macOS dominated the private-runner
+  cost. Billing-limited jobs had not executed and were not test failures.
+- Decision: ordinary source pushes use one cancellable Linux job; documentation-
+  only changes do not start CI; native Tier-1 wheels, Stable ABI reuse, C/C++
+  contracts, sanitizers, Rust comparison, and manifests move to explicit gate/
+  platform acceptance or version tags. Artifact retention changes from 14 to
+  five days.
+- Visibility boundary: the repository was verified as `PRIVATE`, changed to
+  `PUBLIC`, and verified again through the GitHub repository API. Review is due
+  2026-10-01 and is not automatic. License, package publication, scientific
+  maturity, and commercial-use permissions did not change.
+- Durable policy: `docs/development/CI_GOVERNANCE.md`, repository instructions,
+  cross-platform policy, workflow definitions, README, and changelog.

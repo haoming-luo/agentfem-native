@@ -6,6 +6,8 @@ and Linux. The directory is ignored by Git and can always be rebuilt.
 The primary development workstation runs this environment natively on macOS.
 Windows and Linux verification is delegated to GitHub CI on their native
 runners; local Docker/cross-compilation is optional diagnosis, not acceptance.
+Ordinary pushes use one Linux fast job; gate and platform candidates use the
+manual Tier-1 workflow described in `CI_GOVERNANCE.md`.
 
 ## Create or refresh
 
@@ -72,7 +74,7 @@ python -m agentfem_native.cli examples/steady_diffusion_request.json --artifact-
 The regular editable install builds the packaged C++20 extension. The separate
 CMake workflow in `native_spikes/cpp20/README.md` runs the C ABI, C-header, and
 sanitizer tests. A C++20 compiler is therefore required when building from
-source; private CI installation-test wheels carry the compiled extension. They
+source; CI installation-test wheels carry the compiled extension. They
 are ephemeral validation artifacts and are not an official package release.
 
 The minimal Native runtime requires only NumPy. AgentFEM and SciPy are

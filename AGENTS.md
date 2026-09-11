@@ -42,6 +42,23 @@ changing scientific code.
 - Keep optional PETSc, MPI, GPU, and vendor providers out of reference-layer
   imports. Report provider/platform capability explicitly.
 
+## Development and CI economy
+
+- Follow `docs/development/CI_GOVERNANCE.md`: focused tests per increment,
+  complete local verification before a milestone, one Linux fast job for
+  ordinary pushes, and manual Tier-1 acceptance for gate/platform candidates.
+- Do not use a full remote matrix as an inner development loop. Batch pushes by
+  reviewable capability and let newer pushes cancel superseded fast CI.
+- Documentation-only changes must cite the already tested source revision and
+  run; they do not repeat compilation merely to validate the evidence prose.
+- Treat billing-limit jobs as not executed. Do not rerun unchanged work; retain
+  the pending Windows/Linux/macOS acceptance boundary and continue locally.
+- CI artifacts are temporary test evidence, never a public package release.
+- The repository is temporarily public through September 2026. Visibility does
+  not change its noncommercial license. Never commit secrets, private models,
+  customer data, or proprietary benchmark inputs; review visibility on
+  2026-10-01.
+
 ## Scope discipline
 
 Work gate by gate. The next milestone is the Gate 1 steady-diffusion vertical

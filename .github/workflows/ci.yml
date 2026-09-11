@@ -1,171 +1,50 @@
-name: native-three-platform-kernel
+name: native-fast-ci
 
 permissions:
   contents: read
 
 on:
   push:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE*"
+      - "NOTICE"
   pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE*"
+      - "NOTICE"
   workflow_dispatch:
 
+concurrency:
+  group: fast-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.11", "3.13"]
-    runs-on: ${{ matrix.os }}
+  linux-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache: pip
-      - name: Install build tooling
-        run: python -m pip install --upgrade pip build
-      - name: Build source and wheel distributions
-        run: python -m build
-      - name: Require a CPython Stable ABI platform wheel
-        run: python -c "import glob; wheels = glob.glob('dist/*.whl'); assert len(wheels) == 1 and '-abi3-' in wheels[0], wheels"
-      - name: Install the built wheel
-        run: python -c "import glob, subprocess, sys; wheels = glob.glob('dist/*.whl'); assert len(wheels) == 1, wheels; subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', wheels[0]])"
-      - name: Run mathematical tests
+      - name: Install one development environment
+        run: python -m pip install --upgrade pip setuptools wheel build ruff ".[scipy]"
+      - name: Check formatting and lints
+        run: |
+          python -m ruff check .
+          python -m ruff format --check src tests benchmarks tools
+      - name: Run mathematical and provider tests
         run: python -m unittest discover -v
       - name: Run portable contract example
         run: python -m agentfem_native.cli examples/steady_diffusion_request.json --artifact-directory work/ci-artifacts --result work/ci-result.json
       - name: Check independent lineage
         run: python tools/check_independence.py
-
-  scipy-provider:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-      - name: Install sparse provider
-        run: python -m pip install --upgrade pip .[scipy]
-      - name: Run sparse-provider and scientific tests
-        run: python -m unittest discover -v
-
-  cpp20-spike:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Configure standard-library C++20 spike
-        run: cmake -S native_spikes/cpp20 -B work/cpp20-build -DCMAKE_BUILD_TYPE=Release
-      - name: Build C++20 spike
-        run: cmake --build work/cpp20-build --config Release
-      - name: Test C++20 numerical contract
-        run: ctest --test-dir work/cpp20-build -C Release --output-on-failure
-
-  cpp20-sanitizers:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Configure C++20 spike with sanitizers
-        run: cmake -S native_spikes/cpp20 -B work/cpp20-sanitize -DCMAKE_BUILD_TYPE=Debug -DAFN_ENABLE_SANITIZERS=ON
-      - name: Build sanitized C++20 spike
-        run: cmake --build work/cpp20-sanitize
-      - name: Test sanitized C++20 numerical contract
-        run: ctest --test-dir work/cpp20-sanitize --output-on-failure
-
-  language-abi-equivalence:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
-      - name: Check Rust formatting
-        run: cargo +1.98.1 fmt --manifest-path native_spikes/rust/Cargo.toml -- --check
-      - name: Check Rust lints
-        run: cargo +1.98.1 clippy --locked --manifest-path native_spikes/rust/Cargo.toml -- -D warnings
-      - name: Build and test dependency-free Rust comparator
-        run: cargo +1.98.1 test --release --locked --manifest-path native_spikes/rust/Cargo.toml
-      - name: Build Rust C ABI library
-        run: cargo +1.98.1 build --release --locked --manifest-path native_spikes/rust/Cargo.toml
-      - name: Install packaged C++20 runtime
-        run: python -m pip install --upgrade pip .
-      - name: Compare C++20, Rust, and NumPy complete outputs
-        run: python tools/verify_language_equivalence.py
-
-  ci-install-wheels:
-    name: ci-install-${{ matrix.artifact }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            artifact: manylinux-x86_64
-            arch: x86_64
-          - os: windows-latest
-            artifact: windows-x86_64
-            arch: AMD64
-          - os: macos-15-intel
-            artifact: macos-x86_64
-            arch: x86_64
-          - os: macos-latest
-            artifact: macos-arm64
-            arch: arm64
-    runs-on: ${{ matrix.os }}
-    env:
-      CIBW_ARCHS: ${{ matrix.arch }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-          cache: pip
-      - name: Install pinned wheel builder
-        run: python -m pip install cibuildwheel==4.1.1
-      - name: Build and test CI installation wheel
-        run: python -m cibuildwheel --output-dir wheelhouse
-      - name: Upload ephemeral CI wheel
-        uses: actions/upload-artifact@v6
-        with:
-          name: agentfem-native-ci-wheel-${{ matrix.artifact }}
-          path: wheelhouse/*.whl
-          if-no-files-found: error
-          retention-days: 14
-
-  wheel-manifest:
-    needs: ci-install-wheels
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: agentfem-native-ci-wheel-*
-          path: wheelhouse
-          merge-multiple: true
-      - name: Create machine-readable artifact manifest
-        run: python tools/build_artifact_manifest.py wheelhouse --output wheel-manifest.json
-      - name: Upload artifact manifest
-        uses: actions/upload-artifact@v6
-        with:
-          name: agentfem-native-ci-wheel-manifest
-          path: wheel-manifest.json
-          if-no-files-found: error
-          retention-days: 14

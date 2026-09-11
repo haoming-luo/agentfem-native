@@ -84,6 +84,11 @@ AgentFEM roadmap needs that integration.
 Execution policy: the local development machine runs macOS builds and tests.
 GitHub CI is the required execution environment for native Windows and Linux;
 local emulation is diagnostic only and never substitutes for those runners.
+Ordinary pushes now use one cancellable Linux fast job; explicit Tier-1
+acceptance retains native Windows x86_64, Linux x86_64, macOS x86_64/arm64,
+Stable ABI, C/C++, sanitizer, and artifact evidence. Documentation-only changes
+reuse the accepted source revision instead of repeating its matrix. The full
+policy is `docs/development/CI_GOVERNANCE.md`.
 
 Before Gate 2, keep the hosted P2 installability evidence green. Prefer permissive
 general-purpose dependencies; do not use a third-party FEM implementation to

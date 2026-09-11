@@ -13,6 +13,10 @@
   plan/execute/explain receipt surface with budgets and honest maturity labels.
 - No public package, Gate 2/3 verification, threading/SIMD, MPI, or GPU claim is
   made by this candidate.
+- Split CI into cancellable Linux fast checks and explicit Tier-1 acceptance,
+  reduced acceptance duplication, shortened artifact retention, and recorded
+  the time-boxed September 2026 public-repository policy without changing the
+  noncommercial license or publishing a package.
 
 ## 0.6.0a1 — compressed Mechanics Alpha implementation
 

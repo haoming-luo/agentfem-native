@@ -23,6 +23,13 @@ CI is authoritative for native Windows and Linux builds/tests and also repeats
 macOS acceptance. Docker or cross-compilation may diagnose portability but
 cannot be recorded as native Windows/Linux release evidence.
 
+Routine pushes use the Linux fast tier defined in
+`docs/development/CI_GOVERNANCE.md`. This does not weaken Tier-1 acceptance:
+scientific gate candidates, platform/ABI changes, and version tags still run
+the explicit native Windows, Linux, macOS x86_64, and macOS arm64 workflow.
+Evidence documentation cites the accepted source revision rather than
+triggering a second identical matrix.
+
 ## Engineering constraints
 
 - No shell scripts are required for install, tests, or core operation.
