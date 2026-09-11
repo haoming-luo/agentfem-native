@@ -1,4 +1,4 @@
-name: native-fast-ci
+name: native-tiered-ci
 
 permissions:
   contents: read
@@ -19,13 +19,20 @@ on:
       - "LICENSE*"
       - "NOTICE"
   workflow_dispatch:
+    inputs:
+      reason:
+        description: Reason for the full Tier-1 acceptance run
+        required: false
+        default: manual gate or platform acceptance
+        type: string
 
 concurrency:
   group: fast-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
   linux-core:
+    if: ${{ github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -48,3 +55,179 @@ jobs:
         run: python -m agentfem_native.cli examples/steady_diffusion_request.json --artifact-directory work/ci-artifacts --result work/ci-result.json
       - name: Check independent lineage
         run: python tools/check_independence.py
+
+  platform-wheels:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+    name: wheel-${{ matrix.artifact }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: manylinux-x86_64
+            arch: x86_64
+          - os: windows-latest
+            artifact: windows-x86_64
+            arch: AMD64
+          - os: macos-15-intel
+            artifact: macos-x86_64
+            arch: x86_64
+          - os: macos-latest
+            artifact: macos-arm64
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      CIBW_ARCHS: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install pinned wheel builder
+        run: python -m pip install cibuildwheel==4.1.1
+      - name: Build and test CPython 3.11 Stable-ABI wheel
+        run: python -m cibuildwheel --output-dir wheelhouse
+      - name: Upload ephemeral acceptance wheel
+        uses: actions/upload-artifact@v6
+        with:
+          name: agentfem-native-acceptance-wheel-${{ matrix.artifact }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+          retention-days: 5
+
+  stable-abi-python313:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+    name: abi3-python313-${{ matrix.artifact }}
+    needs: platform-wheels
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: manylinux-x86_64
+          - os: windows-latest
+            artifact: windows-x86_64
+          - os: macos-latest
+            artifact: macos-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/download-artifact@v8
+        with:
+          name: agentfem-native-acceptance-wheel-${{ matrix.artifact }}
+          path: wheelhouse
+      - name: Install CPython 3.11 Stable-ABI wheel on Python 3.13
+        run: python -c "import glob, subprocess, sys; wheels = glob.glob('wheelhouse/*.whl'); assert len(wheels) == 1 and '-abi3-' in wheels[0], wheels; subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', wheels[0]])"
+      - name: Re-run installed scientific suite
+        run: python -m unittest discover -v
+      - name: Require matching packaged native ABI
+        run: python -c "from agentfem_native import native_kernel_identity; identity = native_kernel_identity(); assert identity['available'] and identity['abi_version'] == identity['required_abi_version'], identity"
+
+  cpp20-contract:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Configure standard-library C++20 kernel
+        run: cmake -S native_spikes/cpp20 -B work/cpp20-build -DCMAKE_BUILD_TYPE=Release
+      - name: Build C++20 and C ABI contracts
+        run: cmake --build work/cpp20-build --config Release
+      - name: Test numerical and C-header contracts
+        run: ctest --test-dir work/cpp20-build -C Release --output-on-failure
+
+  cpp20-sanitizers:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Configure sanitizers
+        run: cmake -S native_spikes/cpp20 -B work/cpp20-sanitize -DCMAKE_BUILD_TYPE=Debug -DAFN_ENABLE_SANITIZERS=ON
+      - name: Build sanitized C++20 kernel
+        run: cmake --build work/cpp20-sanitize
+      - name: Test sanitized numerical contract
+        run: ctest --test-dir work/cpp20-sanitize --output-on-failure
+
+  rust-comparator:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
+      - name: Check and test dependency-free Rust comparator
+        run: |
+          cargo +1.98.1 fmt --manifest-path native_spikes/rust/Cargo.toml -- --check
+          cargo +1.98.1 clippy --locked --manifest-path native_spikes/rust/Cargo.toml -- -D warnings
+          cargo +1.98.1 test --release --locked --manifest-path native_spikes/rust/Cargo.toml
+          cargo +1.98.1 build --release --locked --manifest-path native_spikes/rust/Cargo.toml
+      - name: Install packaged C++20 runtime
+        run: python -m pip install --upgrade pip .
+      - name: Compare C++20, Rust, and NumPy outputs
+        run: python tools/verify_language_equivalence.py
+
+  wheel-manifest:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+    needs: platform-wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: agentfem-native-acceptance-wheel-*
+          path: wheelhouse
+          merge-multiple: true
+      - name: Create machine-readable artifact manifest
+        run: python tools/build_artifact_manifest.py wheelhouse --output wheel-manifest.json
+      - name: Upload acceptance manifest
+        uses: actions/upload-artifact@v6
+        with:
+          name: agentfem-native-acceptance-wheel-manifest
+          path: wheel-manifest.json
+          if-no-files-found: error
+          retention-days: 5
+
+  acceptance-summary:
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')) }}
+    needs:
+      - platform-wheels
+      - stable-abi-python313
+      - cpp20-contract
+      - cpp20-sanitizers
+      - rust-comparator
+      - wheel-manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every acceptance family to pass
+        run: python -c "results = ['${{ needs.platform-wheels.result }}', '${{ needs.stable-abi-python313.result }}', '${{ needs.cpp20-contract.result }}', '${{ needs.cpp20-sanitizers.result }}', '${{ needs.rust-comparator.result }}', '${{ needs.wheel-manifest.result }}']; assert all(result == 'success' for result in results), results"
