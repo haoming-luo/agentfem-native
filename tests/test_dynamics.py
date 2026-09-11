@@ -9,7 +9,14 @@ import numpy as np
 from agentfem_native.dynamics import (
     LinearSecondOrderSystem,
     assemble_t3_mass,
+    build_t3_linear_dynamics,
+    integrate_constrained_linear_dynamics,
     integrate_linear_dynamics,
+)
+from agentfem_native.elasticity import (
+    DisplacementCondition,
+    LinearElasticMaterial,
+    LinearElasticProblem,
 )
 from agentfem_native.mesh import unit_square_triangles
 from agentfem_native.sparse import CSRMatrix
@@ -44,6 +51,27 @@ class T3MassTests(unittest.TestCase):
             np.testing.assert_allclose(nodal.sum(axis=0), (1.0, 1.0), atol=2.0e-16)
         np.testing.assert_allclose(lumped.data, consistent.matvec(ones))
 
+    def test_t3_mesh_to_transient_result_preserves_fixed_boundary(self) -> None:
+        mesh = unit_square_triangles(2)
+        initial = np.zeros((mesh.node_count, 2))
+        initial[mesh.nodes("right"), 0] = 0.01
+        problem = LinearElasticProblem(
+            mesh,
+            LinearElasticMaterial(100.0, 0.25),
+            dirichlet=(DisplacementCondition("left", None, (0.0, 0.0)),),
+        )
+        system, constrained = build_t3_linear_dynamics(
+            problem,
+            1.0,
+            time_step=0.001,
+            steps=20,
+            initial_displacement=initial,
+        )
+        result = integrate_constrained_linear_dynamics(system, constrained)
+        np.testing.assert_array_equal(result.displacement[:, constrained], 0.0)
+        self.assertEqual(result.reaction.shape, (21, constrained.size))
+        self.assertTrue(np.all(np.isfinite(result.energy_balance_error)))
+
 
 class LinearDynamicsTests(unittest.TestCase):
     def test_central_difference_has_second_order_error_trend(self) -> None:
@@ -60,6 +88,27 @@ class LinearDynamicsTests(unittest.TestCase):
             _oscillator(0.1, 100), method="newmark_average_acceleration"
         )
         np.testing.assert_allclose(result.total_energy, 2.0, atol=2.0e-13)
+        np.testing.assert_allclose(result.external_work, 0.0, atol=0.0)
+        np.testing.assert_allclose(result.energy_balance_error, 0.0, atol=2.0e-13)
+
+    def test_newmark_forced_motion_closes_external_work_ledger(self) -> None:
+        system = LinearSecondOrderSystem(
+            stiffness=_diagonal((4.0,)),
+            mass=_diagonal((1.0,)),
+            load=np.ones(1),
+            time_step=0.01,
+            steps=100,
+            initial_displacement=np.zeros(1),
+            initial_velocity=np.zeros(1),
+        )
+        result = integrate_linear_dynamics(
+            system, method="newmark_average_acceleration"
+        )
+        np.testing.assert_allclose(
+            result.total_energy - result.total_energy[0],
+            result.external_work,
+            atol=2.0e-13,
+        )
 
     def test_checkpoint_restart_reproduces_uninterrupted_trajectory(self) -> None:
         complete = integrate_linear_dynamics(_oscillator(0.02, 100))
@@ -87,6 +136,40 @@ class LinearDynamicsTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "diagonal mass"):
             integrate_linear_dynamics(system)
+
+    def test_zero_constraint_reduction_recovers_dynamic_reaction(self) -> None:
+        stiffness = CSRMatrix.from_coo(
+            (2, 2), [0, 0, 1, 1], [0, 1, 0, 1], [1.0, -1.0, -1.0, 1.0]
+        )
+        system = LinearSecondOrderSystem(
+            stiffness=stiffness,
+            mass=_diagonal((1.0, 1.0)),
+            load=np.zeros(2),
+            time_step=0.02,
+            steps=50,
+            initial_displacement=np.array((0.0, 1.0)),
+            initial_velocity=np.zeros(2),
+        )
+        constrained = integrate_constrained_linear_dynamics(system, [0])
+        reduced = integrate_linear_dynamics(
+            LinearSecondOrderSystem(
+                _diagonal((1.0,)),
+                _diagonal((1.0,)),
+                np.zeros(1),
+                0.02,
+                50,
+                np.ones(1),
+                np.zeros(1),
+            )
+        )
+        np.testing.assert_array_equal(constrained.displacement[:, 0], 0.0)
+        np.testing.assert_array_equal(
+            constrained.displacement[:, 1], reduced.displacement[:, 0]
+        )
+        np.testing.assert_allclose(
+            constrained.reaction[:, 0], -constrained.displacement[:, 1], atol=1.0e-15
+        )
+        self.assertEqual(constrained.checkpoint().displacement.shape, (2,))
 
 
 if __name__ == "__main__":

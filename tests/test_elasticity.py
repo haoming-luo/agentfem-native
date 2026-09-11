@@ -113,6 +113,46 @@ class T3ElementTests(unittest.TestCase):
 
 
 class LinearElasticitySolveTests(unittest.TestCase):
+    def test_cantilever_response_obeys_midplane_symmetry(self) -> None:
+        base = unit_square_triangles(8)
+        points = np.array(base.points, copy=True)
+        points[:, 0] *= 4.0
+        points[:, 1] -= 0.5
+        lookup = {
+            (round(float(x), 12), round(float(y), 12)): index
+            for index, (x, y) in enumerate(points)
+        }
+        reflected_nodes = np.array(
+            [lookup[(round(float(x), 12), round(float(-y), 12))] for x, y in points]
+        )
+        lower = base.cells[points[base.cells, 1].mean(axis=1) < 0.0]
+        symmetric_cells = np.vstack((lower, reflected_nodes[lower]))
+        mesh = TriangularMesh(
+            points,
+            symmetric_cells,
+            node_sets=base.node_sets,
+            boundary_sets=base.boundary_sets,
+        )
+        result = solve_linear_elasticity(
+            LinearElasticProblem(
+                mesh,
+                LinearElasticMaterial(1.0e5, 0.3),
+                dirichlet=(DisplacementCondition("left", None, (0.0, 0.0)),),
+                traction=(TractionCondition("right", (0.0, -1.0)),),
+            )
+        )
+        np.testing.assert_allclose(
+            result.displacements[:, 0],
+            -result.displacements[reflected_nodes, 0],
+            atol=2.0e-13,
+        )
+        np.testing.assert_allclose(
+            result.displacements[:, 1],
+            result.displacements[reflected_nodes, 1],
+            atol=2.0e-13,
+        )
+        self.assertLess(result.displacements[mesh.nodes("right"), 1].mean(), 0.0)
+
     def test_pure_shear_and_uniform_dilatation_patches(self) -> None:
         mesh = unit_square_triangles(3)
         modulus, ratio = 120.0, 0.25

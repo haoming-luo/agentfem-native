@@ -11,6 +11,7 @@ from typing import Literal, TypeAlias
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from .elasticity import LinearElasticProblem
 from .geometry import AffineTriangleMap
 from .mesh import TriangularMesh
 from .runtime import ExecutionContext
@@ -19,6 +20,7 @@ from .sparse import CSRMatrix, conjugate_gradient
 FloatArray: TypeAlias = NDArray[np.float64]
 Integrator = Literal["central_difference", "newmark_average_acceleration"]
 TimeLoad = ArrayLike | Callable[[float], ArrayLike]
+TimeScale = float | Callable[[float], float]
 
 
 def assemble_t3_mass(
@@ -142,6 +144,10 @@ class LinearDynamicsResult:
     kinetic_energy: FloatArray
     strain_energy: FloatArray
     total_energy: FloatArray
+    external_work: FloatArray
+    energy_balance_error: FloatArray
+    constrained_dofs: NDArray[np.int64]
+    reaction: FloatArray
 
     def __post_init__(self) -> None:
         for name in (
@@ -152,12 +158,20 @@ class LinearDynamicsResult:
             "kinetic_energy",
             "strain_energy",
             "total_energy",
+            "external_work",
+            "energy_balance_error",
+            "reaction",
         ):
             values = np.array(getattr(self, name), dtype=np.float64, copy=True)
             if not np.all(np.isfinite(values)):
                 raise ValueError("Dynamic result history must be finite.")
             values.setflags(write=False)
             object.__setattr__(self, name, values)
+        constrained = np.array(self.constrained_dofs, dtype=np.int64, copy=True)
+        if constrained.ndim != 1:
+            raise ValueError("Dynamic constrained DOFs must be a vector.")
+        constrained.setflags(write=False)
+        object.__setattr__(self, "constrained_dofs", constrained)
 
     def checkpoint(self, index: int = -1) -> DynamicCheckpoint:
         normalized = index if index >= 0 else self.times.size + index
@@ -245,6 +259,21 @@ def _energies(
     return kinetic, strain, kinetic + strain
 
 
+def _principal_submatrix(matrix: CSRMatrix, active: NDArray[np.int64]) -> CSRMatrix:
+    if matrix.shape[0] != matrix.shape[1]:
+        raise ValueError("Constrained dynamics requires square operators.")
+    inverse = np.full(matrix.shape[0], -1, dtype=np.int64)
+    inverse[active] = np.arange(active.size, dtype=np.int64)
+    rows = matrix.row_indices()
+    selected = (inverse[rows] >= 0) & (inverse[matrix.indices] >= 0)
+    return CSRMatrix.from_coo(
+        (active.size, active.size),
+        inverse[rows[selected]],
+        inverse[matrix.indices[selected]],
+        matrix.data[selected],
+    )
+
+
 def integrate_linear_dynamics(
     system: LinearSecondOrderSystem,
     *,
@@ -284,12 +313,14 @@ def integrate_linear_dynamics(
     kinetic = np.empty(count, dtype=np.float64)
     strain = np.empty(count, dtype=np.float64)
     total = np.empty(count, dtype=np.float64)
+    external_work = np.zeros(count, dtype=np.float64)
     displacements[0] = displacement
     velocities[0] = velocity
     accelerations[0] = acceleration
     kinetic[0], strain[0], total[0] = _energies(
         system.mass, system.stiffness, displacement, velocity
     )
+    previous_load = _load_at(system.load, start_time, size)
     dt = system.time_step
     if method == "central_difference":
         diagonal = system.mass.diagonal()
@@ -304,9 +335,9 @@ def integrate_linear_dynamics(
             next_displacement = (
                 displacement + dt * velocity + 0.5 * dt * dt * acceleration
             )
+            next_load = _load_at(system.load, float(times[index]), size)
             next_acceleration = inverse_mass * (
-                _load_at(system.load, float(times[index]), size)
-                - system.stiffness.matvec(next_displacement)
+                next_load - system.stiffness.matvec(next_displacement)
             )
             next_velocity = velocity + 0.5 * dt * (acceleration + next_acceleration)
             displacement, velocity, acceleration = (
@@ -320,6 +351,11 @@ def integrate_linear_dynamics(
             kinetic[index], strain[index], total[index] = _energies(
                 system.mass, system.stiffness, displacement, velocity
             )
+            external_work[index] = external_work[index - 1] + 0.5 * float(
+                (previous_load + next_load)
+                @ (displacements[index] - displacements[index - 1])
+            )
+            previous_load = next_load
     else:
         beta = 0.25
         gamma = 0.5
@@ -331,10 +367,10 @@ def integrate_linear_dynamics(
                 displacement + dt * velocity + dt * dt * (0.5 - beta) * acceleration
             )
             velocity_predictor = velocity + dt * (1.0 - gamma) * acceleration
+            next_load = _load_at(system.load, float(times[index]), size)
             next_acceleration = _solve_spd(
                 effective,
-                _load_at(system.load, float(times[index]), size)
-                - system.stiffness.matvec(displacement_predictor),
+                next_load - system.stiffness.matvec(displacement_predictor),
             )
             displacement = displacement_predictor + beta * dt * dt * next_acceleration
             velocity = velocity_predictor + gamma * dt * next_acceleration
@@ -345,16 +381,201 @@ def integrate_linear_dynamics(
             kinetic[index], strain[index], total[index] = _energies(
                 system.mass, system.stiffness, displacement, velocity
             )
+            external_work[index] = external_work[index - 1] + 0.5 * float(
+                (previous_load + next_load)
+                @ (displacements[index] - displacements[index - 1])
+            )
+            previous_load = next_load
     if context is not None:
         context.check("linear_dynamics", system.steps, system.steps)
     return LinearDynamicsResult(
-        method,
-        start_step,
-        times,
-        displacements,
-        velocities,
-        accelerations,
-        kinetic,
-        strain,
-        total,
+        method=method,
+        start_step=start_step,
+        times=times,
+        displacement=displacements,
+        velocity=velocities,
+        acceleration=accelerations,
+        kinetic_energy=kinetic,
+        strain_energy=strain,
+        total_energy=total,
+        external_work=external_work,
+        energy_balance_error=total - total[0] - external_work,
+        constrained_dofs=np.empty(0, dtype=np.int64),
+        reaction=np.empty((count, 0), dtype=np.float64),
+    )
+
+
+def integrate_constrained_linear_dynamics(
+    system: LinearSecondOrderSystem,
+    constrained_dofs: ArrayLike,
+    *,
+    method: Integrator = "central_difference",
+    restart: DynamicCheckpoint | None = None,
+    context: ExecutionContext | None = None,
+) -> LinearDynamicsResult:
+    """Eliminate zero fixed DOFs, integrate the free system, and recover reactions."""
+
+    constrained = np.asarray(constrained_dofs)
+    if constrained.ndim != 1 or not np.issubdtype(constrained.dtype, np.integer):
+        raise ValueError("Constrained dynamic DOFs must be an integer vector.")
+    constrained = np.array(constrained, dtype=np.int64, copy=True)
+    size = system.stiffness.shape[0]
+    if (
+        constrained.size == 0
+        or np.any(constrained < 0)
+        or np.any(constrained >= size)
+        or np.unique(constrained).size != constrained.size
+    ):
+        raise ValueError("Constrained dynamic DOFs must be unique and in range.")
+    constrained.sort()
+    if np.any(system.initial_displacement[constrained] != 0.0) or np.any(
+        system.initial_velocity[constrained] != 0.0
+    ):
+        raise ValueError(
+            "Fixed dynamic DOFs require zero initial displacement/velocity."
+        )
+    active_mask = np.ones(size, dtype=bool)
+    active_mask[constrained] = False
+    active = np.flatnonzero(active_mask).astype(np.int64)
+    if active.size == 0:
+        raise ValueError("Constrained dynamics requires at least one active DOF.")
+
+    def reduced_load(time: float) -> FloatArray:
+        return _load_at(system.load, time, size)[active]
+
+    reduced = LinearSecondOrderSystem(
+        stiffness=_principal_submatrix(system.stiffness, active),
+        mass=_principal_submatrix(system.mass, active),
+        load=reduced_load,
+        time_step=system.time_step,
+        steps=system.steps,
+        initial_displacement=system.initial_displacement[active],
+        initial_velocity=system.initial_velocity[active],
+    )
+    reduced_restart = None
+    if restart is not None:
+        if restart.displacement.shape != (size,):
+            raise ValueError("Checkpoint size does not match constrained dynamics.")
+        if np.any(restart.displacement[constrained] != 0.0) or np.any(
+            restart.velocity[constrained] != 0.0
+        ):
+            raise ValueError("Checkpoint violates zero fixed dynamic DOFs.")
+        reduced_restart = DynamicCheckpoint(
+            restart.method,
+            restart.step,
+            restart.time,
+            restart.displacement[active],
+            restart.velocity[active],
+            restart.acceleration[active],
+            _checkpoint_digest(
+                restart.method,
+                restart.step,
+                restart.time,
+                restart.displacement[active],
+                restart.velocity[active],
+                restart.acceleration[active],
+            ),
+        )
+    result = integrate_linear_dynamics(
+        reduced, method=method, restart=reduced_restart, context=context
+    )
+    count = result.times.size
+    displacement = np.zeros((count, size), dtype=np.float64)
+    velocity = np.zeros_like(displacement)
+    acceleration = np.zeros_like(displacement)
+    displacement[:, active] = result.displacement
+    velocity[:, active] = result.velocity
+    acceleration[:, active] = result.acceleration
+    reaction = np.empty((count, constrained.size), dtype=np.float64)
+    for index, time in enumerate(result.times):
+        residual = (
+            system.mass.matvec(acceleration[index])
+            + system.stiffness.matvec(displacement[index])
+            - _load_at(system.load, float(time), size)
+        )
+        reaction[index] = residual[constrained]
+    return LinearDynamicsResult(
+        method=result.method,
+        start_step=result.start_step,
+        times=result.times,
+        displacement=displacement,
+        velocity=velocity,
+        acceleration=acceleration,
+        kinetic_energy=result.kinetic_energy,
+        strain_energy=result.strain_energy,
+        total_energy=result.total_energy,
+        external_work=result.external_work,
+        energy_balance_error=result.energy_balance_error,
+        constrained_dofs=constrained,
+        reaction=reaction,
+    )
+
+
+def build_t3_linear_dynamics(
+    problem: LinearElasticProblem,
+    density: float,
+    *,
+    time_step: float,
+    steps: int,
+    initial_displacement: ArrayLike | None = None,
+    initial_velocity: ArrayLike | None = None,
+    load_scale: TimeScale = 1.0,
+    lumped_mass: bool = True,
+) -> tuple[LinearSecondOrderSystem, NDArray[np.int64]]:
+    """Build a zero-fixed T3 structural dynamics system from owned FEM semantics."""
+
+    from .elasticity import _collect_displacements, assemble_linear_elasticity
+
+    if not isinstance(problem, LinearElasticProblem):
+        raise TypeError("T3 dynamics requires a LinearElasticProblem.")
+    matrix, static_load, dofs = assemble_linear_elasticity(problem)
+    constrained, prescribed = _collect_displacements(problem, dofs)
+    if np.any(prescribed != 0.0):
+        raise ValueError("T3 dynamics currently admits only zero fixed displacements.")
+    size = dofs.size
+
+    def state_values(value: ArrayLike | None, *, name: str) -> FloatArray:
+        if value is None:
+            return np.zeros(size, dtype=np.float64)
+        values = np.asarray(value, dtype=np.float64)
+        if values.shape == (problem.mesh.node_count, 2):
+            values = values.ravel()
+        if values.shape != (size,) or not np.all(np.isfinite(values)):
+            raise ValueError(f"{name} must be a finite nodal vector field.")
+        return np.array(values, copy=True)
+
+    displacement = state_values(initial_displacement, name="Initial displacement")
+    velocity = state_values(initial_velocity, name="Initial velocity")
+    if np.any(displacement[constrained] != 0.0) or np.any(velocity[constrained] != 0.0):
+        raise ValueError("T3 initial state violates fixed displacement conditions.")
+
+    def scaled_load(time: float) -> FloatArray:
+        raw = load_scale(time) if callable(load_scale) else load_scale
+        if isinstance(raw, (bool, np.bool_)):
+            raise TypeError("Dynamic load scale must be a real scalar.")
+        scale = float(raw)
+        if not np.isfinite(scale):
+            raise ValueError("Dynamic load scale must be finite.")
+        return scale * static_load
+
+    stiffness = CSRMatrix.from_coo(
+        matrix.shape, matrix.rows, matrix.columns, matrix.data
+    )
+    mass = assemble_t3_mass(
+        problem.mesh,
+        density,
+        thickness=problem.thickness,
+        lumped=lumped_mass,
+    )
+    return (
+        LinearSecondOrderSystem(
+            stiffness,
+            mass,
+            scaled_load,
+            time_step,
+            steps,
+            displacement,
+            velocity,
+        ),
+        constrained,
     )

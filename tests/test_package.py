@@ -9,7 +9,7 @@ import agentfem_native
 
 class PackageTests(unittest.TestCase):
     def test_public_version_and_gate_one_api(self) -> None:
-        self.assertEqual(agentfem_native.__version__, "0.6.0a1")
+        self.assertEqual(agentfem_native.__version__, "0.7.0a1")
         self.assertGreaterEqual(
             set(agentfem_native.__all__),
             {
@@ -24,6 +24,7 @@ class PackageTests(unittest.TestCase):
                 "DirichletCondition",
                 "DisplacementCondition",
                 "ExecutionPlan",
+                "ExecutionReceipt",
                 "KernelRequestError",
                 "LinearElasticMaterial",
                 "LinearElasticProblem",
@@ -31,6 +32,7 @@ class PackageTests(unittest.TestCase):
                 "LinearSolveError",
                 "NeumannCondition",
                 "NativeSparseProvider",
+                "NativeInterchangeBundle",
                 "NumpyDenseProvider",
                 "ProviderIdentity",
                 "ProviderUnavailableError",
@@ -43,6 +45,8 @@ class PackageTests(unittest.TestCase):
                 "VectorDofMap",
                 "assemble_linear_elasticity",
                 "conjugate_gradient",
+                "execute_plan",
+                "explain_execution",
                 "inside_reference_triangle",
                 "integrate_reference",
                 "kernel_request_schema",
@@ -59,14 +63,17 @@ class PackageTests(unittest.TestCase):
                 "p1_elastic_stiffness",
                 "p1_strain_displacement",
                 "plan_linear_elasticity",
+                "plan_linear_elasticity_3d",
                 "plan_steady_diffusion",
                 "run_kernel_request",
                 "solve_steady_diffusion",
                 "solve_linear_elasticity",
+                "solve_linear_elasticity_3d",
                 "triangle_rule",
                 "unit_square_triangles",
                 "unit_square_two_triangles",
                 "write_legacy_vtk",
+                "write_native_bundle",
             },
         )
 

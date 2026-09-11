@@ -20,12 +20,13 @@ from agentfem_native.elasticity import (
     assemble_linear_elasticity,
 )
 from agentfem_native.mesh import unit_square_triangles
-from agentfem_native.native import native_kernel_identity
+from agentfem_native.native import csr_spmv, native_kernel_identity
 from agentfem_native.solid import (
     LinearElastic3DProblem,
     SolidDisplacementCondition,
     SolidElasticMaterial,
     SolidTractionCondition,
+    assemble_linear_elasticity_3d,
     solve_linear_elasticity_3d,
 )
 from agentfem_native.sparse import BSRMatrix, CSRMatrix
@@ -77,6 +78,19 @@ def main() -> int:
     vector = np.linspace(-1.0, 1.0, reference.shape[0])
     reference_scale = float(np.max(np.abs(reference.data)))
     reference_image = matrices["native"].matvec(vector)
+    csr_reference_median, csr_reference_image = _median(
+        lambda: matrices["native"].matvec_reference(vector), arguments.repetitions
+    )
+    csr_native_median, csr_native_image = _median(
+        lambda: csr_spmv(
+            matrices["native"].shape,
+            matrices["native"].indptr,
+            matrices["native"].indices,
+            matrices["native"].data,
+            vector,
+        ),
+        arguments.repetitions,
+    )
     t4_mesh = unit_cube_tetrahedra(3)
     t4_problem = LinearElastic3DProblem(
         t4_mesh,
@@ -88,7 +102,21 @@ def main() -> int:
         ),
         traction=(SolidTractionCondition("right", (1.0, 0.0, 0.0)),),
     )
-    t4_median, t4_result = _median(
+    t4_assembly = {}
+    t4_matrices = {}
+    t4_loads = {}
+    for mode in ("reference", "native"):
+        median, assembled = _median(
+            lambda mode=mode: assemble_linear_elasticity_3d(t4_problem, assembly=mode),
+            arguments.repetitions,
+        )
+        matrix, load, _ = assembled
+        t4_assembly[mode] = {"median_seconds": median}
+        t4_matrices[mode] = CSRMatrix.from_coo(
+            matrix.shape, matrix.rows, matrix.columns, matrix.data
+        )
+        t4_loads[mode] = load
+    t4_solve_median, t4_result = _median(
         lambda: solve_linear_elasticity_3d(t4_problem), arguments.repetitions
     )
     one = CSRMatrix.from_coo((1, 1), [0], [0], [1.0])
@@ -98,7 +126,7 @@ def main() -> int:
         lambda: integrate_linear_dynamics(dynamic), arguments.repetitions
     )
     record = {
-        "schema": "agentfem-native.mechanics-alpha-benchmark/0.1",
+        "schema": "agentfem-native.mechanics-alpha-benchmark/0.2",
         "environment": {
             "agentfem_native": __version__,
             "python": platform.python_version(),
@@ -141,12 +169,35 @@ def main() -> int:
                 np.max(np.abs(blocked.matvec(vector) - reference_image))
                 / np.max(np.abs(reference_image))
             ),
+            "csr_spmv": {
+                "reference_median_seconds": csr_reference_median,
+                "native_median_seconds": csr_native_median,
+                "native_speedup_over_reference": (
+                    csr_reference_median / csr_native_median
+                ),
+                "maximum_difference": float(
+                    np.max(np.abs(csr_native_image - csr_reference_image))
+                ),
+            },
         },
         "t4": {
             "nodes": t4_mesh.node_count,
             "cells": t4_mesh.cell_count,
             "dofs": 3 * t4_mesh.node_count,
-            "solve_median_seconds": t4_median,
+            "assembly_timings": t4_assembly,
+            "native_assembly_speedup_over_reference": (
+                t4_assembly["reference"]["median_seconds"]
+                / t4_assembly["native"]["median_seconds"]
+            ),
+            "native_max_matrix_difference": float(
+                np.max(
+                    np.abs(t4_matrices["native"].data - t4_matrices["reference"].data)
+                )
+            ),
+            "native_max_load_difference": float(
+                np.max(np.abs(t4_loads["native"] - t4_loads["reference"]))
+            ),
+            "solve_median_seconds": t4_solve_median,
             "free_residual_norm": t4_result.free_residual_norm,
             "balance_norm": float(
                 np.linalg.norm(t4_result.total_applied_force + t4_result.total_reaction)

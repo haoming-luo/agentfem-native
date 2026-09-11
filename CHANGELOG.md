@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0a1 — Mechanics Alpha P0 closure candidate
+
+- Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
+  canonical CSR SpMV, retaining readable differential oracles and automatic
+  fallback when the extension is unavailable.
+- Added T4 pure-shear/hydrostatic response and a symmetric engineering
+  cantilever, plus local assembly/operator performance evidence.
+- Added fixed-DOF linear dynamics, reaction recovery, external-work and energy-
+  balance ledgers, and a constrained T3 mesh-to-transient test.
+- Added deterministic internal mesh/field interchange and an Agent-native
+  plan/execute/explain receipt surface with budgets and honest maturity labels.
+- No public package, Gate 2/3 verification, threading/SIMD, MPI, or GPU claim is
+  made by this candidate.
+
 ## 0.6.0a1 — compressed Mechanics Alpha implementation
 
 - Added deterministic BSR, block matvec/diagonals/CSR conversion, and

@@ -9,17 +9,22 @@ from dataclasses import asdict, dataclass
 from hashlib import sha256
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from . import __version__
 from .assembly import select_assembly_mode
 from .elasticity import select_elasticity_assembly_mode
 from .native import native_kernel_identity
 from .providers import ScipySparseProvider
+from .solid import SolidAssemblyMode, select_solid_assembly_mode
 
 if TYPE_CHECKING:
     from .diffusion import SteadyDiffusionProblem
     from .dynamics import LinearSecondOrderSystem
     from .elasticity import LinearElasticProblem
+    from .mesh import TriangularMesh
     from .solid import LinearElastic3DProblem
+    from .volume_mesh import TetrahedralMesh
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +43,7 @@ class ExecutionPlan:
     peak_bytes_upper_bound: int
     provider: str
     assembly_mode: str
+    structure_digest: str
     warnings: tuple[str, ...]
     digest: str
 
@@ -56,6 +62,7 @@ def _plan(
     entries_per_cell: int,
     provider: str,
     assembly_mode: str,
+    structure_digest: str,
     warnings: tuple[str, ...] = (),
 ) -> ExecutionPlan:
     coo_entries = cell_count * entries_per_cell
@@ -77,12 +84,49 @@ def _plan(
         "peak_bytes_upper_bound": peak_bytes,
         "provider": provider,
         "assembly_mode": assembly_mode,
+        "structure_digest": structure_digest,
         "warnings": warnings,
     }
     digest = sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
     return ExecutionPlan(**payload, digest=digest)  # type: ignore[arg-type]
+
+
+def _digest_array(digest: object, values: object, dtype: str) -> None:
+    array = np.ascontiguousarray(values, dtype=dtype)
+    digest.update(np.asarray(array.shape, dtype="<i8").tobytes())
+    digest.update(array.tobytes())
+
+
+def _mesh_structure_digest(mesh: TriangularMesh | TetrahedralMesh) -> str:
+    """Bind geometry, connectivity, and named-set identity without physics."""
+
+    digest = sha256()
+    _digest_array(digest, mesh.points, "<f8")
+    _digest_array(digest, mesh.cells, "<i8")
+    for collection_name in ("node_sets", "boundary_sets", "cell_sets"):
+        digest.update(collection_name.encode("ascii"))
+        collection = getattr(mesh, collection_name)
+        for name, values in sorted(collection.items()):
+            encoded = name.encode("utf-8")
+            digest.update(len(encoded).to_bytes(8, "little"))
+            digest.update(encoded)
+            _digest_array(digest, values, "<i8")
+    return digest.hexdigest()
+
+
+def _dynamic_structure_digest(system: LinearSecondOrderSystem) -> str:
+    digest = sha256()
+    for matrix in (system.stiffness, system.mass):
+        _digest_array(digest, matrix.indptr, "<i8")
+        _digest_array(digest, matrix.indices, "<i8")
+        _digest_array(digest, matrix.data, "<f8")
+    _digest_array(digest, system.initial_displacement, "<f8")
+    _digest_array(digest, system.initial_velocity, "<f8")
+    _digest_array(digest, (system.time_step,), "<f8")
+    _digest_array(digest, (system.steps,), "<i8")
+    return digest.hexdigest()
 
 
 def _provider_name(provider: str | object | None) -> str:
@@ -134,6 +178,7 @@ def plan_steady_diffusion(
         entries_per_cell=9,
         provider=_provider_name(provider),
         assembly_mode=assembly,
+        structure_digest=_mesh_structure_digest(problem.mesh),
         warnings=warnings,
     )
 
@@ -158,14 +203,18 @@ def plan_linear_elasticity(
         entries_per_cell=36,
         provider=_provider_name(provider),
         assembly_mode=select_elasticity_assembly_mode(problem),
+        structure_digest=_mesh_structure_digest(problem.mesh),
         warnings=warnings,
     )
 
 
 def plan_linear_elasticity_3d(
-    problem: LinearElastic3DProblem, *, provider: str | object | None = None
+    problem: LinearElastic3DProblem,
+    *,
+    provider: str | object | None = None,
+    assembly: SolidAssemblyMode = "auto",
 ) -> ExecutionPlan:
-    """Estimate the readable T4 three-dimensional vertical slice."""
+    """Estimate the T4 three-dimensional vertical slice without execution."""
 
     warnings = (
         "T4 linear elasticity is implemented but Gate 2 verification is incomplete.",
@@ -181,7 +230,8 @@ def plan_linear_elasticity_3d(
         dof_count=3 * problem.mesh.node_count,
         entries_per_cell=144,
         provider=_provider_name(provider),
-        assembly_mode="reference",
+        assembly_mode=select_solid_assembly_mode(problem, assembly),
+        structure_digest=_mesh_structure_digest(problem.mesh),
         warnings=warnings,
     )
 
@@ -207,6 +257,7 @@ def plan_linear_dynamics(system: LinearSecondOrderSystem) -> ExecutionPlan:
         "peak_bytes_upper_bound": csr_bytes + history_bytes + 12 * 8 * dofs,
         "provider": "native_sparse",
         "assembly_mode": "preassembled",
+        "structure_digest": _dynamic_structure_digest(system),
         "warnings": (
             "Linear dynamics is implemented but Gate 3 verification is incomplete.",
         ),
@@ -252,6 +303,7 @@ def native_capabilities() -> dict[str, object]:
                 "format": "csr_bsr",
                 "solvers": ["cg"],
                 "preconditioners": ["jacobi", "block_jacobi"],
+                "operators": ["csr_spmv_cpp20"],
             },
             {
                 "name": "numpy_dense",

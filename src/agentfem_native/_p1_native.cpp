@@ -228,6 +228,115 @@ PyObject* assemble_t3_into(PyObject*, PyObject* arguments) {
   return PyLong_FromLong(status);
 }
 
+PyObject* assemble_t4_into(PyObject*, PyObject* arguments) {
+  Py_ssize_t node_count = 0;
+  Py_ssize_t cell_count = 0;
+  PyObject* points_object = nullptr;
+  PyObject* cells_object = nullptr;
+  PyObject* constitutive_object = nullptr;
+  PyObject* body_force_object = nullptr;
+  PyObject* rows_object = nullptr;
+  PyObject* columns_object = nullptr;
+  PyObject* data_object = nullptr;
+  PyObject* load_object = nullptr;
+  if (!PyArg_ParseTuple(arguments, "nnOOOOOOOO", &node_count, &cell_count,
+                        &points_object, &cells_object, &constitutive_object,
+                        &body_force_object, &rows_object, &columns_object,
+                        &data_object, &load_object)) {
+    return nullptr;
+  }
+  Py_ssize_t points_bytes = 0;
+  Py_ssize_t cells_bytes = 0;
+  Py_ssize_t constitutive_bytes = 0;
+  Py_ssize_t entries_bytes = 0;
+  Py_ssize_t load_bytes = 0;
+  if (!checked_bytes(node_count, 3 * 8, &points_bytes) ||
+      !checked_bytes(cell_count, 4 * 8, &cells_bytes) ||
+      !checked_bytes(cell_count, 36 * 8, &constitutive_bytes) ||
+      !checked_bytes(cell_count, 144 * 8, &entries_bytes) ||
+      !checked_bytes(node_count, 3 * 8, &load_bytes)) {
+    return nullptr;
+  }
+  BufferView points;
+  BufferView cells;
+  BufferView constitutive;
+  BufferView body_force;
+  BufferView rows;
+  BufferView columns;
+  BufferView data;
+  BufferView load;
+  if (!points.acquire(points_object, points_bytes, false, true, "points") ||
+      !cells.acquire(cells_object, cells_bytes, false, false, "cells") ||
+      !constitutive.acquire(constitutive_object, constitutive_bytes, false, true,
+                            "constitutive") ||
+      !body_force.acquire(body_force_object, 3 * 8, false, true, "body_force") ||
+      !rows.acquire(rows_object, entries_bytes, true, false, "rows") ||
+      !columns.acquire(columns_object, entries_bytes, true, false, "columns") ||
+      !data.acquire(data_object, entries_bytes, true, true, "data") ||
+      !load.acquire(load_object, load_bytes, true, true, "load")) {
+    return nullptr;
+  }
+  int status = AFN_P1_NULL_POINTER;
+  Py_BEGIN_ALLOW_THREADS
+  status = afn_t4_elasticity_assemble_cells(
+      static_cast<std::size_t>(node_count),
+      static_cast<std::size_t>(cell_count), points.data<double>(),
+      cells.data<std::int64_t>(), constitutive.data<double>(),
+      body_force.data<double>(), rows.data<std::int64_t>(),
+      columns.data<std::int64_t>(), data.data<double>(), load.data<double>());
+  Py_END_ALLOW_THREADS
+  return PyLong_FromLong(status);
+}
+
+PyObject* csr_spmv_into(PyObject*, PyObject* arguments) {
+  Py_ssize_t row_count = 0;
+  Py_ssize_t column_count = 0;
+  Py_ssize_t nonzero_count = 0;
+  PyObject* indptr_object = nullptr;
+  PyObject* indices_object = nullptr;
+  PyObject* data_object = nullptr;
+  PyObject* vector_object = nullptr;
+  PyObject* result_object = nullptr;
+  if (!PyArg_ParseTuple(arguments, "nnnOOOOO", &row_count, &column_count,
+                        &nonzero_count, &indptr_object, &indices_object,
+                        &data_object, &vector_object, &result_object)) {
+    return nullptr;
+  }
+  Py_ssize_t indptr_bytes = 0;
+  Py_ssize_t entries_bytes = 0;
+  Py_ssize_t vector_bytes = 0;
+  Py_ssize_t result_bytes = 0;
+  if (row_count == std::numeric_limits<Py_ssize_t>::max() ||
+      !checked_bytes(row_count + 1, 8, &indptr_bytes) ||
+      !checked_bytes(nonzero_count, 8, &entries_bytes) ||
+      !checked_bytes(column_count, 8, &vector_bytes) ||
+      !checked_bytes(row_count, 8, &result_bytes)) {
+    return nullptr;
+  }
+  BufferView indptr;
+  BufferView indices;
+  BufferView data;
+  BufferView vector;
+  BufferView result;
+  if (!indptr.acquire(indptr_object, indptr_bytes, false, false, "indptr") ||
+      !indices.acquire(indices_object, entries_bytes, false, false, "indices") ||
+      !data.acquire(data_object, entries_bytes, false, true, "data") ||
+      !vector.acquire(vector_object, vector_bytes, false, true, "vector") ||
+      !result.acquire(result_object, result_bytes, true, true, "result")) {
+    return nullptr;
+  }
+  int status = AFN_P1_NULL_POINTER;
+  Py_BEGIN_ALLOW_THREADS
+  status = afn_csr_spmv(
+      static_cast<std::size_t>(row_count),
+      static_cast<std::size_t>(column_count),
+      static_cast<std::size_t>(nonzero_count), indptr.data<std::int64_t>(),
+      indices.data<std::int64_t>(), data.data<double>(), vector.data<double>(),
+      result.data<double>());
+  Py_END_ALLOW_THREADS
+  return PyLong_FromLong(status);
+}
+
 PyMethodDef methods[] = {
     {"abi_version", abi_version, METH_NOARGS,
      "Return the encoded AgentFEM Native P1 C ABI version."},
@@ -235,6 +344,10 @@ PyMethodDef methods[] = {
      "Fill owned contiguous output buffers using the C++20 P1 kernel."},
     {"assemble_t3_into", assemble_t3_into, METH_VARARGS,
      "Fill T3 elasticity COO and load buffers using the C++20 kernel."},
+    {"assemble_t4_into", assemble_t4_into, METH_VARARGS,
+     "Fill T4 elasticity COO and load buffers using the C++20 kernel."},
+    {"csr_spmv_into", csr_spmv_into, METH_VARARGS,
+     "Apply an immutable canonical CSR matrix using the C++20 kernel."},
     {nullptr, nullptr, 0, nullptr},
 };
 

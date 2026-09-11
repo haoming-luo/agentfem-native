@@ -4,8 +4,8 @@ AgentFEM Native is the independently developed finite-element engine for
 AgentFEM. It is an official autonomous computation backend, not a FEniCSx
 fork and not a second end-user product.
 
-The repository has **completed Gate 1** and now has an implemented Gate 2 T3
-reference slice. The
+The repository has **completed Gate 1** and now has implemented T3/T4 Gate 2
+vertical slices plus a linear Gate 3 candidate. The
 verified serial kernel solves two-dimensional steady scalar diffusion on
 affine P1 triangles with named node, boundary, and material regions;
 scalar, spatially varying, or symmetric positive-definite tensor
@@ -16,7 +16,10 @@ stress/strain, body and traction loads, displacement constraints, reactions,
 energy, and cell stress/strain recovery. Static diffusion problems
 automatically use the packaged C++20 kernel when its ABI is available, with
 bounded vectorized NumPy as the portable fallback; callable fields retain the
-element-by-element oracle. A measured C++/Rust comparison selected C++20 as
+element-by-element oracle. C++20 ABI 1.2 also accelerates T3/T4 volume assembly
+and nontrivial canonical CSR SpMV. Fixed-DOF linear dynamics, external-work and
+energy evidence, internal mesh/result interchange, and Agent plan/execute/
+explain receipts are implemented without making AF-IR a core dependency. A measured C++/Rust comparison selected C++20 as
 the production compiled-kernel direction. Native installability and scientific
 checks pass on all Tier-1 platforms. The API remains experimental because it
 is pre-1.0; optional AF-IR promotion is no longer a Native gate blocker.
@@ -43,8 +46,8 @@ support is defined by the same public contract, scientific tests, package
 build, and independence checks passing on each operating system; it is not
 implemented as separate physics forks. Local development validates macOS;
 GitHub CI owns the authoritative native Windows and Linux acceptance runs.
-The current hosted baseline is GitHub Actions run `33834926337` at commit
-`2abd07c`. Its wheels are short-lived private CI installation-test artifacts,
+The current hosted baseline is GitHub Actions run `34099971074` at commit
+`07b39e9`; the ABI 1.2 candidate still awaits its own hosted run. CI wheels are short-lived private installation-test artifacts,
 not a public package release; the project is still in rapid iteration and has
 not published to PyPI or GitHub Releases.
 
@@ -60,7 +63,7 @@ python tools/bootstrap_env.py --agentfem /path/to/agentfem
 
 For this development checkout, the active `.venv` contains editable
 AgentFEM 0.3.1 from the clean local `agentfem-main-worktree` and editable
-AgentFEM Native 0.5.0a1 with its C++20 extension and optional SciPy provider.
+AgentFEM Native 0.7.0a1 with its C++20 extension and optional SciPy provider.
 Installing both does not make AgentFEM or FEniCSx a Native runtime dependency;
 their communication remains the public contract.
 
@@ -95,6 +98,8 @@ The owned sparse and first mechanics evidence is in
 [docs/verification/PERFORMANCE_P3_REPORT.md](docs/verification/PERFORMANCE_P3_REPORT.md)
 and
 [docs/verification/GATE_2_T3_REFERENCE_REPORT.md](docs/verification/GATE_2_T3_REFERENCE_REPORT.md).
+The latest P0-closure evidence is in
+[docs/verification/MECHANICS_ALPHA_0_2_REPORT.md](docs/verification/MECHANICS_ALPHA_0_2_REPORT.md).
 The long-term technical thesis is recorded in
 [docs/charter/NATIVE_VISION_2035.md](docs/charter/NATIVE_VISION_2035.md).
 

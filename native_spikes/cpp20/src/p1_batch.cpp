@@ -56,6 +56,50 @@ bool positive_definite_constitutive(const double* matrix) {
          determinant > tolerance * scale * scale;
 }
 
+template <std::size_t Size>
+bool positive_definite_symmetric(const double* matrix) {
+  double scale = 1.0;
+  for (std::size_t row = 0; row < Size; ++row) {
+    double row_scale = 0.0;
+    for (std::size_t column = 0; column < Size; ++column) {
+      const double value = matrix[Size * row + column];
+      if (!std::isfinite(value)) {
+        return false;
+      }
+      row_scale += std::abs(value);
+    }
+    scale = std::max(scale, row_scale);
+  }
+  const double tolerance =
+      64.0 * std::numeric_limits<double>::epsilon() * scale;
+  std::array<double, Size * Size> lower{};
+  for (std::size_t row = 0; row < Size; ++row) {
+    for (std::size_t column = 0; column < row; ++column) {
+      if (std::abs(matrix[Size * row + column] -
+                   matrix[Size * column + row]) > tolerance) {
+        return false;
+      }
+    }
+    for (std::size_t column = 0; column <= row; ++column) {
+      double value = matrix[Size * row + column];
+      for (std::size_t inner = 0; inner < column; ++inner) {
+        value -= lower[Size * row + inner] *
+                 lower[Size * column + inner];
+      }
+      if (row == column) {
+        if (!std::isfinite(value) || value <= tolerance) {
+          return false;
+        }
+        lower[Size * row + column] = std::sqrt(value);
+      } else {
+        lower[Size * row + column] =
+            value / lower[Size * column + column];
+      }
+    }
+  }
+  return true;
+}
+
 std::array<double, 3> strain_column(
     const std::array<std::array<double, 2>, 3>& gradients,
     const std::size_t local_dof) {
@@ -64,6 +108,23 @@ std::array<double, 3> strain_column(
     return {{gradients[node][0], 0.0, gradients[node][1]}};
   }
   return {{0.0, gradients[node][1], gradients[node][0]}};
+}
+
+std::array<double, 6> solid_strain_column(
+    const std::array<std::array<double, 3>, 4>& gradients,
+    const std::size_t local_dof) {
+  const std::size_t node = local_dof / 3;
+  const std::size_t component = local_dof % 3;
+  const double gx = gradients[node][0];
+  const double gy = gradients[node][1];
+  const double gz = gradients[node][2];
+  if (component == 0) {
+    return {{gx, 0.0, 0.0, gy, 0.0, gz}};
+  }
+  if (component == 1) {
+    return {{0.0, gy, 0.0, gx, gz, 0.0}};
+  }
+  return {{0.0, 0.0, gz, 0.0, gy, gx}};
 }
 
 int assemble_impl(
@@ -220,7 +281,11 @@ extern "C" AFN_API int afn_t3_elasticity_assemble_cells(
     return AFN_P1_NULL_POINTER;
   }
   if (node_count > std::numeric_limits<std::size_t>::max() / 2 ||
-      cell_count > std::numeric_limits<std::size_t>::max() / 36) {
+      cell_count > std::numeric_limits<std::size_t>::max() / 36 ||
+      node_count - 1 >
+          static_cast<std::size_t>(
+              std::numeric_limits<std::int64_t>::max()) /
+              2) {
     return AFN_P1_INVALID_CELL;
   }
   if (!std::isfinite(thickness) || thickness <= 0.0 ||
@@ -297,6 +362,205 @@ extern "C" AFN_API int afn_t3_elasticity_assemble_cells(
         }
       }
     }
+  }
+  return AFN_P1_SUCCESS;
+}
+
+extern "C" AFN_API int afn_t4_elasticity_assemble_cells(
+    const std::size_t node_count,
+    const std::size_t cell_count,
+    const double* points_xyz,
+    const std::int64_t* cells,
+    const double* constitutive_cells_6x6,
+    const double* body_force_xyz,
+    std::int64_t* rows,
+    std::int64_t* columns,
+    double* data,
+    double* load) {
+  if (node_count == 0 || cell_count == 0 || points_xyz == nullptr ||
+      cells == nullptr || constitutive_cells_6x6 == nullptr ||
+      body_force_xyz == nullptr || rows == nullptr || columns == nullptr ||
+      data == nullptr || load == nullptr) {
+    return AFN_P1_NULL_POINTER;
+  }
+  if (node_count > std::numeric_limits<std::size_t>::max() / 3 ||
+      cell_count > std::numeric_limits<std::size_t>::max() / 144 ||
+      node_count - 1 >
+          static_cast<std::size_t>(
+              std::numeric_limits<std::int64_t>::max()) /
+              3) {
+    return AFN_P1_INVALID_CELL;
+  }
+  for (std::size_t component = 0; component < 3; ++component) {
+    if (!std::isfinite(body_force_xyz[component])) {
+      return AFN_P1_NONFINITE_INPUT;
+    }
+  }
+  std::fill(load, load + 3 * node_count, 0.0);
+  for (std::size_t cell_index = 0; cell_index < cell_count; ++cell_index) {
+    const double* constitutive = constitutive_cells_6x6 + 36 * cell_index;
+    if (!positive_definite_symmetric<6>(constitutive)) {
+      return AFN_P1_INVALID_CONDUCTIVITY;
+    }
+    const std::int64_t* cell = cells + 4 * cell_index;
+    for (std::size_t local = 0; local < 4; ++local) {
+      if (cell[local] < 0 ||
+          static_cast<std::size_t>(cell[local]) >= node_count) {
+        return AFN_P1_INVALID_CELL;
+      }
+      for (std::size_t prior = 0; prior < local; ++prior) {
+        if (cell[local] == cell[prior]) {
+          return AFN_P1_INVALID_CELL;
+        }
+      }
+    }
+    std::array<std::array<double, 3>, 4> point{};
+    for (std::size_t local = 0; local < 4; ++local) {
+      for (std::size_t component = 0; component < 3; ++component) {
+        point[local][component] =
+            points_xyz[3 * cell[local] + component];
+        if (!std::isfinite(point[local][component])) {
+          return AFN_P1_NONFINITE_INPUT;
+        }
+      }
+    }
+    const double a00 = point[1][0] - point[0][0];
+    const double a10 = point[1][1] - point[0][1];
+    const double a20 = point[1][2] - point[0][2];
+    const double a01 = point[2][0] - point[0][0];
+    const double a11 = point[2][1] - point[0][1];
+    const double a21 = point[2][2] - point[0][2];
+    const double a02 = point[3][0] - point[0][0];
+    const double a12 = point[3][1] - point[0][1];
+    const double a22 = point[3][2] - point[0][2];
+    const double determinant =
+        a00 * (a11 * a22 - a12 * a21) -
+        a01 * (a10 * a22 - a12 * a20) +
+        a02 * (a10 * a21 - a11 * a20);
+    const double edge_scale = std::max(
+        {std::hypot(a00, a10, a20), std::hypot(a01, a11, a21),
+         std::hypot(a02, a12, a22)});
+    const double threshold = 64.0 * std::numeric_limits<double>::epsilon() *
+                             edge_scale * edge_scale * edge_scale;
+    if (std::abs(determinant) <= threshold) {
+      return AFN_P1_INVALID_CELL;
+    }
+    const double inverse_determinant = 1.0 / determinant;
+    const std::array<std::array<double, 3>, 3> inverse{{
+        {{(a11 * a22 - a12 * a21) * inverse_determinant,
+          (a02 * a21 - a01 * a22) * inverse_determinant,
+          (a01 * a12 - a02 * a11) * inverse_determinant}},
+        {{(a12 * a20 - a10 * a22) * inverse_determinant,
+          (a00 * a22 - a02 * a20) * inverse_determinant,
+          (a02 * a10 - a00 * a12) * inverse_determinant}},
+        {{(a10 * a21 - a11 * a20) * inverse_determinant,
+          (a01 * a20 - a00 * a21) * inverse_determinant,
+          (a00 * a11 - a01 * a10) * inverse_determinant}},
+    }};
+    const std::array<std::array<double, 3>, 4> reference{{
+        {{-1.0, -1.0, -1.0}},
+        {{1.0, 0.0, 0.0}},
+        {{0.0, 1.0, 0.0}},
+        {{0.0, 0.0, 1.0}},
+    }};
+    std::array<std::array<double, 3>, 4> gradients{};
+    for (std::size_t node = 0; node < 4; ++node) {
+      for (std::size_t physical = 0; physical < 3; ++physical) {
+        for (std::size_t reference_axis = 0; reference_axis < 3;
+             ++reference_axis) {
+          gradients[node][physical] +=
+              reference[node][reference_axis] *
+              inverse[reference_axis][physical];
+        }
+      }
+    }
+    const double volume = std::abs(determinant) / 6.0;
+    for (std::size_t local_node = 0; local_node < 4; ++local_node) {
+      for (std::size_t component = 0; component < 3; ++component) {
+        const std::size_t local_row = 3 * local_node + component;
+        const std::int64_t global_row =
+            3 * cell[local_node] + static_cast<std::int64_t>(component);
+        load[global_row] += volume * body_force_xyz[component] / 4.0;
+        const auto left = solid_strain_column(gradients, local_row);
+        for (std::size_t local_column = 0; local_column < 12;
+             ++local_column) {
+          const std::size_t column_node = local_column / 3;
+          const std::int64_t global_column =
+              3 * cell[column_node] +
+              static_cast<std::int64_t>(local_column % 3);
+          const std::size_t entry =
+              144 * cell_index + 12 * local_row + local_column;
+          rows[entry] = global_row;
+          columns[entry] = global_column;
+          const auto right = solid_strain_column(gradients, local_column);
+          double value = 0.0;
+          for (std::size_t i = 0; i < 6; ++i) {
+            for (std::size_t j = 0; j < 6; ++j) {
+              value += left[i] * constitutive[6 * i + j] * right[j];
+            }
+          }
+          data[entry] = volume * value;
+        }
+      }
+    }
+  }
+  return AFN_P1_SUCCESS;
+}
+
+extern "C" AFN_API int afn_csr_spmv(
+    const std::size_t row_count,
+    const std::size_t column_count,
+    const std::size_t nonzero_count,
+    const std::int64_t* indptr,
+    const std::int64_t* indices,
+    const double* data,
+    const double* vector,
+    double* result) {
+  if (row_count == 0 || column_count == 0 || indptr == nullptr ||
+      indices == nullptr || data == nullptr || vector == nullptr ||
+      result == nullptr) {
+    return AFN_P1_NULL_POINTER;
+  }
+  if (row_count > static_cast<std::size_t>(
+                      std::numeric_limits<std::int64_t>::max()) ||
+      column_count > static_cast<std::size_t>(
+                         std::numeric_limits<std::int64_t>::max()) ||
+      nonzero_count > static_cast<std::size_t>(
+                          std::numeric_limits<std::int64_t>::max()) ||
+      indptr[0] != 0 ||
+      indptr[row_count] != static_cast<std::int64_t>(nonzero_count)) {
+    return AFN_P1_INVALID_CELL;
+  }
+  for (std::size_t column = 0; column < column_count; ++column) {
+    if (!std::isfinite(vector[column])) {
+      return AFN_P1_NONFINITE_INPUT;
+    }
+  }
+  for (std::size_t row = 0; row < row_count; ++row) {
+    const std::int64_t start = indptr[row];
+    const std::int64_t stop = indptr[row + 1];
+    if (start < 0 || stop < start ||
+        stop > static_cast<std::int64_t>(nonzero_count)) {
+      return AFN_P1_INVALID_CELL;
+    }
+    std::int64_t prior = -1;
+    double value = 0.0;
+    for (std::int64_t entry = start; entry < stop; ++entry) {
+      const std::int64_t column = indices[entry];
+      if (column <= prior || column < 0 ||
+          column >= static_cast<std::int64_t>(column_count)) {
+        return AFN_P1_INVALID_CELL;
+      }
+      if (!std::isfinite(data[entry])) {
+        return AFN_P1_NONFINITE_INPUT;
+      }
+      value += data[entry] * vector[column];
+      prior = column;
+    }
+    if (!std::isfinite(value)) {
+      return AFN_P1_NONFINITE_INPUT;
+    }
+    result[row] = value;
   }
   return AFN_P1_SUCCESS;
 }

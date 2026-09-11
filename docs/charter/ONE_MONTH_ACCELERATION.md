@@ -63,6 +63,12 @@ benchmark coverage, constrained wave dynamics, global Newton/cutback, and
 MPI/GPU experiments remain explicit acceptance work. Commit `db33958` passed
 all 21 Windows, Linux, and macOS jobs in hosted run `34099397789`.
 
+The 0.2 P0-closure candidate subsequently adds C++20 ABI 1.2 T4/CSR execution,
+the remaining constrained-dynamics and external-work spine, internal
+interchange, and Agent plan/execute/explain receipts. Local evidence clears the
+10x T3/T4 assembly target on the recorded cases. Hosted ABI 1.2, CPU
+threading/SIMD, wider Gate 2/3 evidence, and frontier tracks remain open.
+
 ## Tranche 2 — production 2D mechanics
 
 **Nominal Week 2**

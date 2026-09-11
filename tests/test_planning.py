@@ -94,6 +94,7 @@ class PlanningTests(unittest.TestCase):
         )
         self.assertEqual(solid.dof_count, 24)
         self.assertEqual(solid.coo_entry_count, 6 * 144)
+        self.assertEqual(solid.assembly_mode, "native")
         diagonal = CSRMatrix.from_coo((1, 1), [0], [0], [1.0])
         dynamics = plan_linear_dynamics(
             LinearSecondOrderSystem(diagonal, diagonal, [0.0], 0.1, 10, [0.0], [0.0])

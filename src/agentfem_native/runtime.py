@@ -80,10 +80,21 @@ class ExecutionContext:
     cancellation: CancellationToken | None = None
     progress: Callable[[ProgressEvent], None] | None = None
 
-    def check(self, stage: str, completed: int, total: int) -> None:
+    def check(
+        self,
+        stage: str,
+        completed: int,
+        total: int,
+        *,
+        enforce_step_budget: bool = True,
+    ) -> None:
         if total < 0 or completed < 0 or completed > total:
             raise ValueError("Progress counters must satisfy 0 <= completed <= total.")
-        if self.budget.maximum_steps is not None and total > self.budget.maximum_steps:
+        if (
+            enforce_step_budget
+            and self.budget.maximum_steps is not None
+            and total > self.budget.maximum_steps
+        ):
             raise NativeExecutionError(
                 f"Requested {total} steps exceeds budget {self.budget.maximum_steps}.",
                 code="budget.steps_exceeded",

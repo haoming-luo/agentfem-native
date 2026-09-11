@@ -52,6 +52,12 @@ For CSR matrix `A` and finite vector `x`, matrix-vector multiplication returns
 `y_i = sum_j A_ij x_j`. Residual is `r = b - A x`; Euclidean norm uses float64.
 Diagonal extraction requires every requested diagonal location to be present.
 
+The readable NumPy reduction is the permanent differential oracle. Canonical
+non-empty CSR matrices with at least 2,048 stored values automatically use the
+C++20 ABI 1.2 SpMV when installed; smaller or extension-free cases use the
+oracle. Both accumulate each row in stored-column order and must agree within
+documented floating-point tolerances without densification.
+
 Memory reporting is exact for owned CSR arrays:
 
 ```text

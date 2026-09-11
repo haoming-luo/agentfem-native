@@ -12,6 +12,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from .assembly import COOMatrix
 from .dofs import VectorDofMap
+from .native import assemble_t4_volume, native_kernel_available
 from .providers import LinearAlgebraProvider, NativeSparseProvider, resolve_provider
 from .sparse import CGReport
 from .volume_mesh import TetrahedralMesh
@@ -19,6 +20,7 @@ from .volume_mesh import TetrahedralMesh
 FloatArray: TypeAlias = NDArray[np.float64]
 Vector3Field = ArrayLike | Callable[[FloatArray], ArrayLike]
 Scalar3Field = float | Callable[[FloatArray], ArrayLike]
+SolidAssemblyMode = Literal["auto", "reference", "native"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,28 +225,61 @@ def _constitutive_by_cell(problem: LinearElastic3DProblem) -> FloatArray:
     return values
 
 
+def select_solid_assembly_mode(
+    problem: LinearElastic3DProblem, assembly: SolidAssemblyMode = "auto"
+) -> Literal["reference", "native"]:
+    """Select a T4 volume path without executing assembly."""
+
+    if assembly not in {"auto", "reference", "native"}:
+        raise ValueError(f"Unknown T4 assembly mode {assembly!r}.")
+    if assembly == "native":
+        if callable(problem.body_force):
+            raise ValueError("Native T4 assembly requires a static body-force vector.")
+        if not native_kernel_available():
+            raise ValueError("Native T4 assembly is unavailable in this installation.")
+        return "native"
+    if assembly == "reference":
+        return "reference"
+    return (
+        "native"
+        if native_kernel_available() and not callable(problem.body_force)
+        else "reference"
+    )
+
+
 def assemble_linear_elasticity_3d(
     problem: LinearElastic3DProblem,
+    *,
+    assembly: SolidAssemblyMode = "auto",
 ) -> tuple[COOMatrix, FloatArray, VectorDofMap]:
     mesh = problem.mesh
     dofs = VectorDofMap(mesh.node_count, 3)
-    cell_dofs = dofs.cell_dofs(mesh.cells)
-    rows = np.empty(mesh.cell_count * 144, dtype=np.int64)
-    columns = np.empty_like(rows)
-    data = np.empty(rows.size, dtype=np.float64)
-    load = np.zeros(dofs.size, dtype=np.float64)
     constitutive = _constitutive_by_cell(problem)
-    for cell_index, cell in enumerate(mesh.cells):
-        local_dofs = cell_dofs[cell_index]
-        volume, _ = t4_geometry(mesh.points[cell])
-        strain = t4_strain_displacement(mesh.points[cell])
-        local_stiffness = volume * strain.T @ constitutive[cell_index] @ strain
-        local_load = t4_body_force_load(mesh.points[cell], problem.body_force)
-        start = 144 * cell_index
-        rows[start : start + 144] = np.repeat(local_dofs, 12)
-        columns[start : start + 144] = np.tile(local_dofs, 12)
-        data[start : start + 144] = local_stiffness.ravel()
-        load[local_dofs] += local_load
+    selected = select_solid_assembly_mode(problem, assembly)
+    if selected == "native":
+        body = _vector_values(problem.body_force, np.zeros((1, 3)), name="Body force")[
+            0
+        ]
+        rows, columns, data, load = assemble_t4_volume(
+            mesh.points, mesh.cells, constitutive, body
+        )
+    else:
+        cell_dofs = dofs.cell_dofs(mesh.cells)
+        rows = np.empty(mesh.cell_count * 144, dtype=np.int64)
+        columns = np.empty_like(rows)
+        data = np.empty(rows.size, dtype=np.float64)
+        load = np.zeros(dofs.size, dtype=np.float64)
+        for cell_index, cell in enumerate(mesh.cells):
+            local_dofs = cell_dofs[cell_index]
+            volume, _ = t4_geometry(mesh.points[cell])
+            strain = t4_strain_displacement(mesh.points[cell])
+            local_stiffness = volume * strain.T @ constitutive[cell_index] @ strain
+            local_load = t4_body_force_load(mesh.points[cell], problem.body_force)
+            start = 144 * cell_index
+            rows[start : start + 144] = np.repeat(local_dofs, 12)
+            columns[start : start + 144] = np.tile(local_dofs, 12)
+            data[start : start + 144] = local_stiffness.ravel()
+            load[local_dofs] += local_load
     for condition in problem.traction:
         for face in mesh.boundary_faces(condition.boundary_set):
             local_load = t4_boundary_traction_load(mesh.points[face], condition.value)
@@ -316,8 +351,9 @@ def solve_linear_elasticity_3d(
     problem: LinearElastic3DProblem,
     *,
     provider: str | LinearAlgebraProvider | None = None,
+    assembly: SolidAssemblyMode = "auto",
 ) -> LinearElastic3DResult:
-    matrix, load, dofs = assemble_linear_elasticity_3d(problem)
+    matrix, load, dofs = assemble_linear_elasticity_3d(problem, assembly=assembly)
     constrained, values = _constraints(problem, dofs)
     selected = (
         NativeSparseProvider(block_size=3)

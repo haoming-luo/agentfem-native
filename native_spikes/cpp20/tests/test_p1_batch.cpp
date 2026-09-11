@@ -16,7 +16,7 @@ bool close(const double left, const double right, const double tolerance = 1e-15
 }  // namespace
 
 int main() {
-  static_assert(AFN_P1_ABI_VERSION == 0x00010001u);
+  static_assert(AFN_P1_ABI_VERSION == 0x00010002u);
   assert(afn_p1_abi_version() == AFN_P1_ABI_VERSION);
   const std::array<double, 8> points{{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}};
   const std::array<std::int64_t, 6> cells{{0, 1, 2, 0, 2, 3}};
@@ -106,5 +106,54 @@ int main() {
   assert(elasticity_rows[0] == 0 && elasticity_columns[35] == 5);
   assert(close(elasticity_load[0], 1.0 / 3.0));
   assert(close(elasticity_load[1], -1.0 / 6.0));
+
+  const std::array<double, 12> solid_points{{
+      0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+      0.0, 1.0, 0.0, 0.0, 0.0, 1.0}};
+  const std::array<std::int64_t, 4> solid_cell{{0, 1, 2, 3}};
+  std::array<double, 36> solid_constitutive{};
+  for (std::size_t row = 0; row < 3; ++row) {
+    for (std::size_t column = 0; column < 3; ++column) {
+      solid_constitutive[6 * row + column] = row == column ? 144.0 : 48.0;
+    }
+  }
+  solid_constitutive[21] = 48.0;
+  solid_constitutive[28] = 48.0;
+  solid_constitutive[35] = 48.0;
+  const std::array<double, 3> solid_body{{6.0, -3.0, 1.5}};
+  std::array<std::int64_t, 144> solid_rows{};
+  std::array<std::int64_t, 144> solid_columns{};
+  std::array<double, 144> solid_data{};
+  std::array<double, 12> solid_load{};
+  assert(afn_t4_elasticity_assemble_cells(
+             4, 1, solid_points.data(), solid_cell.data(),
+             solid_constitutive.data(), solid_body.data(), solid_rows.data(),
+             solid_columns.data(), solid_data.data(), solid_load.data()) ==
+         AFN_P1_SUCCESS);
+  for (std::size_t row = 0; row < 12; ++row) {
+    for (std::size_t column = 0; column < 12; ++column) {
+      assert(close(solid_data[12 * row + column],
+                   solid_data[12 * column + row], 2e-15));
+    }
+  }
+  for (std::size_t component = 0; component < 3; ++component) {
+    double resultant = 0.0;
+    for (std::size_t node = 0; node < 4; ++node) {
+      resultant += solid_load[3 * node + component];
+    }
+    assert(close(resultant, solid_body[component] / 6.0));
+  }
+
+  const std::array<std::int64_t, 4> csr_indptr{{0, 2, 5, 7}};
+  const std::array<std::int64_t, 7> csr_indices{{0, 1, 0, 1, 2, 1, 2}};
+  const std::array<double, 7> csr_data{{2.0, -1.0, -1.0, 3.0, -1.0, -1.0, 2.0}};
+  const std::array<double, 3> csr_vector{{1.0, 2.0, 4.0}};
+  std::array<double, 3> csr_result{};
+  assert(afn_csr_spmv(3, 3, 7, csr_indptr.data(), csr_indices.data(),
+                      csr_data.data(), csr_vector.data(), csr_result.data()) ==
+         AFN_P1_SUCCESS);
+  assert(close(csr_result[0], 0.0));
+  assert(close(csr_result[1], 1.0));
+  assert(close(csr_result[2], 6.0));
   return 0;
 }

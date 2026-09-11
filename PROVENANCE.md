@@ -251,3 +251,36 @@ license-incompatible code is rejected.
   slice but does not claim every tranche exit. Gate 2, Gate 3, global nonlinear
   mechanics, production threading/SIMD, MPI, and GPU remain open until their
   stated evidence passes.
+
+## Mechanics Alpha 0.2 P0 closure candidate — 2026-09-11
+
+- Task origin: the project owner requested a sustained push toward the complete
+  six-month Mechanics Alpha target while retaining scientific honesty and
+  cross-platform discipline.
+- Independent specifications: the existing affine T4, canonical CSR, and
+  linear second-order dynamics mathematics were extended before acceptance to
+  cover compiled T4/SpMV behavior, fixed-DOF reduction, reactions, external
+  work, internal interchange, and Agent execution receipts.
+- AI-assisted implementation: C++20 ABI 1.2 T4 volume assembly and CSR SpMV;
+  stable-ABI Python binding; reference/native dispatch and equivalence; 2D
+  cantilever and 3D shear/bulk evidence; constrained dynamics and work-energy
+  ledger; deterministic mesh/field interchange; plan/execute/explain API;
+  tests, benchmark, ADR, roadmap, limitations, and verification report.
+- Mathematical sources: standard affine simplex gradients, small-strain
+  `B^T D B`, canonical CSR row products, principal-submatrix constraint
+  elimination, dynamic reaction residuals, and trapezoidal force-displacement
+  work as written in repository specifications. No third-party finite-element
+  implementation source was consulted or used.
+- Third-party exposure: NumPy array primitives and build tooling already
+  admitted by the project. The optimized kernel uses only standard-library
+  C++20 and the CPython Stable ABI. No new runtime dependency was added.
+- Local evidence: 169 source tests, Ruff, the independence scanner, direct
+  warnings-as-errors C++20/C11 builds, ASan/UBSan, `0.7.0a1` sdist/wheel build,
+  and an isolated wheel-installed smoke workflow pass. Exact performance data
+  are in `benchmarks/results/2026-09-11-darwin-arm64-mechanics-alpha-0.2.json`.
+- Hosted boundary: ABI 1.2 and this candidate still require GitHub CI. The last
+  hosted predecessor, commit `07b39e9`, passed all 21 jobs in run
+  `34099971074`.
+- Maturity boundary: Gate 2 and the linear portion of Gate 3 remain
+  `implemented`, not `verified`. Production CPU threading/SIMD, million-DOF
+  evidence, global nonlinear mechanics, MPI, and GPU remain open.

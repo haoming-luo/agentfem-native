@@ -162,6 +162,23 @@ class CSRMatrix:
             raise ValueError("Vector size does not match sparse matrix columns.")
         if not np.all(np.isfinite(values)):
             raise ValueError("Sparse matrix-vector input must be finite.")
+        if self.nnz >= 2048:
+            from .native import csr_spmv, native_kernel_available
+
+            if native_kernel_available():
+                return csr_spmv(
+                    self.shape, self.indptr, self.indices, self.data, values
+                )
+        return self.matvec_reference(values)
+
+    def matvec_reference(self, vector: ArrayLike) -> FloatArray:
+        """Apply CSR with readable NumPy reductions for differential evidence."""
+
+        values = np.asarray(vector, dtype=np.float64)
+        if values.shape != (self.shape[1],):
+            raise ValueError("Vector size does not match sparse matrix columns.")
+        if not np.all(np.isfinite(values)):
+            raise ValueError("Sparse matrix-vector input must be finite.")
         result = np.zeros(self.shape[0], dtype=np.float64)
         if not self.nnz:
             return result

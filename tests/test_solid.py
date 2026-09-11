@@ -11,6 +11,7 @@ from agentfem_native.solid import (
     SolidDisplacementCondition,
     SolidElasticMaterial,
     SolidTractionCondition,
+    assemble_linear_elasticity_3d,
     solve_linear_elasticity_3d,
     t4_body_force_load,
     t4_boundary_traction_load,
@@ -111,6 +112,26 @@ class T4ElementTests(unittest.TestCase):
 
 
 class LinearElastic3DTests(unittest.TestCase):
+    def test_native_and_reference_t4_assembly_are_equivalent(self) -> None:
+        mesh = unit_cube_tetrahedra(2)
+        problem = LinearElastic3DProblem(
+            mesh,
+            SolidElasticMaterial(137.0, 0.21),
+            body_force=(0.3, -0.2, 0.1),
+        )
+        reference_matrix, reference_load, _ = assemble_linear_elasticity_3d(
+            problem, assembly="reference"
+        )
+        native_matrix, native_load, _ = assemble_linear_elasticity_3d(
+            problem, assembly="native"
+        )
+        np.testing.assert_array_equal(native_matrix.rows, reference_matrix.rows)
+        np.testing.assert_array_equal(native_matrix.columns, reference_matrix.columns)
+        np.testing.assert_allclose(
+            native_matrix.data, reference_matrix.data, atol=8.0e-14
+        )
+        np.testing.assert_allclose(native_load, reference_load, atol=2.0e-16)
+
     def test_manufactured_t4_interpolation_error_converges_second_order(self) -> None:
         modulus, ratio = 100.0, 0.2
         shear = modulus / (2.0 * (1.0 + ratio))
@@ -226,6 +247,75 @@ class LinearElastic3DTests(unittest.TestCase):
             result.total_reaction, (-applied, 0, 0), atol=2.0e-12
         )
         self.assertAlmostEqual(result.strain_energy, 0.125, places=12)
+
+    def test_cube_pure_shear_and_hydrostatic_response_are_exact(self) -> None:
+        mesh = unit_cube_tetrahedra(1)
+        modulus, ratio, applied = 100.0, 0.2, 5.0
+        material = SolidElasticMaterial(modulus, ratio)
+        shear = modulus / (2.0 * (1.0 + ratio))
+        shear_result = solve_linear_elasticity_3d(
+            LinearElastic3DProblem(
+                mesh,
+                material,
+                dirichlet=(
+                    SolidDisplacementCondition("front", "x", 0.0),
+                    SolidDisplacementCondition("left", "y", 0.0),
+                    SolidDisplacementCondition(
+                        "left", "x", lambda points: applied / shear * points[:, 1]
+                    ),
+                    SolidDisplacementCondition("bottom", "z", 0.0),
+                ),
+                traction=(
+                    SolidTractionCondition("back", (applied, 0.0, 0.0)),
+                    SolidTractionCondition("right", (0.0, applied, 0.0)),
+                ),
+            )
+        )
+        expected_shear_displacement = np.column_stack(
+            (
+                applied / shear * mesh.points[:, 1],
+                np.zeros(mesh.node_count),
+                np.zeros(mesh.node_count),
+            )
+        )
+        np.testing.assert_allclose(
+            shear_result.displacements, expected_shear_displacement, atol=8.0e-13
+        )
+        np.testing.assert_allclose(
+            shear_result.cell_stress,
+            np.tile((0, 0, 0, applied, 0, 0), (mesh.cell_count, 1)),
+            atol=4.0e-11,
+        )
+        np.testing.assert_allclose(
+            shear_result.total_reaction, (-applied, -applied, 0), atol=5.0e-12
+        )
+
+        lame = modulus * ratio / ((1.0 + ratio) * (1.0 - 2.0 * ratio))
+        dilation = applied / (3.0 * lame + 2.0 * shear)
+        bulk_result = solve_linear_elasticity_3d(
+            LinearElastic3DProblem(
+                mesh,
+                material,
+                dirichlet=(
+                    SolidDisplacementCondition("left", "x", 0.0),
+                    SolidDisplacementCondition("front", "y", 0.0),
+                    SolidDisplacementCondition("bottom", "z", 0.0),
+                ),
+                traction=(
+                    SolidTractionCondition("right", (applied, 0.0, 0.0)),
+                    SolidTractionCondition("back", (0.0, applied, 0.0)),
+                    SolidTractionCondition("top", (0.0, 0.0, applied)),
+                ),
+            )
+        )
+        np.testing.assert_allclose(
+            bulk_result.displacements, dilation * mesh.points, atol=8.0e-13
+        )
+        np.testing.assert_allclose(
+            bulk_result.cell_stress,
+            np.tile((applied, applied, applied, 0, 0, 0), (mesh.cell_count, 1)),
+            atol=4.0e-11,
+        )
 
     def test_underconstraint_fails_before_solve(self) -> None:
         mesh = unit_cube_tetrahedra(1)

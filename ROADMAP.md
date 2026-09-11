@@ -132,8 +132,10 @@ Gate and maturity boundary.
   commit `5230970` in run `34091224291`.
 - Completed hosted: commit `db33958` passed all 21 Windows, Linux, and macOS
   jobs in run `34099397789`, including native installation wheels.
-- Remaining: C++20 sparse operations, production CPU threading/SIMD, and
-  stronger preconditioners.
+- Completed locally for the next candidate: C++20 ABI 1.2 T4 volume assembly
+  and canonical CSR SpMV, with permanent readable differential oracles.
+- Remaining: production CPU threading/SIMD, stronger preconditioners, and
+  hosted acceptance of ABI 1.2.
 - Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
   narrow contracts and after license, platform, determinism, and performance
   evidence.
@@ -162,11 +164,12 @@ responses, cantilever, symmetry, energy, reaction balance, and convergence.
 Current state: T3 now has readable, vectorized, and C++20 volume assembly,
 material regions, BSR/block-Jacobi, vector/tensor VTK, pure-shear, dilation, and
 second-order manufactured evidence in addition to the original reference
-suite. A readable T4/3D path now owns tetrahedral topology, loads, constraints,
+suite. Readable and C++20 ABI 1.2 T4/3D paths now own tetrahedral topology,
+volume assembly, loads, constraints,
 reactions, energy, recovery, uniaxial/patch/orientation/provider evidence, and a
 second-order manufactured trend. Gate 2 remains `implemented`, not verified:
-the remaining engineering benchmark corpus, compiled T4/sparse execution,
-  contract admission, and the remaining engineering corpus are still required.
+hosted ABI 1.2 acceptance, wider engineering/convergence evidence, contract
+admission, and production CPU parallel evidence are still required.
 
 ## Gate 3 — time and nonlinear lifecycle
 
@@ -180,8 +183,9 @@ forced cutback, and restart equivalence across supported platforms.
 Current state: the linear foundation is implemented locally: T3 consistent and
 lumped mass, centered explicit integration, Newmark average acceleration,
 energy histories, accepted-state progress/cancellation/budgets, and digest-bound
-restart. SDOF order/energy and exact restart evidence pass. Constrained FEM
-dynamics, wave propagation, external-work ledgers, implicit checkpoint coverage,
+restart, zero fixed-DOF elimination, reactions, external-work/energy ledgers,
+and a constrained T3 transient. SDOF order/energy and exact restart evidence
+pass. Wave propagation, implicit checkpoint coverage, time-refinement evidence,
 and wider constrained-FEM platform evidence remain before Gate 3 verification.
 
 ## Gate 4 — nonlinear solids and material state

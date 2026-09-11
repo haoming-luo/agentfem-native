@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define AFN_P1_ABI_VERSION 0x00010001u
+#define AFN_P1_ABI_VERSION 0x00010002u
 
 typedef enum AfnP1Status {
   AFN_P1_SUCCESS = 0,
@@ -66,6 +66,28 @@ AFN_API int afn_t3_elasticity_assemble_cells(
     int64_t* columns,
     double* data,
     double* load);
+
+AFN_API int afn_t4_elasticity_assemble_cells(
+    size_t node_count,
+    size_t cell_count,
+    const double* points_xyz,
+    const int64_t* cells,
+    const double* constitutive_cells_6x6,
+    const double* body_force_xyz,
+    int64_t* rows,
+    int64_t* columns,
+    double* data,
+    double* load);
+
+AFN_API int afn_csr_spmv(
+    size_t row_count,
+    size_t column_count,
+    size_t nonzero_count,
+    const int64_t* indptr,
+    const int64_t* indices,
+    const double* data,
+    const double* vector,
+    double* result);
 
 #ifdef __cplusplus
 }

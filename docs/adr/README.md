@@ -31,3 +31,5 @@ owner review. Superseded decisions remain in history.
   spine and Agent-native Mechanics Alpha the six-month execution priority
 - [ADR-0019](0019-compressed-mechanics-alpha-spine.md): implement the compressed
   BSR/T3/T4/dynamics/control spine while preserving Gate maturity boundaries
+- [ADR-0020](0020-mechanics-alpha-p0-closure.md): close native T4/CSR,
+  constrained dynamics, interchange, and Agent execution before parallel breadth

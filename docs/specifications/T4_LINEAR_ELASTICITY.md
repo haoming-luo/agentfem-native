@@ -1,6 +1,7 @@
 # T4 small-strain linear elasticity specification
 
-Status: Gate 2 three-dimensional implementation target.
+Status: implemented with readable and C++20 ABI 1.2 volume-assembly paths;
+Gate 2 verification remains open.
 
 ## Geometry, kinematics, and constitutive response
 
@@ -35,5 +36,7 @@ solver convergence evidence.
   failures;
 - native Windows, macOS, and Linux execution of the same suite.
 
-The readable T4 is an implementation milestone. Gate 2 is verified only after
-the full convergence and optimized-path evidence is recorded.
+Readable and native T4 paths must agree after canonical COO reduction. Native
+volume assembly does not move traction integration or constitutive meaning out
+of the owned Python layer. Gate 2 is verified only after the full engineering,
+convergence, and native three-platform evidence is recorded.

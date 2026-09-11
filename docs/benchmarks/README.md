@@ -19,6 +19,8 @@ failure tests establish equivalent work. Timings never replace verification.
   the same optional SciPy sparse solve with solution/reaction/energy checks.
 - `sparse_foundation.py`: owned CSR memory, COO canonicalization, Native
   CG/Jacobi end-to-end diffusion, and T3 uniaxial mechanics evidence.
+- `mechanics_alpha.py`: T3/T4 readable/native assembly equivalence and timing,
+  CSR/BSR operator evidence, a T4 solve, and long-step linear dynamics.
 
 Run from the repository environment. Raw-language comparison additionally
 requires the C++ library built from `native_spikes/cpp20` and the Rust library

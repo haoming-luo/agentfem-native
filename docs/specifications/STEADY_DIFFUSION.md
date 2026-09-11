@@ -92,8 +92,9 @@ total reaction equals zero.
 
 Geometry is two-dimensional and affine; source and boundary values in the
 serialized contract are constant scalars; and materials are stateless
-conductivity records. The Native path currently uses scalar CSR and readable
-NumPy-orchestrated CG; BSR, compiled sparse kernels, and advanced
-preconditioners remain P3 work. SciPy is an optional sparse direct bridge.
+conductivity records. The Native path currently uses scalar CSR and Python-
+orchestrated CG, with C++20 SpMV for nontrivial installed-kernel cases;
+compiled constraints/solver control and advanced preconditioners remain P3
+work. SciPy is an optional sparse direct bridge.
 Nonlinear, transient, 3D, higher-order, and stateful material behavior remain
 later-gate work.

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Independent executable mathematics for the AgentFEM Native Engine."""
 
-__version__ = "0.6.0a1"
+__version__ = "0.7.0a1"
 
 from .contract import (
     CONTRACT_NAME,
@@ -27,6 +27,8 @@ from .dynamics import (
     LinearDynamicsResult,
     LinearSecondOrderSystem,
     assemble_t3_mass,
+    build_t3_linear_dynamics,
+    integrate_constrained_linear_dynamics,
     integrate_linear_dynamics,
 )
 from .elasticity import (
@@ -43,7 +45,14 @@ from .elasticity import (
     p1_strain_displacement,
     solve_linear_elasticity,
 )
+from .execution import ExecutionReceipt, execute_plan, explain_execution
 from .geometry import AffineTriangleMap
+from .interchange import (
+    INTERCHANGE_FORMAT,
+    NativeInterchangeBundle,
+    read_native_bundle,
+    write_native_bundle,
+)
 from .materials import (
     J2MaterialPoint,
     J2Response,
@@ -94,6 +103,7 @@ from .solid import (
     SolidElasticMaterial,
     SolidTractionCondition,
     assemble_linear_elasticity_3d,
+    select_solid_assembly_mode,
     solve_linear_elasticity_3d,
     t4_body_force_load,
     t4_boundary_traction_load,
@@ -107,6 +117,7 @@ from .volume_mesh import TetrahedralMesh, unit_cube_tetrahedra
 __all__ = (
     "CONTRACT_NAME",
     "CONTRACT_VERSION",
+    "INTERCHANGE_FORMAT",
     "REFERENCE_TRIANGLE_VERTICES",
     "AffineTriangleMap",
     "BSRMatrix",
@@ -122,6 +133,7 @@ __all__ = (
     "ElasticCellMaterial",
     "ExecutionContext",
     "ExecutionPlan",
+    "ExecutionReceipt",
     "J2MaterialPoint",
     "J2Response",
     "J2State",
@@ -135,6 +147,7 @@ __all__ = (
     "LinearSecondOrderSystem",
     "LinearSolveError",
     "NativeExecutionError",
+    "NativeInterchangeBundle",
     "NativeSparseProvider",
     "NeoHookeanMaterial",
     "NeoHookeanResponse",
@@ -159,9 +172,13 @@ __all__ = (
     "assemble_linear_elasticity",
     "assemble_linear_elasticity_3d",
     "assemble_t3_mass",
+    "build_t3_linear_dynamics",
     "conjugate_gradient",
     "enforce_plan_budget",
+    "execute_plan",
+    "explain_execution",
     "inside_reference_triangle",
+    "integrate_constrained_linear_dynamics",
     "integrate_linear_dynamics",
     "integrate_reference",
     "kernel_request_schema",
@@ -181,7 +198,9 @@ __all__ = (
     "plan_linear_elasticity",
     "plan_linear_elasticity_3d",
     "plan_steady_diffusion",
+    "read_native_bundle",
     "run_kernel_request",
+    "select_solid_assembly_mode",
     "solve_linear_elasticity",
     "solve_linear_elasticity_3d",
     "solve_steady_diffusion",
@@ -196,4 +215,5 @@ __all__ = (
     "unit_square_two_triangles",
     "write_legacy_vtk",
     "write_mechanics_vtk",
+    "write_native_bundle",
 )
