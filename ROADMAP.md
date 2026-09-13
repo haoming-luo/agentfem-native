@@ -195,6 +195,11 @@ Gate 2 remains `implemented`, not verified: wider engineering/convergence
 evidence, contract admission, and production CPU parallel evidence are still
 required.
 
+2026-09-13 本地科学验收候选已把分散证据收敛为十二项矩阵，并强化 T3/T4 实际
+求解收敛、合法畸变 patch、尺度化残差/平衡和 Agent 可读分析摘要。当前科学
+矩阵 G2-01 至 G2-10 本地通过；力学 JSON Contract 0.2、P3 CPU 并行和最终
+Tier-1 Gate 候选仍未关闭，因此 Gate 2 继续保持 `implemented`。
+
 ## Gate 3 — time and nonlinear lifecycle
 
 Scope: consistent and lumped mass, central difference, implicit increments,

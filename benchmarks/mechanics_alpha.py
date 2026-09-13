@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Reproducible local evidence for the compressed Mechanics Alpha slice."""
+"""为压缩后的 Mechanics Alpha 主干生成可复现的本地性能与数值证据。"""
 
 from __future__ import annotations
 
@@ -213,7 +213,7 @@ def main() -> int:
             ),
         },
         "repetitions": arguments.repetitions,
-        "claim_boundary": "Local warm-process medians; no cross-platform performance claim.",
+        "claim_boundary": "本机热进程中位数；不据此声明跨平台性能。",
     }
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     temporary = arguments.output.with_suffix(arguments.output.suffix + ".tmp")

@@ -1,48 +1,51 @@
-# Agent plan / execute / explain protocol
+# Agent 计划、执行与解释协议
 
-Status: implemented, not a maturity upgrade for the underlying physics.
+**状态：** 已实现；本协议不会提升底层物理能力的成熟度。
 
-## Purpose
+## 目的
 
-AgentFEM Native exposes an explicit separation between resource planning,
-execution, and explanation. An agent can inspect an `ExecutionPlan`, apply a
-resource policy before allocating the finite-element system, execute only that
-accepted plan, and retain an `ExecutionReceipt` with compact numerical evidence.
+AgentFEM Native 明确分离资源计划、数值执行和结果解释。Agent 可以先检查
+`ExecutionPlan`，在分配有限元系统前实施资源策略，只执行已经接受且未发生变化
+的计划，并保留带有紧凑数值证据的 `ExecutionReceipt`。
 
-This protocol does not introduce a second model language and does not make
-AF-IR a prerequisite for the native kernel.
+本协议不引入第二种模型语言，也不把 AF-IR 设为 Native 内核的前置依赖。
 
-## Contract
+## 契约
 
-1. `plan_*` performs validation needed for path selection but does not assemble
-   or solve.
-2. `execute_plan(plan, request, context=...)` recomputes the plan and rejects a
-   changed geometry, topology, named-set identity, provider, assembly path,
-   maturity, or warning set before execution. Preassembled dynamics additionally
-   bind sparse operators and initial state.
-3. The execution context enforces conservative DOF and peak-memory budgets.
-   Dynamics additionally enforces step budgets and cancellation at accepted
-   state boundaries.
-4. A successful immutable receipt holds the full typed numerical result
-   separately from canonical JSON evidence. Evidence access returns a fresh
-   object, so callers cannot silently invalidate its digest. The evidence
-   records engine/native identities, residual or energy-balance measures,
-   provider identity, and the unchanged maturity.
-5. `explain_execution` is a pure projection of the receipt. It never re-runs a
-   solve and never promotes `implemented` evidence to `verified` or `validated`.
+1. `plan_*` 完成执行路径选择需要的验证，但不装配或求解；
+2. `execute_plan(plan, request, context=...)` 重新生成计划，在几何、拓扑、命名
+   集合、提供者、装配路径、成熟度或警告集合发生变化时拒绝执行；预装配动力学
+   还绑定稀疏算子和初始状态；
+3. 执行上下文实施保守的 DOF 和峰值内存预算；动力学还在已接受状态边界实施
+   步数预算与取消；
+4. 成功且不可变的收据把完整类型化数值结果与规范 JSON 证据分开保存；读取证据
+   返回新对象，调用方不能静默破坏摘要；
+5. 证据中的 `analysis` 是面向 AgentFEM 的小型计算摘要，稳定记录问题类型、
+   空间维数、单元类型、DOF 数、装配路径、提供者和声明成熟度；
+6. `result` 记录残差或能量平衡、反力/载荷平衡、应变能、提供者身份和迭代
+   收敛等结果证据；
+7. `explain_execution` 只是收据的纯投影，不重新求解，也不能把 `implemented`
+   提升成 `verified` 或 `validated`。
 
-## Digest boundary
+`analysis` 使用以下稳定英文 JSON 字段，面向人的含义与诊断以中文说明：
 
-The execution-plan digest binds resource shape, structural identity, provider,
-assembly path, maturity, and warnings. It is not a full identity of material,
-load, or callable physics values, because arbitrary Python callables cannot be
-portably serialized. The evidence digest binds the accepted plan and compact
-evidence for one completed execution. Persistent identity of a complete model
-belongs to a future explicit, versioned model serialization contract.
+```text
+problem_kind | spatial_dimension | element_family | dof_count
+assembly_mode | provider | claim_maturity
+```
 
-## Failure semantics
+对没有空间离散含义的预装配动力系统，`spatial_dimension` 为 `null`，不得猜测其
+维数。
 
-A changed request is rejected as `execution.plan_mismatch`. Resource limits and
-cancellation use the structured errors defined by the runtime-control
-specification. Scientific input and solver failures retain their typed Python
-exceptions and are not disguised as successful receipts.
+## 摘要边界
+
+执行计划摘要绑定资源形状、结构身份、提供者、装配路径、成熟度和警告。它不是
+材料、载荷或可调用物理输入的完整身份，因为任意 Python callable 无法可移植地
+序列化。证据摘要绑定已接受计划和一次完成执行的紧凑证据。完整模型的持久身份
+属于未来显式、版本化的模型序列化契约。
+
+## 失败语义
+
+已变化的请求使用稳定错误码 `execution.plan_mismatch` 拒绝。资源限制和取消使用
+运行时控制规格中的结构化错误。科学输入和求解器失败保留其类型化 Python 异常，
+不能伪装为成功收据。

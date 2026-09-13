@@ -132,7 +132,7 @@ class LinearElastic3DTests(unittest.TestCase):
         )
         np.testing.assert_allclose(native_load, reference_load, atol=2.0e-16)
 
-    def test_manufactured_t4_interpolation_error_converges_second_order(self) -> None:
+    def test_manufactured_t4_solution_converges_and_closes_balance(self) -> None:
         modulus, ratio = 100.0, 0.2
         shear = modulus / (2.0 * (1.0 + ratio))
         lame = modulus * ratio / ((1.0 + ratio) * (1.0 - 2.0 * ratio))
@@ -158,22 +158,79 @@ class LinearElastic3DTests(unittest.TestCase):
 
         errors = []
         for resolution in (1, 2, 4):
-            mesh = unit_cube_tetrahedra(resolution)
-            result = solve_linear_elasticity_3d(
-                LinearElastic3DProblem(
-                    mesh,
-                    SolidElasticMaterial(modulus, ratio),
-                    body_force=body,
-                    dirichlet=(SolidDisplacementCondition("boundary", None, exact),),
+            with self.subTest(resolution=resolution):
+                mesh = unit_cube_tetrahedra(resolution)
+                result = solve_linear_elasticity_3d(
+                    LinearElastic3DProblem(
+                        mesh,
+                        SolidElasticMaterial(modulus, ratio),
+                        body_force=body,
+                        dirichlet=(
+                            SolidDisplacementCondition("boundary", None, exact),
+                        ),
+                    )
                 )
-            )
-            centroids = mesh.points[mesh.cells].mean(axis=1)
-            interpolated = result.displacements[mesh.cells].mean(axis=1)
-            errors.append(
-                float(np.sqrt(np.mean((interpolated - exact(centroids)) ** 2)))
-            )
+                self.assertTrue(result.convergence and result.convergence.converged)
+                # 用问题自身的力尺度归一化，避免绝对残差随材料量纲和网格规模漂移。
+                force_scale = max(
+                    float(np.linalg.norm(result.total_applied_force)),
+                    float(np.linalg.norm(result.total_reaction)),
+                    1.0,
+                )
+                self.assertLess(result.free_residual_norm / force_scale, 1.0e-10)
+                self.assertLess(
+                    np.linalg.norm(result.total_applied_force + result.total_reaction)
+                    / force_scale,
+                    1.0e-10,
+                )
+                centroids = mesh.points[mesh.cells].mean(axis=1)
+                interpolated = result.displacements[mesh.cells].mean(axis=1)
+                errors.append(
+                    float(np.sqrt(np.mean((interpolated - exact(centroids)) ** 2)))
+                )
         self.assertGreater(errors[0] / errors[1], 3.7)
         self.assertGreater(errors[1] / errors[2], 3.7)
+
+    def test_distorted_t4_patch_preserves_affine_solution_and_balance(self) -> None:
+        base = unit_cube_tetrahedra(2)
+        points = np.array(base.points, copy=True)
+        interior = np.flatnonzero(np.all(points == 0.5, axis=1))
+        self.assertEqual(interior.size, 1)
+        # 只移动内部节点：边界解析条件不变，同时所有相邻 T4 都变成非规则几何。
+        points[interior[0]] = (0.58, 0.43, 0.54)
+        mesh = TetrahedralMesh(
+            points,
+            base.cells,
+            node_sets=base.node_sets,
+            boundary_sets=base.boundary_sets,
+            cell_sets=base.cell_sets,
+        )
+        gradient = np.array(
+            ((0.02, -0.01, 0.03), (0.04, 0.05, -0.02), (-0.03, 0.01, 0.06))
+        )
+
+        def exact(coordinates):
+            return np.array((0.1, -0.2, 0.05)) + coordinates @ gradient.T
+
+        result = solve_linear_elasticity_3d(
+            LinearElastic3DProblem(
+                mesh,
+                SolidElasticMaterial(175.0, 0.24),
+                dirichlet=(SolidDisplacementCondition("boundary", None, exact),),
+            )
+        )
+        expected_strain = np.array((0.02, 0.05, 0.06, 0.03, -0.01, 0.0))
+        np.testing.assert_allclose(result.displacements, exact(points), atol=7.0e-13)
+        np.testing.assert_allclose(
+            result.cell_strain,
+            np.tile(expected_strain, (mesh.cell_count, 1)),
+            atol=2.0e-13,
+        )
+        self.assertLess(result.free_residual_norm, 2.0e-11)
+        self.assertLess(
+            np.linalg.norm(result.total_applied_force + result.total_reaction),
+            2.0e-11,
+        )
 
     def test_native_sparse_and_dense_oracle_match(self) -> None:
         mesh = unit_cube_tetrahedra(1)

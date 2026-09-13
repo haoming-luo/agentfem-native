@@ -1,0 +1,75 @@
+{
+  "claim_boundary": "\u672c\u673a\u70ed\u8fdb\u7a0b\u4e2d\u4f4d\u6570\uff1b\u4e0d\u636e\u6b64\u58f0\u660e\u8de8\u5e73\u53f0\u6027\u80fd\u3002",
+  "dynamics": {
+    "maximum_energy_drift": 1.9999999916198163e-06,
+    "median_seconds": 0.2074475409463048,
+    "steps": 10000
+  },
+  "environment": {
+    "agentfem_native": "0.7.0a1",
+    "architecture": "arm64",
+    "native_kernel": {
+      "abi_version": "1.2",
+      "available": true,
+      "name": "cpp20",
+      "required_abi_version": "1.2"
+    },
+    "numpy": "2.3.5",
+    "os": "Darwin",
+    "python": "3.12.14"
+  },
+  "repetitions": 5,
+  "schema": "agentfem-native.mechanics-alpha-benchmark/0.2",
+  "t3": {
+    "bsr_bytes": 303160,
+    "bsr_matvec_difference": 1.4842722180219425e-06,
+    "bsr_relative_matvec_difference": 1.0512109119679369e-14,
+    "cells": 2048,
+    "csr_bytes": 488536,
+    "csr_spmv": {
+      "maximum_difference": 1.8332369648987878e-06,
+      "native_median_seconds": 1.8750084564089775e-05,
+      "native_speedup_over_reference": 2.12884479268853,
+      "reference_median_seconds": 3.99160198867321e-05
+    },
+    "dofs": 2178,
+    "native_max_load_difference": 1.0842021724855044e-19,
+    "native_max_matrix_difference": 0.0,
+    "native_relative_matrix_difference": 0.0,
+    "native_speedup_over_reference": 496.1242228252456,
+    "nodes": 1089,
+    "resolution": 32,
+    "timings": {
+      "native": {
+        "median_seconds": 0.0002158329589292407
+      },
+      "reference": {
+        "median_seconds": 0.1070799590088427
+      },
+      "vectorized": {
+        "median_seconds": 0.0008559169946238399
+      }
+    },
+    "vectorized_max_matrix_difference": 0.0,
+    "vectorized_relative_matrix_difference": 0.0
+  },
+  "t4": {
+    "assembly_timings": {
+      "native": {
+        "median_seconds": 0.0005340420175343752
+      },
+      "reference": {
+        "median_seconds": 0.007809957955032587
+      }
+    },
+    "balance_norm": 1.7816664687863408e-14,
+    "cells": 162,
+    "dofs": 192,
+    "free_residual_norm": 2.08292436004924e-13,
+    "native_assembly_speedup_over_reference": 14.624238727676284,
+    "native_max_load_difference": 0.0,
+    "native_max_matrix_difference": 5.684341886080802e-14,
+    "nodes": 64,
+    "solve_median_seconds": 0.006773415952920914
+  }
+}

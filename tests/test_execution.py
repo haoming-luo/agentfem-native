@@ -131,6 +131,18 @@ class PlannedExecutionTests(unittest.TestCase):
             receipt_2d.evidence["result"]["result_kind"],
             "linear_elasticity_2d",
         )
+        self.assertEqual(
+            receipt_2d.evidence["analysis"],
+            {
+                "problem_kind": "linear_elasticity_2d",
+                "spatial_dimension": 2,
+                "element_family": "triangle_p1_vector2",
+                "dof_count": 8,
+                "assembly_mode": "native",
+                "provider": "native_sparse",
+                "claim_maturity": "implemented",
+            },
+        )
 
         mesh_3d = unit_cube_tetrahedra(1)
         elastic_3d = LinearElastic3DProblem(
@@ -147,6 +159,11 @@ class PlannedExecutionTests(unittest.TestCase):
             receipt_3d.evidence["result"]["result_kind"],
             "linear_elasticity_3d",
         )
+        self.assertEqual(receipt_3d.evidence["analysis"]["spatial_dimension"], 3)
+        self.assertEqual(
+            receipt_3d.evidence["analysis"]["element_family"],
+            "tetrahedron_p1_vector3",
+        )
 
         diagonal = CSRMatrix.from_coo((2, 2), [0, 1], [0, 1], [1.0, 1.0])
         dynamic = LinearSecondOrderSystem(
@@ -156,6 +173,7 @@ class PlannedExecutionTests(unittest.TestCase):
             plan_linear_dynamics(dynamic), dynamic, constrained_dofs=[0]
         )
         self.assertEqual(receipt_dynamic.evidence["result"]["constrained_dof_count"], 1)
+        self.assertIsNone(receipt_dynamic.evidence["analysis"]["spatial_dimension"])
 
 
 if __name__ == "__main__":

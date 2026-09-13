@@ -196,7 +196,7 @@ class LinearElasticitySolveTests(unittest.TestCase):
             atol=2.0e-12,
         )
 
-    def test_manufactured_interpolation_error_converges_second_order(self) -> None:
+    def test_manufactured_solution_converges_and_closes_balance(self) -> None:
         modulus, ratio = 100.0, 0.2
         scale = modulus / (1.0 - ratio * ratio)
         shear = modulus / (2.0 * (1.0 + ratio))
@@ -214,20 +214,34 @@ class LinearElasticitySolveTests(unittest.TestCase):
 
         errors = []
         for resolution in (4, 8, 16):
-            mesh = unit_square_triangles(resolution)
-            result = solve_linear_elasticity(
-                LinearElasticProblem(
-                    mesh,
-                    LinearElasticMaterial(modulus, ratio),
-                    body_force=body,
-                    dirichlet=(DisplacementCondition("boundary", None, exact),),
+            with self.subTest(resolution=resolution):
+                mesh = unit_square_triangles(resolution)
+                result = solve_linear_elasticity(
+                    LinearElasticProblem(
+                        mesh,
+                        LinearElasticMaterial(modulus, ratio),
+                        body_force=body,
+                        dirichlet=(DisplacementCondition("boundary", None, exact),),
+                    )
                 )
-            )
-            centroids = mesh.points[mesh.cells].mean(axis=1)
-            interpolated = result.displacements[mesh.cells].mean(axis=1)
-            errors.append(
-                float(np.sqrt(np.mean((interpolated - exact(centroids)) ** 2)))
-            )
+                self.assertTrue(result.convergence and result.convergence.converged)
+                # 用问题自身的力尺度归一化，避免绝对残差随材料量纲和网格规模漂移。
+                force_scale = max(
+                    float(np.linalg.norm(result.total_applied_force)),
+                    float(np.linalg.norm(result.total_reaction)),
+                    1.0,
+                )
+                self.assertLess(result.free_residual_norm / force_scale, 1.0e-10)
+                self.assertLess(
+                    np.linalg.norm(result.total_applied_force + result.total_reaction)
+                    / force_scale,
+                    1.0e-10,
+                )
+                centroids = mesh.points[mesh.cells].mean(axis=1)
+                interpolated = result.displacements[mesh.cells].mean(axis=1)
+                errors.append(
+                    float(np.sqrt(np.mean((interpolated - exact(centroids)) ** 2)))
+                )
         self.assertGreater(errors[0] / errors[1], 3.9)
         self.assertGreater(errors[1] / errors[2], 3.9)
 
@@ -280,8 +294,11 @@ class LinearElasticitySolveTests(unittest.TestCase):
         np.testing.assert_allclose(heterogeneous[2], heterogeneous[0], atol=2.0e-14)
         self.assertFalse(np.allclose(heterogeneous[0], baseline.to_dense()))
 
-    def test_constant_strain_patch_with_interior_node_is_exact(self) -> None:
-        points = np.array(((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.5, 0.5)))
+    def test_constant_strain_patch_with_distorted_interior_node_is_exact(self) -> None:
+        # 非中心内部点可同时暴露几何雅可比和装配对规则网格的隐藏依赖。
+        points = np.array(
+            ((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.37, 0.58))
+        )
         mesh = TriangularMesh(
             points,
             np.array(((0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4))),

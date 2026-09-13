@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Plan-bound execution and compact, machine-readable evidence receipts."""
+"""执行已接受的资源计划，并生成紧凑、机器可读且摘要绑定的证据收据。"""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ ExecutionResult: TypeAlias = (
 
 @dataclass(frozen=True, slots=True)
 class ExecutionReceipt:
-    """A successful result paired with reproducible, JSON-safe evidence."""
+    """把一次成功结果与可复现、JSON 安全的证据绑定。"""
 
     plan: ExecutionPlan
     result: ExecutionResult
@@ -80,14 +80,14 @@ class ExecutionReceipt:
 
     @property
     def evidence(self) -> dict[str, object]:
-        """Return a fresh evidence object so the digest-bound receipt stays immutable."""
+        """返回新的证据对象，避免调用方破坏收据的摘要不变量。"""
 
         value = json.loads(self.evidence_json)
         assert isinstance(value, dict)
         return value
 
     def as_dict(self) -> dict[str, object]:
-        """Return the compact receipt; large numerical result arrays stay separate."""
+        """返回紧凑收据；大型数值结果数组继续与证据分开保存。"""
 
         return {
             "status": self.status,
@@ -176,12 +176,33 @@ def _result_evidence(result: ExecutionResult) -> dict[str, object]:
     }
 
 
+def _analysis_evidence(plan: ExecutionPlan) -> dict[str, object]:
+    """生成 AgentFEM 可直接审查、但不提升成熟度的计算摘要。"""
+
+    dimensions: dict[str, int | None] = {
+        "steady_diffusion": 2,
+        "linear_elasticity_2d": 2,
+        "linear_elasticity_3d": 3,
+        "linear_dynamics": None,
+    }
+    return {
+        "problem_kind": plan.problem_kind,
+        "spatial_dimension": dimensions.get(plan.problem_kind),
+        "element_family": plan.cell_type,
+        "dof_count": plan.dof_count,
+        "assembly_mode": plan.assembly_mode,
+        "provider": plan.provider,
+        "claim_maturity": plan.maturity,
+    }
+
+
 def _receipt(plan: ExecutionPlan, result: ExecutionResult) -> ExecutionReceipt:
     evidence = {
         "engine": {"name": "agentfem_native", "version": __version__},
         "native_kernel": native_kernel_identity(),
         "plan_digest": plan.digest,
         "claim_maturity": plan.maturity,
+        "analysis": _analysis_evidence(plan),
         "result": _result_evidence(result),
     }
     encoded = json.dumps(
