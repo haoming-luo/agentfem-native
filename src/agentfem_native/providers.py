@@ -109,9 +109,7 @@ class NativeSparseSolvePlan:
     def solve(self, load: ArrayLike, values: ArrayLike) -> LinearSolveOutcome:
         """复用约束后矩阵和数值预条件器，只变换当前右端项。"""
 
-        constrained_load = self.constraint_plan.transform_rhs(
-            self.matrix, load, values
-        )
+        constrained_load = self.constraint_plan.transform_rhs(self.matrix, load, values)
         result = conjugate_gradient(
             self.constrained_matrix,
             constrained_load,

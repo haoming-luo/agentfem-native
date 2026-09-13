@@ -551,9 +551,7 @@ class CSRConstraintPlan:
             position = int(np.searchsorted(graph.indices[start:stop], index)) + start
             if position >= stop or graph.indices[position] != index:
                 missing.append(index)
-        augmented_rows = np.concatenate(
-            (rows, np.asarray(missing, dtype=np.int64))
-        )
+        augmented_rows = np.concatenate((rows, np.asarray(missing, dtype=np.int64)))
         augmented_columns = np.concatenate(
             (graph.indices, np.asarray(missing, dtype=np.int64))
         )
@@ -574,13 +572,9 @@ class CSRConstraintPlan:
         retained = np.flatnonzero(
             ~is_constrained[rows] & ~is_constrained[graph.indices]
         )
-        lift = np.flatnonzero(
-            ~is_constrained[rows] & is_constrained[graph.indices]
-        )
+        lift = np.flatnonzero(~is_constrained[rows] & is_constrained[graph.indices])
         value_position_by_dof = np.full(shape[0], -1, dtype=np.int64)
-        value_position_by_dof[constrained] = np.arange(
-            constrained.size, dtype=np.int64
-        )
+        value_position_by_dof[constrained] = np.arange(constrained.size, dtype=np.int64)
         diagonal_slots = np.empty(constrained.size, dtype=np.int64)
         for offset, raw_index in enumerate(constrained):
             index = int(raw_index)
@@ -709,9 +703,10 @@ class CSRConstraintPlan:
             raise ValueError("约束值数量必须与计划的约束自由度数量一致。")
         if self.lift_source.size:
             with np.errstate(over="ignore", invalid="ignore"):
-                correction = -matrix.data[self.lift_source] * prescribed[
-                    self.lift_value_positions
-                ]
+                correction = (
+                    -matrix.data[self.lift_source]
+                    * prescribed[self.lift_value_positions]
+                )
             np.add.at(rhs, self.lift_rows, correction)
         rhs[self.constrained] = prescribed
         if not np.all(np.isfinite(rhs)):
@@ -922,15 +917,11 @@ class PreparedPreconditioner:
     def __post_init__(self) -> None:
         if self.kind not in {"none", "jacobi", "block_jacobi"}:
             raise ValueError(f"未知 CG 预条件器 {self.kind!r}。")
-        graph = CSRMatrix(
-            self.shape, self.indptr, self.indices, self.matrix_data
-        )
+        graph = CSRMatrix(self.shape, self.indptr, self.indices, self.matrix_data)
         inverse_diagonal = self.inverse_diagonal
         inverse_blocks = self.inverse_blocks
         if inverse_diagonal is not None:
-            inverse_diagonal = _readonly_values(
-                inverse_diagonal, name="Jacobi 逆对角"
-            )
+            inverse_diagonal = _readonly_values(inverse_diagonal, name="Jacobi 逆对角")
         if inverse_blocks is not None:
             blocks = np.array(inverse_blocks, dtype=np.float64, copy=True)
             if blocks.ndim != 3 or not np.all(np.isfinite(blocks)):
@@ -977,9 +968,7 @@ class PreparedPreconditioner:
         """构造数值预条件器，并保存防止陈旧复用的矩阵快照。"""
 
         if kind == "none":
-            result = cls(
-                kind, matrix.shape, matrix.indptr, matrix.indices, matrix.data
-            )
+            result = cls(kind, matrix.shape, matrix.indptr, matrix.indices, matrix.data)
             object.__setattr__(result, "matrix_data", matrix.data)
             return result
         if kind == "jacobi":
@@ -1184,9 +1173,7 @@ def conjugate_gradient(
         )
         scale = matrix_infinity_norm * solution_norm + rhs_infinity_norm
         roundoff_floor = (
-            np.finfo(np.float64).eps
-            * np.sqrt(max(matrix.shape[0], 1))
-            * scale
+            np.finfo(np.float64).eps * np.sqrt(max(matrix.shape[0], 1)) * scale
         )
         return max(requested_threshold, roundoff_floor)
 

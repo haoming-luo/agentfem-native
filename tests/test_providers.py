@@ -117,9 +117,7 @@ class ProviderTests(unittest.TestCase):
     def test_native_sparse_plan_reuses_matrix_and_preconditioner(self) -> None:
         matrix = np.array(((4.0, -1.0), (-1.0, 3.0)))
         rows, columns = np.nonzero(matrix)
-        sparse = CSRMatrix.from_coo(
-            matrix.shape, rows, columns, matrix[rows, columns]
-        )
+        sparse = CSRMatrix.from_coo(matrix.shape, rows, columns, matrix[rows, columns])
         provider = NativeSparseProvider()
         plan = provider.prepare_constrained(sparse, [0])
         first = plan.solve([0.0, 2.0], [0.0])
@@ -141,9 +139,7 @@ class ProviderTests(unittest.TestCase):
             )
         )
         rows, columns = np.nonzero(dense)
-        matrix = CSRMatrix.from_coo(
-            dense.shape, rows, columns, dense[rows, columns]
-        )
+        matrix = CSRMatrix.from_coo(dense.shape, rows, columns, dense[rows, columns])
         provider = NativeSparseProvider(block_size=2)
         constrained = np.array((0, 1), dtype=np.int64)
         values = np.array((0.1, -0.2))
