@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Readable T4 three-dimensional small-strain elasticity vertical slice."""
+"""自主 T4 三维小应变线弹性的可读、优化与预备装配竖向链路。"""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from .assembly import COOMatrix
 from .dofs import VectorDofMap
 from .native import assemble_t4_volume, native_kernel_available
 from .providers import LinearAlgebraProvider, NativeSparseProvider, resolve_provider
-from .sparse import CGReport
+from .sparse import CGReport, CSRAssemblyPlan, CSRMatrix
 from .volume_mesh import TetrahedralMesh
 
 FloatArray: TypeAlias = NDArray[np.float64]
@@ -307,6 +307,37 @@ def assemble_linear_elasticity_3d(
     return COOMatrix((dofs.size, dofs.size), rows, columns, data), load, dofs
 
 
+def prepare_linear_elasticity_3d_assembly(
+    problem: LinearElastic3DProblem,
+) -> CSRAssemblyPlan:
+    """为固定 T4 拓扑建立一次可复用的规范 CSR 装配计划。"""
+
+    if not isinstance(problem, LinearElastic3DProblem):
+        raise TypeError("T4 预备装配要求 LinearElastic3DProblem。")
+    dofs = VectorDofMap(problem.mesh.node_count, 3)
+    return CSRAssemblyPlan(dofs.size, dofs.cell_dofs(problem.mesh.cells))
+
+
+def assemble_linear_elasticity_3d_prepared(
+    problem: LinearElastic3DProblem,
+    plan: CSRAssemblyPlan,
+    *,
+    assembly: SolidAssemblyMode = "auto",
+) -> tuple[CSRMatrix, FloatArray, VectorDofMap]:
+    """复用已验证稀疏图装配一次 T4 矩阵，同时保留既有载荷语义。"""
+
+    if not isinstance(problem, LinearElastic3DProblem):
+        raise TypeError("T4 预备装配要求 LinearElastic3DProblem。")
+    if not isinstance(plan, CSRAssemblyPlan):
+        raise TypeError("T4 预备装配要求 CSRAssemblyPlan。")
+    dofs = VectorDofMap(problem.mesh.node_count, 3)
+    plan.validate_layout(dofs.size, dofs.cell_dofs(problem.mesh.cells))
+    coo, load, assembled_dofs = assemble_linear_elasticity_3d(
+        problem, assembly=assembly
+    )
+    return plan.fill(coo.data), load, assembled_dofs
+
+
 def _component(value: Literal["x", "y", "z"] | int) -> int:
     if isinstance(value, (bool, np.bool_)):
         raise TypeError("Solid displacement component must be x, y, z, 0, 1, or 2.")
@@ -372,8 +403,14 @@ def solve_linear_elasticity_3d(
     *,
     provider: str | LinearAlgebraProvider | None = None,
     assembly: SolidAssemblyMode = "auto",
+    assembly_plan: CSRAssemblyPlan | None = None,
 ) -> LinearElastic3DResult:
-    matrix, load, dofs = assemble_linear_elasticity_3d(problem, assembly=assembly)
+    if assembly_plan is None:
+        matrix, load, dofs = assemble_linear_elasticity_3d(problem, assembly=assembly)
+    else:
+        matrix, load, dofs = assemble_linear_elasticity_3d_prepared(
+            problem, assembly_plan, assembly=assembly
+        )
     constrained, values = _constraints(problem, dofs)
     selected = (
         NativeSparseProvider(block_size=3)

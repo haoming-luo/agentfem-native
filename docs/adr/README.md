@@ -39,3 +39,5 @@ owner review. Superseded decisions remain in history.
   为多载荷、隐式动力和 Newton 复用符号工作
 - [ADR-0023](0023-cpp20-deterministic-csr-fill.md)：通过 ABI 1.4 按原 COO
   贡献顺序确定性回填 CSR 数值
+- [ADR-0024](0024-prepared-mechanics-assembly.md)：显式拥有并验证可复用 CSR
+  装配计划，让 T3/T4 和求解提供者消费已规范矩阵

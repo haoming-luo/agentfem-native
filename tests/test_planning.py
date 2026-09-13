@@ -122,7 +122,11 @@ class PlanningTests(unittest.TestCase):
         self.assertIn("csr_numeric_fill_cpp20", providers["native_sparse"]["operators"])
         self.assertEqual(
             providers["native_sparse"]["graph_lifecycle"],
-            ["build_pattern", "fill_values"],
+            ["build_pattern", "validate_layout", "fill_values"],
+        )
+        self.assertEqual(
+            providers["native_sparse"]["prepared_assembly"]["elements"],
+            ["T3", "T4"],
         )
         execution = {item["name"]: item for item in capabilities["execution"]}
         parallel = execution["deterministic_cpu_parallel_assembly"]

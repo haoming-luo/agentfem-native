@@ -8,6 +8,7 @@ import numpy as np
 
 from agentfem_native.sparse import (
     BSRMatrix,
+    CSRAssemblyPlan,
     CSRMatrix,
     CSRPattern,
     conjugate_gradient,
@@ -134,6 +135,35 @@ class CSRPatternTests(unittest.TestCase):
         np.testing.assert_array_equal(production.indptr, (0, 0, 0, 0))
         np.testing.assert_array_equal(production.data, reference.data)
         self.assertEqual(production.shape, (3, 4))
+
+
+class CSRAssemblyPlanTests(unittest.TestCase):
+    def test_plan_reuses_graph_and_matches_cold_canonicalization(self) -> None:
+        cell_dofs = np.array(((0, 1), (1, 2)), dtype=np.int64)
+        plan = CSRAssemblyPlan(3, cell_dofs)
+        local = np.array((((2.0, -1.0), (-1.0, 2.0)),) * 2)
+        prepared = plan.fill(local)
+        rows = np.repeat(cell_dofs, 2, axis=1).ravel()
+        columns = np.tile(cell_dofs, (1, 2)).ravel()
+        cold = CSRMatrix.from_coo((3, 3), rows, columns, local.ravel())
+
+        np.testing.assert_array_equal(prepared.indptr, cold.indptr)
+        np.testing.assert_array_equal(prepared.indices, cold.indices)
+        np.testing.assert_array_equal(prepared.data, cold.data)
+        self.assertIs(prepared.indptr, plan.pattern.indptr)
+        self.assertEqual(plan.contribution_count, 8)
+        self.assertEqual(plan.nnz, 7)
+        self.assertGreater(plan.storage_nbytes, plan.pattern.storage_nbytes)
+
+    def test_plan_rejects_changed_layout_and_wrong_contribution_shape(self) -> None:
+        cell_dofs = np.array(((0, 1), (1, 2)), dtype=np.int64)
+        plan = CSRAssemblyPlan(3, cell_dofs)
+        with self.assertRaisesRegex(ValueError, "DOF 顺序"):
+            plan.validate_layout(3, cell_dofs[::-1])
+        with self.assertRaisesRegex(ValueError, "局部矩阵"):
+            plan.fill(np.ones((2, 2)))
+        with self.assertRaisesRegex(ValueError, "超出"):
+            CSRAssemblyPlan(2, cell_dofs)
 
 
 class ConjugateGradientTests(unittest.TestCase):

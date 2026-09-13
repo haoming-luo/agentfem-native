@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Owned linear second-order time integration and restart semantics."""
+"""自主线性二阶时间积分、约束、能量账本与重启语义。"""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from .elasticity import LinearElasticProblem
 from .geometry import AffineTriangleMap
 from .mesh import TriangularMesh
 from .runtime import ExecutionContext
-from .sparse import CSRMatrix, conjugate_gradient
+from .sparse import CSRAssemblyPlan, CSRMatrix, conjugate_gradient
 
 FloatArray: TypeAlias = NDArray[np.float64]
 Integrator = Literal["central_difference", "newmark_average_acceleration"]
@@ -521,14 +521,27 @@ def build_t3_linear_dynamics(
     initial_velocity: ArrayLike | None = None,
     load_scale: TimeScale = 1.0,
     lumped_mass: bool = True,
+    assembly_plan: CSRAssemblyPlan | None = None,
 ) -> tuple[LinearSecondOrderSystem, NDArray[np.int64]]:
-    """Build a zero-fixed T3 structural dynamics system from owned FEM semantics."""
+    """从自有有限元语义建立零位移约束的 T3 结构动力系统。"""
 
-    from .elasticity import _collect_displacements, assemble_linear_elasticity
+    from .elasticity import (
+        _collect_displacements,
+        assemble_linear_elasticity,
+        assemble_linear_elasticity_prepared,
+    )
 
     if not isinstance(problem, LinearElasticProblem):
         raise TypeError("T3 dynamics requires a LinearElasticProblem.")
-    matrix, static_load, dofs = assemble_linear_elasticity(problem)
+    if assembly_plan is None:
+        matrix, static_load, dofs = assemble_linear_elasticity(problem)
+        stiffness = CSRMatrix.from_coo(
+            matrix.shape, matrix.rows, matrix.columns, matrix.data
+        )
+    else:
+        stiffness, static_load, dofs = assemble_linear_elasticity_prepared(
+            problem, assembly_plan
+        )
     constrained, prescribed = _collect_displacements(problem, dofs)
     if np.any(prescribed != 0.0):
         raise ValueError("T3 dynamics currently admits only zero fixed displacements.")
@@ -558,9 +571,6 @@ def build_t3_linear_dynamics(
             raise ValueError("Dynamic load scale must be finite.")
         return scale * static_load
 
-    stiffness = CSRMatrix.from_coo(
-        matrix.shape, matrix.rows, matrix.columns, matrix.data
-    )
     mass = assemble_t3_mass(
         problem.mesh,
         density,

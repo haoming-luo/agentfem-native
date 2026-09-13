@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 from typing import Literal, TypeAlias
 
@@ -419,6 +419,96 @@ class CSRPattern:
         if not np.all(np.isfinite(data)):
             raise ValueError("COO 归并后的 CSR 数值不是有限数。")
         return CSRMatrix._from_pattern(self, data)
+
+
+@dataclass(frozen=True, slots=True)
+class CSRAssemblyPlan:
+    """绑定单元 DOF 顺序与规范稀疏图的不可变重复装配计划。"""
+
+    dof_count: int
+    cell_dofs: IndexArray
+    pattern: CSRPattern = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if (
+            isinstance(self.dof_count, (bool, np.bool_))
+            or not isinstance(self.dof_count, (int, np.integer))
+            or int(self.dof_count) < 0
+            or int(self.dof_count) > np.iinfo(np.int64).max
+        ):
+            raise ValueError("DOF 总数必须是有符号 64 位可表示的非负整数。")
+        raw = np.asarray(self.cell_dofs)
+        if raw.ndim != 2 or not np.issubdtype(raw.dtype, np.integer):
+            raise ValueError("预备装配的单元 DOF 必须是二维整数数组。")
+        if raw.shape[1] == 0:
+            raise ValueError("预备装配中每个单元必须至少包含一个 DOF。")
+        if (
+            np.issubdtype(raw.dtype, np.unsignedinteger)
+            and raw.size
+            and int(raw.max()) > np.iinfo(np.int64).max
+        ):
+            raise ValueError("单元 DOF 不能由有符号 64 位索引表示。")
+        values = np.array(raw, dtype=np.int64, copy=True)
+        count = int(self.dof_count)
+        if np.any(values < 0) or np.any(values >= count):
+            raise ValueError("预备装配的单元 DOF 超出全局范围。")
+        values.setflags(write=False)
+        object.__setattr__(self, "dof_count", count)
+        object.__setattr__(self, "cell_dofs", values)
+        object.__setattr__(self, "pattern", CSRPattern.from_element_dofs(count, values))
+
+    @property
+    def cell_count(self) -> int:
+        return int(self.cell_dofs.shape[0])
+
+    @property
+    def local_size(self) -> int:
+        return int(self.cell_dofs.shape[1])
+
+    @property
+    def contribution_count(self) -> int:
+        return self.pattern.coo_entry_count
+
+    @property
+    def nnz(self) -> int:
+        return self.pattern.nnz
+
+    @property
+    def storage_nbytes(self) -> int:
+        return int(self.cell_dofs.nbytes + self.pattern.storage_nbytes)
+
+    @property
+    def structure_digest(self) -> str:
+        return self.pattern.structure_digest
+
+    def validate_layout(self, dof_count: int, cell_dofs: ArrayLike) -> None:
+        """确认当前工程问题仍使用计划创建时的全局与局部 DOF 顺序。"""
+
+        raw = np.asarray(cell_dofs)
+        if (
+            isinstance(dof_count, (bool, np.bool_))
+            or not isinstance(dof_count, (int, np.integer))
+            or int(dof_count) != self.dof_count
+            or raw.shape != self.cell_dofs.shape
+        ):
+            raise ValueError("当前问题的 DOF 布局与预备 CSR 装配计划不一致。")
+        if not np.issubdtype(raw.dtype, np.integer) or not np.array_equal(
+            np.asarray(raw, dtype=np.int64), self.cell_dofs
+        ):
+            raise ValueError("当前问题的单元 DOF 顺序与预备 CSR 装配计划不一致。")
+
+    def fill(self, values: ArrayLike) -> CSRMatrix:
+        """按固定单元—局部行—局部列顺序回填一次元素矩阵贡献。"""
+
+        raw = np.asarray(values, dtype=np.float64)
+        matrix_shape = (self.cell_count, self.local_size, self.local_size)
+        if raw.shape == matrix_shape:
+            contributions = raw.reshape(-1)
+        elif raw.shape == (self.contribution_count,):
+            contributions = raw
+        else:
+            raise ValueError("元素贡献必须是计划对应的三维局部矩阵或等长一维数组。")
+        return self.pattern.fill(contributions)
 
 
 @dataclass(frozen=True, slots=True)

@@ -42,6 +42,8 @@ than FEniCSx objects.
 - `providers`: an owned dependency-free CSR/BSR/CG/Jacobi/block-Jacobi baseline,
   C++20 CSR SpMV, replaceable dense/sparse linear algebra, and future parallel runtime and hardware
   implementations. Dense NumPy is a bounded oracle, not the production default.
+- `prepared assembly`：由调用方显式拥有 `CSRAssemblyPlan`，绑定单元 DOF 顺序
+  与规范图；T3/T4 和动力学可复用它，COO/CSR 都通过同一提供者边界。
 - `contract`: versioned JSON request/result execution and public AgentFEM
   AF-IR lowering boundary.
 - `verification`: tests and evidence that consume public results without

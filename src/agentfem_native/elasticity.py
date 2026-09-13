@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Readable T3 small-strain elasticity vertical slice."""
+"""自主 T3 小应变线弹性的可读、优化与预备装配竖向链路。"""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from .native import assemble_t3_volume, native_kernel_available
 from .providers import LinearAlgebraProvider, NativeSparseProvider, resolve_provider
 from .quadrature import triangle_rule
 from .reference import p1_basis
-from .sparse import CGReport
+from .sparse import CGReport, CSRAssemblyPlan, CSRMatrix
 
 FloatArray: TypeAlias = NDArray[np.float64]
 VectorField = ArrayLike | Callable[[FloatArray], ArrayLike]
@@ -442,6 +442,33 @@ def assemble_linear_elasticity(
     return COOMatrix((dofs.size, dofs.size), rows, columns, data), load, dofs
 
 
+def prepare_linear_elasticity_assembly(
+    problem: LinearElasticProblem,
+) -> CSRAssemblyPlan:
+    """为固定 T3 拓扑建立一次可复用的规范 CSR 装配计划。"""
+
+    if not isinstance(problem, LinearElasticProblem):
+        raise TypeError("T3 预备装配要求 LinearElasticProblem。")
+    dofs = VectorDofMap(problem.mesh.node_count, 2)
+    return CSRAssemblyPlan(dofs.size, dofs.cell_dofs(problem.mesh.cells))
+
+
+def assemble_linear_elasticity_prepared(
+    problem: LinearElasticProblem,
+    plan: CSRAssemblyPlan,
+) -> tuple[CSRMatrix, FloatArray, VectorDofMap]:
+    """复用已验证稀疏图装配一次 T3 矩阵，同时保留既有载荷语义。"""
+
+    if not isinstance(problem, LinearElasticProblem):
+        raise TypeError("T3 预备装配要求 LinearElasticProblem。")
+    if not isinstance(plan, CSRAssemblyPlan):
+        raise TypeError("T3 预备装配要求 CSRAssemblyPlan。")
+    dofs = VectorDofMap(problem.mesh.node_count, 2)
+    plan.validate_layout(dofs.size, dofs.cell_dofs(problem.mesh.cells))
+    coo, load, assembled_dofs = assemble_linear_elasticity(problem)
+    return plan.fill(coo.data), load, assembled_dofs
+
+
 def _component_index(component: Literal["x", "y"] | int) -> int:
     if isinstance(component, (bool, np.bool_)):
         raise TypeError("Displacement component must be 'x', 'y', 0, 1, or None.")
@@ -501,10 +528,14 @@ def solve_linear_elasticity(
     problem: LinearElasticProblem,
     *,
     provider: str | LinearAlgebraProvider | None = None,
+    assembly_plan: CSRAssemblyPlan | None = None,
 ) -> LinearElasticResult:
-    """Assemble, solve, and recover one 2D T3 small-strain problem."""
+    """装配、求解并恢复一个二维 T3 小应变问题。"""
 
-    matrix, load, dofs = assemble_linear_elasticity(problem)
+    if assembly_plan is None:
+        matrix, load, dofs = assemble_linear_elasticity(problem)
+    else:
+        matrix, load, dofs = assemble_linear_elasticity_prepared(problem, assembly_plan)
     constrained, values = _collect_displacements(problem, dofs)
     selected_provider = (
         NativeSparseProvider(block_size=2)

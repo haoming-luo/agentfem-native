@@ -13,10 +13,12 @@ from agentfem_native.elasticity import (
     LinearElasticProblem,
     TractionCondition,
     assemble_linear_elasticity,
+    assemble_linear_elasticity_prepared,
     p1_body_force_load,
     p1_boundary_traction_load,
     p1_elastic_stiffness,
     p1_strain_displacement,
+    prepare_linear_elasticity_assembly,
     solve_linear_elasticity,
 )
 from agentfem_native.mesh import (
@@ -25,6 +27,7 @@ from agentfem_native.mesh import (
     unit_square_two_triangles,
 )
 from agentfem_native.reference import REFERENCE_TRIANGLE_VERTICES
+from agentfem_native.sparse import CSRMatrix
 
 
 def _mesh_with_origin(resolution: int) -> TriangularMesh:
@@ -461,6 +464,48 @@ class LinearElasticitySolveTests(unittest.TestCase):
                         DisplacementCondition("left", "x", 1.0),
                     ),
                 )
+            )
+
+    def test_prepared_t3_assembly_reuses_graph_and_solves_equivalently(self) -> None:
+        mesh = unit_square_triangles(4)
+        problem = LinearElasticProblem(
+            mesh,
+            LinearElasticMaterial(80.0, 0.22),
+            body_force=(0.4, -0.2),
+            dirichlet=(DisplacementCondition("left", None, (0.0, 0.0)),),
+            traction=(TractionCondition("right", (1.0, 0.1)),),
+            assembly_mode="native",
+        )
+        plan = prepare_linear_elasticity_assembly(problem)
+        coo, cold_load, _ = assemble_linear_elasticity(problem)
+        cold = CSRMatrix.from_coo(coo.shape, coo.rows, coo.columns, coo.data)
+        prepared, prepared_load, _ = assemble_linear_elasticity_prepared(problem, plan)
+
+        np.testing.assert_array_equal(prepared.indptr, cold.indptr)
+        np.testing.assert_array_equal(prepared.indices, cold.indices)
+        np.testing.assert_array_equal(prepared.data, cold.data)
+        np.testing.assert_array_equal(prepared_load, cold_load)
+        self.assertIs(prepared.indptr, plan.pattern.indptr)
+        cold_result = solve_linear_elasticity(problem, provider="native")
+        prepared_result = solve_linear_elasticity(
+            problem, provider="native", assembly_plan=plan
+        )
+        np.testing.assert_array_equal(
+            prepared_result.displacements, cold_result.displacements
+        )
+        np.testing.assert_array_equal(
+            prepared_result.cell_stress, cold_result.cell_stress
+        )
+
+        reordered_mesh = TriangularMesh(
+            mesh.points,
+            mesh.cells[::-1],
+            node_sets=mesh.node_sets,
+            boundary_sets=mesh.boundary_sets,
+        )
+        with self.assertRaisesRegex(ValueError, "DOF 顺序"):
+            assemble_linear_elasticity_prepared(
+                LinearElasticProblem(reordered_mesh, problem.material), plan
             )
 
 

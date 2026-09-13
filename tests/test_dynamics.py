@@ -17,6 +17,7 @@ from agentfem_native.elasticity import (
     DisplacementCondition,
     LinearElasticMaterial,
     LinearElasticProblem,
+    prepare_linear_elasticity_assembly,
 )
 from agentfem_native.mesh import unit_square_triangles
 from agentfem_native.sparse import CSRMatrix
@@ -67,7 +68,25 @@ class T3MassTests(unittest.TestCase):
             steps=20,
             initial_displacement=initial,
         )
+        plan = prepare_linear_elasticity_assembly(problem)
+        prepared_system, prepared_constrained = build_t3_linear_dynamics(
+            problem,
+            1.0,
+            time_step=0.001,
+            steps=20,
+            initial_displacement=initial,
+            assembly_plan=plan,
+        )
+        np.testing.assert_array_equal(prepared_constrained, constrained)
+        np.testing.assert_array_equal(
+            prepared_system.stiffness.data, system.stiffness.data
+        )
+        self.assertIs(prepared_system.stiffness.indptr, plan.pattern.indptr)
         result = integrate_constrained_linear_dynamics(system, constrained)
+        prepared_result = integrate_constrained_linear_dynamics(
+            prepared_system, prepared_constrained
+        )
+        np.testing.assert_array_equal(prepared_result.displacement, result.displacement)
         np.testing.assert_array_equal(result.displacement[:, constrained], 0.0)
         self.assertEqual(result.reaction.shape, (21, constrained.size))
         self.assertTrue(np.all(np.isfinite(result.energy_balance_error)))

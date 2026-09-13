@@ -12,12 +12,15 @@ from agentfem_native.solid import (
     SolidElasticMaterial,
     SolidTractionCondition,
     assemble_linear_elasticity_3d,
+    assemble_linear_elasticity_3d_prepared,
+    prepare_linear_elasticity_3d_assembly,
     solve_linear_elasticity_3d,
     t4_body_force_load,
     t4_boundary_traction_load,
     t4_elastic_stiffness,
     t4_strain_displacement,
 )
+from agentfem_native.sparse import CSRMatrix
 from agentfem_native.volume_mesh import TetrahedralMesh, unit_cube_tetrahedra
 
 
@@ -384,6 +387,37 @@ class LinearElastic3DTests(unittest.TestCase):
                     dirichlet=(SolidDisplacementCondition("left", "x", 0.0),),
                 )
             )
+
+    def test_prepared_t4_assembly_reuses_graph_and_solves_equivalently(self) -> None:
+        mesh = unit_cube_tetrahedra(2)
+        problem = LinearElastic3DProblem(
+            mesh,
+            SolidElasticMaterial(90.0, 0.24),
+            body_force=(0.2, -0.1, 0.05),
+            dirichlet=(SolidDisplacementCondition("boundary", None, (0.0, 0.0, 0.0)),),
+        )
+        plan = prepare_linear_elasticity_3d_assembly(problem)
+        coo, cold_load, _ = assemble_linear_elasticity_3d(problem)
+        cold = CSRMatrix.from_coo(coo.shape, coo.rows, coo.columns, coo.data)
+        prepared, prepared_load, _ = assemble_linear_elasticity_3d_prepared(
+            problem, plan
+        )
+
+        np.testing.assert_array_equal(prepared.indptr, cold.indptr)
+        np.testing.assert_array_equal(prepared.indices, cold.indices)
+        np.testing.assert_array_equal(prepared.data, cold.data)
+        np.testing.assert_array_equal(prepared_load, cold_load)
+        self.assertIs(prepared.indices, plan.pattern.indices)
+        cold_result = solve_linear_elasticity_3d(problem, provider="numpy")
+        prepared_result = solve_linear_elasticity_3d(
+            problem, provider="numpy", assembly_plan=plan
+        )
+        np.testing.assert_array_equal(
+            prepared_result.displacements, cold_result.displacements
+        )
+        np.testing.assert_array_equal(
+            prepared_result.cell_stress, cold_result.cell_stress
+        )
 
 
 if __name__ == "__main__":

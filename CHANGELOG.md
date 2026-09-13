@@ -14,6 +14,9 @@
 - C++ Stable ABI 提升到 1.4，新增按原 COO 贡献顺序的确定性 CSR 数值回填；
   保留独立 `fill_reference`，生产/参考输出逐位一致。源提交 `d172cf6` 已在运行
   `34757610403` 中通过 14 项 Windows/Linux/macOS Tier-1 验收。
+- 新增 `CSRAssemblyPlan` 及 T3/T4 预备装配入口；固定拓扑的重复装配可以绕过
+  CSR 图重建。自有、NumPy、SciPy 提供者接受规范 CSR，T3 动力构建可复用刚度
+  图；`native_sparse` 提供者契约版本提升为 0.3。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

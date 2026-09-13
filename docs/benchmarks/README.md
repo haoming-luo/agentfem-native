@@ -21,6 +21,10 @@ failure tests establish equivalent work. Timings never replace verification.
   CG/Jacobi end-to-end diffusion, and T3 uniaxial mechanics evidence.
 - `mechanics_alpha.py`: T3/T4 readable/native assembly equivalence and timing,
   CSR/BSR operator evidence, a T4 solve, and long-step linear dynamics.
+- `sparse_pattern_reuse.py`：比较重复 COO 规范化、NumPy 参考回填与 ABI 1.4
+  生产回填，并明确不代表端到端求解。
+- `prepared_mechanics_assembly.py`：比较 T3/T4 从元素装配到规范 CSR 的冷路径与
+  显式预备图路径，验证结构和数值逐位一致。
 
 Run from the repository environment. Raw-language comparison additionally
 requires the C++ library built from `native_spikes/cpp20` and the Rust library

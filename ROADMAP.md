@@ -168,8 +168,12 @@ Gate and maturity boundary.
   COO 快 134×–146×，但相对 NumPy 参考回填仅快 1.02×–1.07×，因此不宣称
   端到端巨大加速。源提交 `d172cf6` 的 Linux 快检 `34757574303` 与 14 项完整
   Tier-1 验收 `34757610403` 均通过。
-- Remaining: reusable-pattern integration into repeated engineering workflows,
-  end-to-end memory/time evidence, SIMD, and stronger preconditioners.
+- 本地候选已完成：`CSRAssemblyPlan` 把可复用图接入 T3/T4、三类求解提供者和
+  T3 动力系统构建。macOS arm64 的元素装配到规范 CSR 阶段，T3 三档快
+  17.4×–39.8×、T4 三档快 7.5×–27.5×，所有图和数值逐位一致；仍保留 COO
+  索引缓冲，且不把阶段倍率解释为完整求解倍率。
+- Remaining: constrained-graph and preconditioner reuse, direct element-to-CSR
+  memory reduction, complete repeated-solve evidence, SIMD, and stronger providers.
 - Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
   narrow contracts and after license, platform, determinism, and performance
   evidence.
@@ -210,8 +214,8 @@ required.
 求解收敛、合法畸变 patch、尺度化残差/平衡和 Agent 可读分析摘要。当前科学
 矩阵 G2-01 至 G2-10 本地通过；力学 JSON Contract 0.2 和最终 Tier-1 Gate
 候选仍未关闭。P3 CPU 并行与 ABI 1.4 可复用图数值回填已完成本地与三平台
-验收，但真实重复装配生命周期和力学 Contract 仍未关闭，因此 Gate 2 继续保持
-`implemented`。
+验收；预备装配生命周期已形成本地候选，但约束/预条件器复用、完整重复求解和
+力学 Contract 仍未关闭，因此 Gate 2 继续保持 `implemented`。
 
 ## Gate 3 — time and nonlinear lifecycle
 

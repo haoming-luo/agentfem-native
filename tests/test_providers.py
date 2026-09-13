@@ -10,10 +10,15 @@ import numpy as np
 
 from agentfem_native import (
     DirichletCondition,
+    DisplacementCondition,
+    LinearElasticMaterial,
+    LinearElasticProblem,
     NeumannCondition,
     ProviderUnavailableError,
     ScipySparseProvider,
     SteadyDiffusionProblem,
+    prepare_linear_elasticity_assembly,
+    solve_linear_elasticity,
     solve_steady_diffusion,
     unit_square_triangles,
 )
@@ -37,7 +42,7 @@ class ProviderTests(unittest.TestCase):
     def test_default_provider_is_owned_sparse_baseline(self) -> None:
         result = solve_steady_diffusion(_problem())
         self.assertEqual(result.provider_name, "native_sparse")
-        self.assertEqual(result.provider_version, "0.2")
+        self.assertEqual(result.provider_version, "0.3")
 
     def test_unknown_provider_fails_explicitly(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unknown linear algebra provider"):
@@ -61,6 +66,25 @@ class ProviderTests(unittest.TestCase):
             sparse.nodal_values, dense.nodal_values, atol=2.0e-15
         )
         self.assertLess(sparse.free_residual_norm, 2.0e-14)
+
+    @unittest.skipUnless(
+        importlib.util.find_spec("scipy") is not None, "SciPy unavailable"
+    )
+    def test_scipy_accepts_prepared_mechanics_csr(self) -> None:
+        problem = LinearElasticProblem(
+            unit_square_triangles(3),
+            LinearElasticMaterial(50.0, 0.2),
+            body_force=(0.2, -0.1),
+            dirichlet=(DisplacementCondition("left", None, (0.0, 0.0)),),
+        )
+        plan = prepare_linear_elasticity_assembly(problem)
+        prepared = solve_linear_elasticity(
+            problem, provider="scipy", assembly_plan=plan
+        )
+        cold = solve_linear_elasticity(problem, provider="scipy")
+        np.testing.assert_allclose(
+            prepared.displacements, cold.displacements, rtol=2.0e-13, atol=2.0e-16
+        )
 
     @unittest.skipUnless(
         importlib.util.find_spec("scipy") is not None, "SciPy unavailable"

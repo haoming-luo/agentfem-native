@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Replaceable linear-algebra providers for the Native reference kernel."""
+"""面向 Native 规范 COO/CSR 的可替换线性代数提供者。"""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from .sparse import CGReport, CSRMatrix, conjugate_gradient
 
 FloatArray: TypeAlias = NDArray[np.float64]
 IndexArray: TypeAlias = NDArray[np.int64]
+SparseMatrix: TypeAlias = COOMatrix | CSRMatrix
 
 
 class ProviderUnavailableError(RuntimeError):
@@ -47,7 +48,7 @@ class LinearSolveOutcome:
 class LinearAlgebraProvider(Protocol):
     def solve_constrained(
         self,
-        matrix: COOMatrix,
+        matrix: SparseMatrix,
         load: FloatArray,
         constrained: IndexArray,
         values: FloatArray,
@@ -70,7 +71,7 @@ class NumpyDenseProvider:
 
     def solve_constrained(
         self,
-        matrix: COOMatrix,
+        matrix: SparseMatrix,
         load: FloatArray,
         constrained: IndexArray,
         values: FloatArray,
@@ -105,13 +106,17 @@ class NativeSparseProvider:
 
     def solve_constrained(
         self,
-        matrix: COOMatrix,
+        matrix: SparseMatrix,
         load: FloatArray,
         constrained: IndexArray,
         values: FloatArray,
     ) -> LinearSolveOutcome:
-        sparse = CSRMatrix.from_coo(
-            matrix.shape, matrix.rows, matrix.columns, matrix.data
+        sparse = (
+            matrix
+            if isinstance(matrix, CSRMatrix)
+            else CSRMatrix.from_coo(
+                matrix.shape, matrix.rows, matrix.columns, matrix.data
+            )
         )
         constrained_matrix, constrained_load = sparse.with_dirichlet(
             load, constrained, values
@@ -136,7 +141,7 @@ class NativeSparseProvider:
             solution=result.solution,
             provider=ProviderIdentity(
                 "native_sparse",
-                "0.2",
+                "0.3",
                 "bsr-block-jacobi" if self.block_size else "csr",
             ),
             convergence=result.report,
@@ -153,7 +158,7 @@ class ScipySparseProvider:
 
     def solve_constrained(
         self,
-        matrix: COOMatrix,
+        matrix: SparseMatrix,
         load: FloatArray,
         constrained: IndexArray,
         values: FloatArray,
@@ -163,13 +168,18 @@ class ScipySparseProvider:
                 "SciPy provider is unavailable; install agentfem-native[scipy]."
             )
         import scipy
-        from scipy.sparse import coo_array
+        from scipy.sparse import coo_array, csr_array
         from scipy.sparse.linalg import MatrixRankWarning, spsolve
 
-        sparse = coo_array(
-            (matrix.data, (matrix.rows, matrix.columns)),
-            shape=matrix.shape,
-        ).tocsr()
+        if isinstance(matrix, CSRMatrix):
+            sparse = csr_array(
+                (matrix.data, matrix.indices, matrix.indptr), shape=matrix.shape
+            )
+        else:
+            sparse = coo_array(
+                (matrix.data, (matrix.rows, matrix.columns)),
+                shape=matrix.shape,
+            ).tocsr()
         solution = np.zeros(matrix.shape[0], dtype=np.float64)
         solution[constrained] = values
         free = _free_indices(matrix.shape[0], constrained)
