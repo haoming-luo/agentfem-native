@@ -1,6 +1,6 @@
 # 预备约束求解生命周期规格 0.1
 
-**状态：** `implemented`；本地数学、T3/T4 与性能证据通过，Linux 快检待运行
+**状态：** `implemented`；本地数学、T3/T4、性能证据与 Linux 快检通过
 
 ## AgentFEM 使用场景
 
