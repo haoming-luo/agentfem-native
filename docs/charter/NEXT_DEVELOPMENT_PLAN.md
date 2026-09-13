@@ -3,11 +3,12 @@
 **规划日期：** 2026-09-13  
 **规划状态：** 执行建议；不自动提升任何科学能力的成熟度  
 **当前基线：** `0.7.0a1`、C++ ABI 1.4、182 项本地测试；ABI 源提交 `d172cf6`
-已在运行 `34757610403` 中通过 Tier-1 跨平台验收
+已在运行 `34757610403` 中通过 Tier-1 跨平台验收，预备力学装配源提交
+`628d9a4` 已通过 Linux 快检 `34775672146`
 
 当前最近一次时间盒执行见
-[`FIVE_HOUR_GATE2_SPRINT.md`](FIVE_HOUR_GATE2_SPRINT.md)：先形成 Gate 2 本地
-科学验收候选，再单独推进 P3 CPU 并行主干，避免两个高风险变量同时变化。
+[`FIVE_HOUR_PREPARED_MECHANICS_SPRINT.md`](FIVE_HOUR_PREPARED_MECHANICS_SPRINT.md)：
+已把 ABI 1.4 可复用图接入 T3/T4、提供者和 T3 动力学，并保留清晰性能边界。
 
 **唯一首要使用者：** AgentFEM 的未来工程模型、Agent 工作流和可信计算系统。
 Native 可以保留独立 Python/CLI 入口用于开发、验证和集成，但不发展成与

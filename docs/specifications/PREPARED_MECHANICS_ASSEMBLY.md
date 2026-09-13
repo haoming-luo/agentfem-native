@@ -1,6 +1,6 @@
 # 预备力学稀疏装配规格 0.1
 
-**状态：** 本地 `implemented` 候选，等待远端 Linux 快检
+**状态：** `implemented`；本地证据与远端 Linux 快检通过
 
 ## AgentFEM 使用场景
 

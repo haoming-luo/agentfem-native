@@ -1,7 +1,7 @@
-# P3 预备力学装配本地候选报告
+# P3 预备力学装配实现报告
 
 **日期：** 2026-09-14  
-**成熟度：** 本地 `implemented` 候选，等待远端 Linux 快检
+**成熟度：** `implemented`；本地证据与远端 Linux 快检通过
 
 ## 产品价值
 
@@ -21,6 +21,12 @@ CSR 图；拓扑变化会在矩阵返回前失败，避免 Agent 静默使用错
 
 本地 182 项测试、Ruff、格式与独立性扫描通过。新增 5 个高信息测试方法，覆盖
 通用计划、T3、T4、SciPy CSR 和动力学接入。
+
+源提交 `628d9a4` 的
+[GitHub Actions Linux 快检 `34775672146`](https://github.com/haoming-luo/agentfem-native/actions/runs/34775672146)
+通过，包含格式、182 项科学/提供者测试、便携 Kernel Contract 示例和独立性
+扫描。本增量没有修改 C ABI；依据 CI 治理复用 ABI 1.4 已通过的三平台运行
+`34757610403`，不重复执行未变化的 wheel/C++ 平台矩阵。
 
 ## macOS arm64 性能信号
 

@@ -172,6 +172,8 @@ Gate and maturity boundary.
   T3 动力系统构建。macOS arm64 的元素装配到规范 CSR 阶段，T3 三档快
   17.4×–39.8×、T4 三档快 7.5×–27.5×，所有图和数值逐位一致；仍保留 COO
   索引缓冲，且不把阶段倍率解释为完整求解倍率。
+  源提交 `628d9a4` 的 Linux 快检 `34775672146` 已通过；本能力标记为
+  `implemented`，不据此提升 Gate 2。
 - Remaining: constrained-graph and preconditioner reuse, direct element-to-CSR
   memory reduction, complete repeated-solve evidence, SIMD, and stronger providers.
 - Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
