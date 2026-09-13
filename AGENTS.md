@@ -26,6 +26,11 @@ changing scientific code.
 
 ## Architecture
 
+- AgentFEM is the primary and long-term product consumer. Prioritize future
+  AgentFEM engineering workflows and agent-safe computation, not an unrelated
+  standalone frontend or feature catalog.
+- Face AgentFEM through a versioned Kernel Contract. Do not couple Native to
+  AgentFEM's mutable internal objects, current AF-IR shape, agents, or GUI.
 - Dependencies flow from the neutral Kernel Contract through owned finite-
   element concepts to replaceable linear-algebra/hardware providers.
 - AgentFEM owns engineering language; Native owns topology, elements,

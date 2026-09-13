@@ -333,3 +333,15 @@ license-incompatible code is rejected.
 - 当前复核：仓库 `.venv` 中 AgentFEM Native 版本为 `0.7.0a1`，C++ ABI 1.2
   可用，169 项测试通过。误用未安装项目依赖的系统 Python 会产生导入错误，
   该结果不属于科学回归；自动化和开发命令应显式使用仓库环境。
+
+## AgentFEM 首要产品方向确认 — 2026-09-13
+
+- 任务来源：项目负责人确认 AgentFEM Native 的开发目的就是面向 AgentFEM
+  的未来使用。
+- 决策：AgentFEM 是 Native 唯一首要和长期的产品使用者；独立 Python/CLI
+  入口服务开发、验证和集成，不构成第二个终端产品路线。
+- 架构边界：面向 AgentFEM 不等于耦合其当前内部实现。双方继续通过版本化
+  Kernel Contract 连接，Native 不依赖易变的 AF-IR 形状、Agent 或 GUI 对象。
+- 优先级规则：每项新增能力必须说明 AgentFEM 工程消费场景、意图降低路径、
+  Native 数值所有权、Agent 预检方式、结果返回和证据保存方式；仅为模仿其他
+  内核功能目录而提出的能力不进入生产主线。

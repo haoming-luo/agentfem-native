@@ -4,6 +4,11 @@ AgentFEM Native is the independently developed finite-element engine for
 AgentFEM. It is an official autonomous computation backend, not a FEniCSx
 fork and not a second end-user product.
 
+本项目唯一首要的产品目标，是成为 AgentFEM 面向未来工程建模、Agent 自动
+求解与可信解释的自主计算底座。Native 保持独立的数学与运行时边界，但不发展
+成与 AgentFEM 平行的终端产品；双方通过版本化 Kernel Contract 连接，而不是
+共享易变的内部对象。
+
 The repository has **completed Gate 1** and now has implemented T3/T4 Gate 2
 vertical slices plus a linear Gate 3 candidate. The
 verified serial kernel solves two-dimensional steady scalar diffusion on

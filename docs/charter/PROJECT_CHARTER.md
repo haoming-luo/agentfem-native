@@ -7,6 +7,27 @@ for AgentFEM. Its success means one AgentFEM engineering model can be lowered
 through a versioned contract and solved without FEniCSx performing mesh,
 element, DOF, quadrature, assembly, state evolution, or result generation.
 
+## 产品归属与主要使用者
+
+AgentFEM Native 的首要且长期产品目标，是服务 AgentFEM 未来的工程建模与
+自主计算。它不是另一个与 AgentFEM 竞争的终端建模产品，也不以独立扩张通用
+用户界面为目标。功能优先级由 AgentFEM 可表达的工程问题、Agent 自动执行的
+安全性以及计算可信度共同决定。
+
+这一产品归属不意味着源码级耦合。AgentFEM 可以持续演进工程语言和用户体验；
+Native 通过版本化 Kernel Contract 接收已降低的计算意图，并独立拥有网格、
+单元、装配、求解、状态和结果语义。双方不得共享易变的内部对象作为公共边界。
+
+判断新功能是否进入主线时，依次回答：
+
+1. AgentFEM 是否有明确、真实的未来工程使用场景；
+2. Native 是否应当拥有该能力的数值语义；
+3. Agent 是否能够在执行前判断能力、资源和风险；
+4. 结果是否能以 AgentFEM 可消费的结构返回，并保留完整证据；
+5. 是否值得占用当前 Gate 的验证与性能预算。
+
+不能通过这些问题的功能保留为研究候选，不进入生产主干。
+
 ## Identity
 
 - Repository and distribution: `agentfem-native`
