@@ -31,8 +31,8 @@ than FEniCSx objects.
 
 ## Layers
 
-- `reference`: small, readable NumPy executable mathematics used as an
-  independent oracle for future optimized kernels.
+- `reference`：本项目独立维护、使用 NumPy 数组运算表达的可读有限元数学参考
+  实现，用于校验后续优化内核；NumPy 本身是第三方通用库，不是自研对象。
 - `kernel`: triangle/tetrahedron topology, scalar/vector DOFs, P1 diffusion,
   T3/T4 linear-elasticity operators, deterministic assembly, and linear state
   owned by AgentFEM Native.
