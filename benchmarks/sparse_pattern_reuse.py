@@ -67,12 +67,17 @@ def main() -> int:
             ),
             arguments.repetitions,
         )
-        refill_seconds = _median(
+        production_refill_seconds = _median(
             lambda pattern=pattern, coo=coo: pattern.fill(coo.data),
+            arguments.repetitions,
+        )
+        reference_refill_seconds = _median(
+            lambda pattern=pattern, coo=coo: pattern.fill_reference(coo.data),
             arguments.repetitions,
         )
         cold = CSRMatrix.from_coo(coo.shape, coo.rows, coo.columns, coo.data)
         refilled = pattern.fill(coo.data)
+        reference = pattern.fill_reference(coo.data)
         cases.append(
             {
                 "resolution": resolution,
@@ -83,21 +88,28 @@ def main() -> int:
                 "pattern_storage_bytes": pattern.storage_nbytes,
                 "pattern_build_median_seconds": build_seconds,
                 "cold_canonicalization_median_seconds": canonical_seconds,
-                "numeric_refill_median_seconds": refill_seconds,
+                "production_refill_median_seconds": production_refill_seconds,
+                "reference_refill_median_seconds": reference_refill_seconds,
+                "production_speedup_over_reference_refill": (
+                    reference_refill_seconds / production_refill_seconds
+                ),
                 "refill_speedup_over_cold_canonicalization": (
-                    canonical_seconds / refill_seconds
+                    canonical_seconds / production_refill_seconds
                 ),
                 "graph_exactly_equal": bool(
                     np.array_equal(cold.indptr, refilled.indptr)
                     and np.array_equal(cold.indices, refilled.indices)
                 ),
                 "data_exactly_equal": bool(np.array_equal(cold.data, refilled.data)),
+                "production_reference_data_exactly_equal": bool(
+                    np.array_equal(reference.data, refilled.data)
+                ),
                 "structure_digest": pattern.structure_digest,
             }
         )
 
     record = {
-        "schema": "agentfem-native.sparse-pattern-reuse/0.1",
+        "schema": "agentfem-native.sparse-pattern-reuse/0.2",
         "environment": {
             "agentfem_native": __version__,
             "python": platform.python_version(),

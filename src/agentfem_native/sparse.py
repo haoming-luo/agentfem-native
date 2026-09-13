@@ -386,11 +386,34 @@ class CSRPattern:
         return digest.hexdigest()
 
     def fill(self, values: ArrayLike) -> CSRMatrix:
-        """按原始贡献顺序回填有限数值，不重新排序图。"""
+        """优先通过生产内核按原始贡献顺序回填，不重新排序图。"""
+
+        contributions = self._checked_contributions(values)
+        if self.nnz == 0:
+            return CSRMatrix._from_pattern(self, np.empty(0, dtype=np.float64))
+        from .native import csr_fill_from_contributions, native_kernel_available
+
+        if native_kernel_available():
+            data = csr_fill_from_contributions(self.nnz, self.coo_to_csr, contributions)
+            return CSRMatrix._from_pattern(self, data)
+        return self._fill_reference_checked(contributions)
+
+    def fill_reference(self, values: ArrayLike) -> CSRMatrix:
+        """使用独立 NumPy 数学路径回填，供验证与无编译内核环境使用。"""
+
+        return self._fill_reference_checked(self._checked_contributions(values))
+
+    def _checked_contributions(self, values: ArrayLike) -> FloatArray:
+        """统一验证调用边界，同时保留传入贡献的顺序。"""
 
         contributions = _readonly_values(values, name="COO values")
         if contributions.shape != self.coo_to_csr.shape:
             raise ValueError("COO 数值长度必须与可复用图的贡献映射一致。")
+        return contributions
+
+    def _fill_reference_checked(self, contributions: FloatArray) -> CSRMatrix:
+        """执行可读参考归并；调用方已经完成形状与有限性验证。"""
+
         data = np.zeros(self.nnz, dtype=np.float64)
         np.add.at(data, self.coo_to_csr, contributions)
         if not np.all(np.isfinite(data)):

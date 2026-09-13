@@ -37,3 +37,5 @@ owner review. Superseded decisions remain in history.
   分块和确定性载荷归并实现 T3/T4 CPU 并行装配
 - [ADR-0022](0022-reusable-sparse-pattern.md)：把规范 CSR 图与重复数值回填分离，
   为多载荷、隐式动力和 Newton 复用符号工作
+- [ADR-0023](0023-cpp20-deterministic-csr-fill.md)：通过 ABI 1.4 按原 COO
+  贡献顺序确定性回填 CSR 数值

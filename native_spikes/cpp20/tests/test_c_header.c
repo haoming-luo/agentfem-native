@@ -9,5 +9,11 @@ int main(void) {
   }
   const int status = afn_p1_diffusion_assemble(
       (size_t)0, (size_t)0, NULL, NULL, NULL, 0.0, NULL, NULL, NULL, NULL);
-  return status == AFN_P1_NULL_POINTER ? 0 : 1;
+  if (status != AFN_P1_NULL_POINTER) {
+    return 1;
+  }
+  return afn_csr_fill_from_contributions(
+             (size_t)0, (size_t)0, NULL, NULL, NULL) == AFN_P1_SUCCESS
+             ? 0
+             : 3;
 }

@@ -16,7 +16,7 @@ bool close(const double left, const double right, const double tolerance = 1e-15
 }  // namespace
 
 int main() {
-  static_assert(AFN_P1_ABI_VERSION == 0x00010003u);
+  static_assert(AFN_P1_ABI_VERSION == 0x00010004u);
   assert(afn_p1_abi_version() == AFN_P1_ABI_VERSION);
   const std::array<double, 8> points{{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}};
   const std::array<std::int64_t, 6> cells{{0, 1, 2, 0, 2, 3}};
@@ -188,5 +188,26 @@ int main() {
   assert(close(csr_result[0], 0.0));
   assert(close(csr_result[1], 1.0));
   assert(close(csr_result[2], 6.0));
+
+  const std::array<std::int64_t, 5> fill_mapping{{2, 0, 2, 1, 0}};
+  const std::array<double, 5> fill_contributions{{4.0, 1.0, -1.0, 2.0, 3.0}};
+  std::array<double, 3> fill_data{{99.0, 99.0, 99.0}};
+  assert(afn_csr_fill_from_contributions(
+             fill_mapping.size(), fill_data.size(), fill_mapping.data(),
+             fill_contributions.data(), fill_data.data()) == AFN_P1_SUCCESS);
+  assert(fill_data[0] == 4.0 && fill_data[1] == 2.0 && fill_data[2] == 3.0);
+  auto invalid_mapping = fill_mapping;
+  invalid_mapping[3] = 3;
+  assert(afn_csr_fill_from_contributions(
+             invalid_mapping.size(), fill_data.size(), invalid_mapping.data(),
+             fill_contributions.data(), fill_data.data()) == AFN_P1_INVALID_CELL);
+  auto nonfinite_contributions = fill_contributions;
+  nonfinite_contributions[1] = std::numeric_limits<double>::infinity();
+  assert(afn_csr_fill_from_contributions(
+             fill_mapping.size(), fill_data.size(), fill_mapping.data(),
+             nonfinite_contributions.data(), fill_data.data()) ==
+         AFN_P1_NONFINITE_INPUT);
+  assert(afn_csr_fill_from_contributions(0, 0, nullptr, nullptr, nullptr) ==
+         AFN_P1_SUCCESS);
   return 0;
 }

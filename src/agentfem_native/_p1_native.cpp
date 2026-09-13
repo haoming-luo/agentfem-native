@@ -463,6 +463,43 @@ PyObject* csr_spmv_into(PyObject*, PyObject* arguments) {
   return PyLong_FromLong(status);
 }
 
+PyObject* csr_fill_into(PyObject*, PyObject* arguments) {
+  Py_ssize_t contribution_count = 0;
+  Py_ssize_t nonzero_count = 0;
+  PyObject* mapping_object = nullptr;
+  PyObject* contributions_object = nullptr;
+  PyObject* data_object = nullptr;
+  if (!PyArg_ParseTuple(arguments, "nnOOO", &contribution_count,
+                        &nonzero_count, &mapping_object, &contributions_object,
+                        &data_object)) {
+    return nullptr;
+  }
+  Py_ssize_t contribution_bytes = 0;
+  Py_ssize_t data_bytes = 0;
+  if (!checked_bytes(contribution_count, 8, &contribution_bytes) ||
+      !checked_bytes(nonzero_count, 8, &data_bytes)) {
+    return nullptr;
+  }
+  BufferView mapping;
+  BufferView contributions;
+  BufferView data;
+  if (!mapping.acquire(mapping_object, contribution_bytes, false, false,
+                       "coo_to_csr") ||
+      !contributions.acquire(contributions_object, contribution_bytes, false,
+                             true, "contributions") ||
+      !data.acquire(data_object, data_bytes, true, true, "data")) {
+    return nullptr;
+  }
+  int status = AFN_P1_NULL_POINTER;
+  Py_BEGIN_ALLOW_THREADS
+  status = afn_csr_fill_from_contributions(
+      static_cast<std::size_t>(contribution_count),
+      static_cast<std::size_t>(nonzero_count), mapping.data<std::int64_t>(),
+      contributions.data<double>(), data.data<double>());
+  Py_END_ALLOW_THREADS
+  return PyLong_FromLong(status);
+}
+
 PyMethodDef methods[] = {
     {"abi_version", abi_version, METH_NOARGS,
      "返回编码后的 AgentFEM Native P1 C ABI 版本。"},
@@ -478,6 +515,8 @@ PyMethodDef methods[] = {
      "使用确定性 C++20 CPU 并行内核填充 T4 COO 与载荷缓冲区。"},
     {"csr_spmv_into", csr_spmv_into, METH_VARARGS,
      "使用 C++20 内核应用不可变规范 CSR 矩阵。"},
+    {"csr_fill_into", csr_fill_into, METH_VARARGS,
+     "按原 COO 贡献顺序确定性回填规范 CSR 数值。"},
     {nullptr, nullptr, 0, nullptr},
 };
 

@@ -1,0 +1,74 @@
+{
+  "cases": [
+    {
+      "cells": 2048,
+      "cold_canonicalization_median_seconds": 0.008017540909349918,
+      "coo_entry_count": 73728,
+      "csr_nnz": 29444,
+      "data_exactly_equal": true,
+      "dofs": 2178,
+      "graph_exactly_equal": true,
+      "pattern_build_median_seconds": 0.008124500047415495,
+      "pattern_storage_bytes": 842808,
+      "production_reference_data_exactly_equal": true,
+      "production_refill_median_seconds": 5.974993109703064e-05,
+      "production_speedup_over_reference_refill": 1.0725204969137727,
+      "reference_refill_median_seconds": 6.408302579075098e-05,
+      "refill_speedup_over_cold_canonicalization": 134.18493983415425,
+      "resolution": 32,
+      "structure_digest": "9b08671a8ab8883847ac7a74f12ac203a777eafa3c1e4eba739beb53ee791d8c"
+    },
+    {
+      "cells": 8192,
+      "cold_canonicalization_median_seconds": 0.03321312495972961,
+      "coo_entry_count": 294912,
+      "csr_nnz": 116228,
+      "data_exactly_equal": true,
+      "dofs": 8450,
+      "graph_exactly_equal": true,
+      "pattern_build_median_seconds": 0.03319391596596688,
+      "pattern_storage_bytes": 3356728,
+      "production_reference_data_exactly_equal": true,
+      "production_refill_median_seconds": 0.00022695795632898808,
+      "production_speedup_over_reference_refill": 1.024969813608651,
+      "reference_refill_median_seconds": 0.00023262505419552326,
+      "refill_speedup_over_cold_canonicalization": 146.34043017018251,
+      "resolution": 64,
+      "structure_digest": "c8dca489cda2db0f8b971408cabd4a53685a7386ccb4520f30811dda9711a04d"
+    },
+    {
+      "cells": 32768,
+      "cold_canonicalization_median_seconds": 0.13844345801044255,
+      "coo_entry_count": 1179648,
+      "csr_nnz": 461828,
+      "data_exactly_equal": true,
+      "dofs": 33282,
+      "graph_exactly_equal": true,
+      "pattern_build_median_seconds": 0.13717429095413536,
+      "pattern_storage_bytes": 13398072,
+      "production_reference_data_exactly_equal": true,
+      "production_refill_median_seconds": 0.0009708750294521451,
+      "production_speedup_over_reference_refill": 1.0235189219632763,
+      "reference_refill_median_seconds": 0.0009937089635059237,
+      "refill_speedup_over_cold_canonicalization": 142.59657917926347,
+      "resolution": 128,
+      "structure_digest": "7fc27dd08e831b86c472cd1ba447cf39fe5cf4bf33087b0f47f595cbb9b6fea5"
+    }
+  ],
+  "claim_boundary": "\u53ea\u6d4b\u91cf\u5df2\u6709 COO \u5230\u89c4\u8303 CSR \u7684\u51b7\u8f6c\u6362\u4e0e\u590d\u7528\u56fe\u6570\u503c\u56de\u586b\uff1b\u4e0d\u5305\u542b\u5355\u5143\u88c5\u914d\u3001\u7ea6\u675f\u6216\u6c42\u89e3\uff0c\u4e0d\u80fd\u89e3\u91ca\u4e3a\u7aef\u5230\u7aef\u52a0\u901f\u3002",
+  "environment": {
+    "agentfem_native": "0.7.0a1",
+    "architecture": "arm64",
+    "native_kernel": {
+      "abi_version": "1.4",
+      "available": true,
+      "name": "cpp20",
+      "required_abi_version": "1.4"
+    },
+    "numpy": "2.3.5",
+    "os": "Darwin",
+    "python": "3.12.14"
+  },
+  "repetitions": 9,
+  "schema": "agentfem-native.sparse-pattern-reuse/0.2"
+}

@@ -119,6 +119,7 @@ class PlanningTests(unittest.TestCase):
         providers = {item["name"]: item for item in capabilities["linear_algebra"]}
         self.assertTrue(providers["native_sparse"]["available"])
         self.assertIn("block_jacobi", providers["native_sparse"]["preconditioners"])
+        self.assertIn("csr_numeric_fill_cpp20", providers["native_sparse"]["operators"])
         self.assertEqual(
             providers["native_sparse"]["graph_lifecycle"],
             ["build_pattern", "fill_values"],

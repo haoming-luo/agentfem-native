@@ -721,3 +721,44 @@ extern "C" AFN_API int afn_csr_spmv(
   }
   return AFN_P1_SUCCESS;
 }
+
+extern "C" AFN_API int afn_csr_fill_from_contributions(
+    const std::size_t contribution_count,
+    const std::size_t nonzero_count,
+    const std::int64_t* coo_to_csr,
+    const double* contributions,
+    double* data) {
+  if (contribution_count == 0 && nonzero_count == 0) {
+    return AFN_P1_SUCCESS;
+  }
+  if (contribution_count == 0 || nonzero_count == 0 ||
+      coo_to_csr == nullptr || contributions == nullptr || data == nullptr) {
+    return AFN_P1_NULL_POINTER;
+  }
+  if (nonzero_count > static_cast<std::size_t>(
+                          std::numeric_limits<std::int64_t>::max())) {
+    return AFN_P1_INVALID_CELL;
+  }
+
+  // 先完成只读校验，避免映射错误在输出中留下看似可用的部分矩阵。
+  for (std::size_t entry = 0; entry < contribution_count; ++entry) {
+    if (coo_to_csr[entry] < 0 ||
+        coo_to_csr[entry] >= static_cast<std::int64_t>(nonzero_count)) {
+      return AFN_P1_INVALID_CELL;
+    }
+    if (!std::isfinite(contributions[entry])) {
+      return AFN_P1_NONFINITE_INPUT;
+    }
+  }
+
+  std::fill(data, data + nonzero_count, 0.0);
+  // 原贡献次序是数值契约的一部分；不能按槽位重排或使用非确定性原子归并。
+  for (std::size_t entry = 0; entry < contribution_count; ++entry) {
+    const std::size_t slot = static_cast<std::size_t>(coo_to_csr[entry]);
+    data[slot] += contributions[entry];
+    if (!std::isfinite(data[slot])) {
+      return AFN_P1_NONFINITE_INPUT;
+    }
+  }
+  return AFN_P1_SUCCESS;
+}

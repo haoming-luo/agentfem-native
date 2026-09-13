@@ -1,11 +1,11 @@
-# Native P1/T3/T4 与稀疏 C ABI 1.3
+# Native P1/T3/T4 与稀疏 C ABI 1.4
 
-**状态：** ABI 1.3 已实现并通过 Tier-1 三平台验收。Rust 对照实验仅实现 ABI
-1.0 扩散子集。
+**状态：** ABI 1.4 本地生产候选，等待 Tier-1 三平台验收。ABI 1.3 已完成验收；
+Rust 对照实验仅实现 ABI 1.0 扩散子集。
 
 ## 版本与所有权
 
-`afn_p1_abi_version()` 返回 `0x00010003`，编码为主版本 1、次版本 3。主版本不
+`afn_p1_abi_version()` 返回 `0x00010004`，编码为主版本 1、次版本 4。主版本不
 兼容时不得调用。调用方在整个调用期间拥有所有输入和输出缓冲区；内核不保留
 指针、不分配调用方输出、不调用回调，也不能让 C++ 异常越过 C ABI。
 
@@ -19,8 +19,9 @@
 - `afn_t3_elasticity_assemble_cells`：二维 T3 小应变线弹性体积装配；
 - `afn_t4_elasticity_assemble_cells`：三维 T4 小应变线弹性体积装配；
 - `afn_csr_spmv`：规范 CSR 矩阵向量乘。
+- `afn_csr_fill_from_contributions`：按原贡献顺序回填规范 CSR 数值。
 
-ABI 1.3 不改变这些函数的签名、布局、顺序或数值语义。
+ABI 1.4 不改变 ABI 1.3 既有函数的签名、布局、顺序或数值语义。
 
 ### 扩散布局
 
@@ -52,6 +53,20 @@ ABI 1.3 不改变这些函数的签名、布局、顺序或数值语义。
 `afn_csr_spmv` 接收 `row_count + 1` 个行指针、`nonzero_count` 个有符号 64 位
 列索引与 binary64 数值、`column_count` 个向量值，并输出 `row_count` 个结果。
 空矩阵继续由可读层处理；ABI 入口要求非空缓冲区。
+
+`afn_csr_fill_from_contributions` 接收 `contribution_count` 个映射与 binary64
+贡献，以及 `nonzero_count` 个输出槽位。`(0, 0)` 是成功的空操作；其他情况要求
+两个计数均为正且缓冲区非空。成功时先清零输出，再严格按原贡献序号累加；映射
+越界返回状态 3，输入或归并结果非有限返回状态 4。完整数学边界见
+`REUSABLE_SPARSE_PATTERN.md`。
+
+## ABI 1.4 确定性 CSR 数值回填
+
+ABI 1.4 的新增函数只消费 Native 自有 `CSRPattern` 已建立的映射，不生成图、
+不改变有限元语义。Python 的 `fill_reference` 保留为独立 NumPy 数学路径；生产
+`fill` 在编译内核可用时调用 C++20，否则确定性回退。两条路径必须逐位一致。
+
+本次版本不包含并行归并、原子写、图着色或直接元素到 CSR 装配。
 
 ## ABI 1.3 确定性 CPU 并行入口
 
@@ -91,8 +106,8 @@ afn_t4_elasticity_assemble_cells_parallel(..., size_t thread_count, ...)
 
 每个电导或本构矩阵必须有限、在规定浮点容差内对称且正定。坐标、源和体力必须
 有限；连通性必须在范围内且单元不得退化。COO 始终按单元、局部行、局部列排序。
-CSR SpMV 在每行内按存储列顺序归约。项目维护的 Python 有限元参考实现继续作为
-差分依据；NumPy 本身不是自研对象。
+CSR SpMV 在每行内按存储列顺序归约，CSR 数值回填按原 COO 贡献顺序归约。项目
+维护的 Python 有限元参考实现继续作为差分依据；NumPy 本身不是自研对象。
 
 ## 失败契约
 
@@ -101,8 +116,8 @@ CSR SpMV 在每行内按存储列顺序归约。项目维护的 Python 有限元
 | 0 | 成功 |
 | 1 | 空指针、空网格或空单元集合 |
 | 2 | 无效电导或本构矩阵 |
-| 3 | 无效连通性、尺寸范围或退化几何 |
-| 4 | 非有限坐标、源、体力或计算结果 |
+| 3 | 无效连通性、尺寸范围、稀疏映射或退化几何 |
+| 4 | 非有限坐标、源、体力、稀疏贡献或计算结果 |
 | 5 | `thread_count` 为零 |
 | 6 | 线程或内部临时资源创建失败 |
 
@@ -118,3 +133,6 @@ CSR SpMV 在每行内按存储列顺序归约。项目维护的 Python 有限元
 ABI 1.3 已在源提交 `da92dbd` 的 GitHub Actions 运行 `34752687326` 中通过
 Windows x86_64、Linux x86_64、macOS x86_64/arm64 wheel、C/C++ 契约、
 sanitizer、Python 3.13 Stable ABI 复用和独立 Rust 对照验收。
+
+ABI 1.4 的本地证据只能支持 macOS arm64 编译扩展、Python 差分、177 项回归和
+性能候选；在完整 CI 通过前不得改写为三平台已验收。

@@ -8,7 +8,7 @@ from typing import Final
 import numpy as np
 from numpy.typing import NDArray
 
-NATIVE_P1_ABI_VERSION: Final = 0x0001_0003
+NATIVE_P1_ABI_VERSION: Final = 0x0001_0004
 
 try:
     from . import _p1_native
@@ -320,3 +320,43 @@ def csr_spmv(
             messages.get(status, f"Native CSR SpMV failed with status {status}.")
         )
     return result
+
+
+def csr_fill_from_contributions(
+    nonzero_count: int,
+    coo_to_csr: NDArray[np.int64],
+    contributions: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """通过 C++20 ABI 按原贡献顺序生成一份自有 CSR 数值数组。"""
+
+    if not native_kernel_available():
+        detail = f"：{_IMPORT_ERROR}" if _IMPORT_ERROR is not None else ""
+        raise NativeKernelUnavailableError(
+            f"AgentFEM Native C++20 加速器不可用{detail}。"
+        )
+    if (
+        isinstance(nonzero_count, (bool, np.bool_))
+        or not isinstance(nonzero_count, (int, np.integer))
+        or int(nonzero_count) < 0
+    ):
+        raise ValueError("CSR 非零槽位数必须是非负整数。")
+    mapping = np.ascontiguousarray(coo_to_csr, dtype=np.int64)
+    values = np.ascontiguousarray(contributions, dtype=np.float64)
+    if mapping.ndim != 1 or values.shape != mapping.shape:
+        raise ValueError("COO 映射与贡献必须是等长一维数组。")
+    data = np.empty(int(nonzero_count), dtype=np.float64)
+    status = int(
+        _p1_native.csr_fill_into(
+            mapping.size, int(nonzero_count), mapping, values, data
+        )
+    )
+    messages = {
+        1: "Native CSR 回填需要一致的非空映射和数值槽位。",
+        3: "Native CSR 回填映射槽位超出规范图范围。",
+        4: "Native CSR 回填贡献或归并结果不是有限数。",
+    }
+    if status != 0:
+        raise ValueError(
+            messages.get(status, f"Native CSR 回填失败，状态码 {status}。")
+        )
+    return data

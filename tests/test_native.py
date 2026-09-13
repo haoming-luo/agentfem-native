@@ -12,6 +12,7 @@ from agentfem_native.native import (
     assemble_p1_volume,
     assemble_t3_volume,
     assemble_t4_volume,
+    csr_fill_from_contributions,
     csr_spmv,
     native_kernel_available,
     native_kernel_identity,
@@ -24,9 +25,9 @@ class NativeKernelTests(unittest.TestCase):
         identity = native_kernel_identity()
         self.assertEqual(identity["name"], "cpp20")
         self.assertTrue(identity["available"])
-        self.assertEqual(identity["abi_version"], "1.3")
-        self.assertEqual(identity["required_abi_version"], "1.3")
-        self.assertEqual(NATIVE_P1_ABI_VERSION, 0x0001_0003)
+        self.assertEqual(identity["abi_version"], "1.4")
+        self.assertEqual(identity["required_abi_version"], "1.4")
+        self.assertEqual(NATIVE_P1_ABI_VERSION, 0x0001_0004)
 
     def test_global_and_per_cell_conductivity_emit_owned_arrays(self) -> None:
         mesh = unit_square_two_triangles()
@@ -180,6 +181,22 @@ class NativeKernelTests(unittest.TestCase):
             native, matrix.matvec_reference(vector), atol=1.0e-15
         )
         np.testing.assert_allclose(matrix.matvec(vector), native, atol=0.0)
+
+    def test_native_csr_fill_matches_fixed_order_reference(self) -> None:
+        mapping = np.array((2, 0, 2, 1, 0), dtype=np.int64)
+        contributions = np.array((4.0, 1.0, -1.0, 2.0, 3.0))
+        native = csr_fill_from_contributions(3, mapping, contributions)
+        reference = np.zeros(3)
+        np.add.at(reference, mapping, contributions)
+        np.testing.assert_array_equal(native, reference)
+        self.assertTrue(native.flags.owndata)
+
+        with self.assertRaisesRegex(ValueError, "映射槽位"):
+            csr_fill_from_contributions(2, mapping, contributions)
+        with self.assertRaisesRegex(ValueError, "有限数"):
+            csr_fill_from_contributions(
+                3, mapping, np.array((4.0, np.inf, -1.0, 2.0, 3.0))
+            )
 
 
 if __name__ == "__main__":

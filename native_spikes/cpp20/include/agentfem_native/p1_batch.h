@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define AFN_P1_ABI_VERSION 0x00010003u
+#define AFN_P1_ABI_VERSION 0x00010004u
 
 typedef enum AfnP1Status {
   AFN_P1_SUCCESS = 0,
@@ -117,6 +117,13 @@ AFN_API int afn_csr_spmv(
     const double* data,
     const double* vector,
     double* result);
+
+AFN_API int afn_csr_fill_from_contributions(
+    size_t contribution_count,
+    size_t nonzero_count,
+    const int64_t* coo_to_csr,
+    const double* contributions,
+    double* data);
 
 #ifdef __cplusplus
 }

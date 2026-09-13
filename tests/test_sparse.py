@@ -88,12 +88,14 @@ class CSRPatternTests(unittest.TestCase):
         first_values = np.array((4.0, 2.0, 3.0, -2.0, -4.0, 1.0))
         pattern = CSRPattern.from_coo((3, 3), rows, columns)
         first = pattern.fill(first_values)
+        reference = pattern.fill_reference(first_values)
         second = pattern.fill(2.0 * first_values)
         expected = CSRMatrix.from_coo((3, 3), rows, columns, first_values)
 
         np.testing.assert_array_equal(first.indptr, expected.indptr)
         np.testing.assert_array_equal(first.indices, expected.indices)
         np.testing.assert_array_equal(first.data, expected.data)
+        np.testing.assert_array_equal(first.data, reference.data)
         np.testing.assert_array_equal(second.data, 2.0 * first.data)
         self.assertIs(first.indptr, pattern.indptr)
         self.assertIs(second.indices, pattern.indices)
@@ -123,6 +125,15 @@ class CSRPatternTests(unittest.TestCase):
             CSRPattern.from_element_dofs(2, [[0, 2]])
         with self.assertRaisesRegex(ValueError, "二维"):
             CSRPattern.from_element_dofs(2, [0, 1])
+
+    def test_empty_pattern_has_stable_reference_and_production_semantics(self) -> None:
+        empty = np.empty(0, dtype=np.int64)
+        pattern = CSRPattern.from_coo((3, 4), empty, empty)
+        production = pattern.fill([])
+        reference = pattern.fill_reference([])
+        np.testing.assert_array_equal(production.indptr, (0, 0, 0, 0))
+        np.testing.assert_array_equal(production.data, reference.data)
+        self.assertEqual(production.shape, (3, 4))
 
 
 class ConjugateGradientTests(unittest.TestCase):

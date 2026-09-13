@@ -327,7 +327,7 @@ def native_capabilities() -> dict[str, object]:
                 "format": "csr_bsr",
                 "solvers": ["cg"],
                 "preconditioners": ["jacobi", "block_jacobi"],
-                "operators": ["csr_spmv_cpp20"],
+                "operators": ["csr_spmv_cpp20", "csr_numeric_fill_cpp20"],
                 "graph_lifecycle": ["build_pattern", "fill_values"],
             },
             {
