@@ -6,7 +6,12 @@ import unittest
 
 import numpy as np
 
-from agentfem_native.sparse import BSRMatrix, CSRMatrix, conjugate_gradient
+from agentfem_native.sparse import (
+    BSRMatrix,
+    CSRMatrix,
+    CSRPattern,
+    conjugate_gradient,
+)
 
 
 class CSRMatrixTests(unittest.TestCase):
@@ -74,6 +79,50 @@ class CSRMatrixTests(unittest.TestCase):
         transformed, rhs = matrix.with_dirichlet([0.0, 0.0], [0], [3.0])
         np.testing.assert_array_equal(transformed.to_dense(), ((1.0, 0.0), (0.0, 0.0)))
         np.testing.assert_array_equal(rhs, (3.0, -3.0))
+
+
+class CSRPatternTests(unittest.TestCase):
+    def test_repeated_fill_reuses_graph_and_preserves_coo_reduction(self) -> None:
+        rows = np.array((2, 0, 2, 0, 2, 0))
+        columns = np.array((2, 1, 0, 1, 2, 0))
+        first_values = np.array((4.0, 2.0, 3.0, -2.0, -4.0, 1.0))
+        pattern = CSRPattern.from_coo((3, 3), rows, columns)
+        first = pattern.fill(first_values)
+        second = pattern.fill(2.0 * first_values)
+        expected = CSRMatrix.from_coo((3, 3), rows, columns, first_values)
+
+        np.testing.assert_array_equal(first.indptr, expected.indptr)
+        np.testing.assert_array_equal(first.indices, expected.indices)
+        np.testing.assert_array_equal(first.data, expected.data)
+        np.testing.assert_array_equal(second.data, 2.0 * first.data)
+        self.assertIs(first.indptr, pattern.indptr)
+        self.assertIs(second.indices, pattern.indices)
+        self.assertFalse(first.data.flags.writeable)
+        self.assertEqual(len(pattern.structure_digest), 64)
+        self.assertEqual(pattern.coo_entry_count, rows.size)
+        self.assertEqual(pattern.nnz, first.nnz)
+
+    def test_element_dof_pattern_matches_explicit_local_matrix_order(self) -> None:
+        cell_dofs = np.array(((0, 1, 2), (0, 2, 3)), dtype=np.int64)
+        pattern = CSRPattern.from_element_dofs(4, cell_dofs)
+        values = np.arange(18, dtype=np.float64)
+        actual = pattern.fill(values)
+        rows = np.repeat(cell_dofs, 3, axis=1).ravel()
+        columns = np.tile(cell_dofs, (1, 3)).ravel()
+        expected_dense = np.zeros((4, 4))
+        np.add.at(expected_dense, (rows, columns), values)
+        np.testing.assert_array_equal(actual.to_dense(), expected_dense)
+
+    def test_pattern_rejects_malformed_updates_and_dofs(self) -> None:
+        pattern = CSRPattern.from_coo((2, 2), [0, 1], [0, 1])
+        with self.assertRaisesRegex(ValueError, "长度"):
+            pattern.fill([1.0])
+        with self.assertRaisesRegex(ValueError, "finite"):
+            pattern.fill([1.0, np.nan])
+        with self.assertRaisesRegex(ValueError, "超出"):
+            CSRPattern.from_element_dofs(2, [[0, 2]])
+        with self.assertRaisesRegex(ValueError, "二维"):
+            CSRPattern.from_element_dofs(2, [0, 1])
 
 
 class ConjugateGradientTests(unittest.TestCase):

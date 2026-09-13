@@ -8,6 +8,9 @@
   默认仍为单线程，并行资源创建失败具有稳定状态码。
 - 新增可重跑的 macOS arm64 并行性能记录；本地结果不外推为跨平台性能声明。
   ABI 1.3 已在运行 `34752687326` 中通过 14 项 Windows/Linux/macOS Tier-1 验收。
+- 新增不可变 `CSRPattern`，把规范稀疏图与重复数值回填分离；支持一般 COO 和
+  单元 DOF 构图、只读图共享、稳定摘要与明确失败语义。局部记录显示数值回填
+  比每次重新规范化 COO 快 133×–147×，但不把它解释为端到端求解加速。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

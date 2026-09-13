@@ -328,6 +328,7 @@ def native_capabilities() -> dict[str, object]:
                 "solvers": ["cg"],
                 "preconditioners": ["jacobi", "block_jacobi"],
                 "operators": ["csr_spmv_cpp20"],
+                "graph_lifecycle": ["build_pattern", "fill_values"],
             },
             {
                 "name": "numpy_dense",

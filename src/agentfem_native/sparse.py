@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Owned deterministic sparse algebra for dependency-free Native execution."""
+"""Native 无外部求解依赖的自主确定性稀疏代数。"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 from typing import Literal, TypeAlias
 
 import numpy as np
@@ -94,6 +95,18 @@ class CSRMatrix:
         object.__setattr__(self, "data", data)
 
     @classmethod
+    def _from_pattern(cls, pattern: CSRPattern, data: FloatArray) -> CSRMatrix:
+        """从已验证图构造矩阵；这是避免重复复制图数组的内部可信入口。"""
+
+        data.setflags(write=False)
+        result = object.__new__(cls)
+        object.__setattr__(result, "shape", pattern.shape)
+        object.__setattr__(result, "indptr", pattern.indptr)
+        object.__setattr__(result, "indices", pattern.indices)
+        object.__setattr__(result, "data", data)
+        return result
+
+    @classmethod
     def from_coo(
         cls,
         shape: tuple[int, int],
@@ -101,45 +114,9 @@ class CSRMatrix:
         columns: ArrayLike,
         data: ArrayLike,
     ) -> CSRMatrix:
-        """Canonicalize finite COO entries by row, column, and input order."""
+        """按行、列和原输入顺序规范化有限 COO 贡献。"""
 
-        checked_shape = _validate_shape(shape)
-        row_array = _readonly_indices(rows, name="COO rows")
-        column_array = _readonly_indices(columns, name="COO columns")
-        data_array = _readonly_values(data, name="COO data")
-        if row_array.shape != column_array.shape or row_array.shape != data_array.shape:
-            raise ValueError("COO rows, columns, and data must have equal length.")
-        if np.any(row_array < 0) or np.any(row_array >= checked_shape[0]):
-            raise ValueError("COO row index is out of range.")
-        if np.any(column_array < 0) or np.any(column_array >= checked_shape[1]):
-            raise ValueError("COO column index is out of range.")
-        if data_array.size == 0:
-            return cls(
-                checked_shape,
-                np.zeros(checked_shape[0] + 1, dtype=np.int64),
-                np.empty(0, dtype=np.int64),
-                np.empty(0, dtype=np.float64),
-            )
-
-        input_order = np.arange(data_array.size, dtype=np.int64)
-        order = np.lexsort((input_order, column_array, row_array))
-        sorted_rows = row_array[order]
-        sorted_columns = column_array[order]
-        sorted_data = data_array[order]
-        group_start = np.empty(sorted_data.size, dtype=bool)
-        group_start[0] = True
-        group_start[1:] = (sorted_rows[1:] != sorted_rows[:-1]) | (
-            sorted_columns[1:] != sorted_columns[:-1]
-        )
-        starts = np.flatnonzero(group_start)
-        canonical_rows = sorted_rows[starts]
-        canonical_columns = sorted_columns[starts]
-        canonical_data = np.add.reduceat(sorted_data, starts)
-        indptr = np.zeros(checked_shape[0] + 1, dtype=np.int64)
-        indptr[1:] = np.cumsum(
-            np.bincount(canonical_rows, minlength=checked_shape[0]), dtype=np.int64
-        )
-        return cls(checked_shape, indptr, canonical_columns, canonical_data)
+        return CSRPattern.from_coo(shape, rows, columns).fill(data)
 
     @property
     def nnz(self) -> int:
@@ -280,6 +257,145 @@ class CSRMatrix:
                     )
                     data[start:stop][selected] = 0.0
         return CSRMatrix(working.shape, working.indptr, working.indices, data), rhs
+
+
+@dataclass(frozen=True, slots=True)
+class CSRPattern:
+    """可复用的不可变规范 CSR 图，以及原始贡献到数值槽位的映射。"""
+
+    shape: tuple[int, int]
+    indptr: IndexArray
+    indices: IndexArray
+    coo_to_csr: IndexArray
+
+    def __post_init__(self) -> None:
+        index_values = np.asarray(self.indices)
+        graph = CSRMatrix(
+            self.shape,
+            self.indptr,
+            self.indices,
+            np.zeros(index_values.size, dtype=np.float64),
+        )
+        mapping = _readonly_indices(self.coo_to_csr, name="COO-to-CSR mapping")
+        if mapping.size and (np.any(mapping < 0) or np.any(mapping >= graph.nnz)):
+            raise ValueError("COO 到 CSR 的映射槽位超出规范图范围。")
+        if np.unique(mapping).size != graph.nnz:
+            raise ValueError("每个规范 CSR 槽位必须至少对应一个 COO 贡献。")
+        object.__setattr__(self, "shape", graph.shape)
+        object.__setattr__(self, "indptr", graph.indptr)
+        object.__setattr__(self, "indices", graph.indices)
+        object.__setattr__(self, "coo_to_csr", mapping)
+
+    @classmethod
+    def from_coo(
+        cls,
+        shape: tuple[int, int],
+        rows: ArrayLike,
+        columns: ArrayLike,
+    ) -> CSRPattern:
+        """只规范化 COO 结构，并保存原输入贡献顺序。"""
+
+        checked_shape = _validate_shape(shape)
+        row_array = _readonly_indices(rows, name="COO rows")
+        column_array = _readonly_indices(columns, name="COO columns")
+        if row_array.shape != column_array.shape:
+            raise ValueError("COO 行和列必须具有相同长度。")
+        if np.any(row_array < 0) or np.any(row_array >= checked_shape[0]):
+            raise ValueError("COO 行索引超出矩阵范围。")
+        if np.any(column_array < 0) or np.any(column_array >= checked_shape[1]):
+            raise ValueError("COO 列索引超出矩阵范围。")
+        if row_array.size == 0:
+            return cls(
+                checked_shape,
+                np.zeros(checked_shape[0] + 1, dtype=np.int64),
+                np.empty(0, dtype=np.int64),
+                np.empty(0, dtype=np.int64),
+            )
+
+        input_order = np.arange(row_array.size, dtype=np.int64)
+        order = np.lexsort((input_order, column_array, row_array))
+        sorted_rows = row_array[order]
+        sorted_columns = column_array[order]
+        group_start = np.empty(order.size, dtype=bool)
+        group_start[0] = True
+        group_start[1:] = (sorted_rows[1:] != sorted_rows[:-1]) | (
+            sorted_columns[1:] != sorted_columns[:-1]
+        )
+        starts = np.flatnonzero(group_start)
+        canonical_rows = sorted_rows[starts]
+        canonical_columns = sorted_columns[starts]
+        sorted_groups = np.cumsum(group_start, dtype=np.int64) - 1
+        mapping = np.empty(order.size, dtype=np.int64)
+        mapping[order] = sorted_groups
+        indptr = np.zeros(checked_shape[0] + 1, dtype=np.int64)
+        indptr[1:] = np.cumsum(
+            np.bincount(canonical_rows, minlength=checked_shape[0]), dtype=np.int64
+        )
+        return cls(checked_shape, indptr, canonical_columns, mapping)
+
+    @classmethod
+    def from_element_dofs(cls, dof_count: int, cell_dofs: ArrayLike) -> CSRPattern:
+        """从节点主序的二维单元 DOF 表生成一次方阵装配图。"""
+
+        if (
+            isinstance(dof_count, (bool, np.bool_))
+            or not isinstance(dof_count, (int, np.integer))
+            or int(dof_count) < 0
+            or int(dof_count) > np.iinfo(np.int64).max
+        ):
+            raise ValueError("DOF 总数必须是非负整数。")
+        raw = np.asarray(cell_dofs)
+        if raw.ndim != 2 or not np.issubdtype(raw.dtype, np.integer):
+            raise ValueError("单元 DOF 必须是二维整数数组。")
+        if (
+            np.issubdtype(raw.dtype, np.unsignedinteger)
+            and raw.size
+            and int(raw.max()) > np.iinfo(np.int64).max
+        ):
+            raise ValueError("单元 DOF 不能由有符号 64 位索引表示。")
+        local_size = raw.shape[1]
+        if local_size == 0:
+            raise ValueError("每个单元必须至少包含一个 DOF。")
+        values = np.asarray(raw, dtype=np.int64)
+        if np.any(values < 0) or np.any(values >= int(dof_count)):
+            raise ValueError("单元 DOF 超出全局范围。")
+        rows = np.repeat(values, local_size, axis=1).ravel()
+        columns = np.tile(values, (1, local_size)).ravel()
+        return cls.from_coo((int(dof_count), int(dof_count)), rows, columns)
+
+    @property
+    def nnz(self) -> int:
+        return int(self.indices.size)
+
+    @property
+    def coo_entry_count(self) -> int:
+        return int(self.coo_to_csr.size)
+
+    @property
+    def storage_nbytes(self) -> int:
+        return int(self.indptr.nbytes + self.indices.nbytes + self.coo_to_csr.nbytes)
+
+    @property
+    def structure_digest(self) -> str:
+        """返回与平台本机字节序无关的规范结构摘要。"""
+
+        digest = sha256()
+        digest.update(np.asarray(self.shape, dtype="<i8").tobytes())
+        for array in (self.indptr, self.indices, self.coo_to_csr):
+            digest.update(np.asarray(array, dtype="<i8").tobytes())
+        return digest.hexdigest()
+
+    def fill(self, values: ArrayLike) -> CSRMatrix:
+        """按原始贡献顺序回填有限数值，不重新排序图。"""
+
+        contributions = _readonly_values(values, name="COO values")
+        if contributions.shape != self.coo_to_csr.shape:
+            raise ValueError("COO 数值长度必须与可复用图的贡献映射一致。")
+        data = np.zeros(self.nnz, dtype=np.float64)
+        np.add.at(data, self.coo_to_csr, contributions)
+        if not np.all(np.isfinite(data)):
+            raise ValueError("COO 归并后的 CSR 数值不是有限数。")
+        return CSRMatrix._from_pattern(self, data)
 
 
 @dataclass(frozen=True, slots=True)

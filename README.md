@@ -102,6 +102,7 @@ See [ROADMAP.md](ROADMAP.md), [ARCHITECTURE.md](ARCHITECTURE.md), the
 [P2 报告](docs/verification/PERFORMANCE_P2_REPORT.md)、
 [P3 稀疏报告](docs/verification/PERFORMANCE_P3_REPORT.md)、
 [P3 CPU 并行候选报告](docs/verification/CPU_PARALLEL_P3_REPORT.md)、
+[P3 可复用稀疏图候选报告](docs/verification/SPARSE_PATTERN_P3_REPORT.md)、
 [Gate 2 T3 参考报告](docs/verification/GATE_2_T3_REFERENCE_REPORT.md)和
 [Mechanics Alpha 0.2 报告](docs/verification/MECHANICS_ALPHA_0_2_REPORT.md)。
 长期技术判断记录在[2035 愿景](docs/charter/NATIVE_VISION_2035.md)中。

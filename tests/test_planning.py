@@ -119,6 +119,10 @@ class PlanningTests(unittest.TestCase):
         providers = {item["name"]: item for item in capabilities["linear_algebra"]}
         self.assertTrue(providers["native_sparse"]["available"])
         self.assertIn("block_jacobi", providers["native_sparse"]["preconditioners"])
+        self.assertEqual(
+            providers["native_sparse"]["graph_lifecycle"],
+            ["build_pattern", "fill_values"],
+        )
         execution = {item["name"]: item for item in capabilities["execution"]}
         parallel = execution["deterministic_cpu_parallel_assembly"]
         self.assertTrue(parallel["available"])

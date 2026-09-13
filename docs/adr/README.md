@@ -35,3 +35,5 @@ owner review. Superseded decisions remain in history.
   constrained dynamics, interchange, and Agent execution before parallel breadth
 - [ADR-0021](0021-deterministic-cpu-parallel-assembly.md)：使用显式线程数、静态
   分块和确定性载荷归并实现 T3/T4 CPU 并行装配
+- [ADR-0022](0022-reusable-sparse-pattern.md)：把规范 CSR 图与重复数值回填分离，
+  为多载荷、隐式动力和 Newton 复用符号工作

@@ -111,7 +111,14 @@ from .solid import (
     t4_geometry,
     t4_strain_displacement,
 )
-from .sparse import BSRMatrix, CGReport, CGResult, CSRMatrix, conjugate_gradient
+from .sparse import (
+    BSRMatrix,
+    CGReport,
+    CGResult,
+    CSRMatrix,
+    CSRPattern,
+    conjugate_gradient,
+)
 from .volume_mesh import TetrahedralMesh, unit_cube_tetrahedra
 
 __all__ = (
@@ -124,6 +131,7 @@ __all__ = (
     "CGReport",
     "CGResult",
     "CSRMatrix",
+    "CSRPattern",
     "CancellationToken",
     "CellMaterial",
     "DiffusionResult",

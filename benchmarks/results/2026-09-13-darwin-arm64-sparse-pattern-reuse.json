@@ -1,0 +1,65 @@
+{
+  "cases": [
+    {
+      "cells": 2048,
+      "cold_canonicalization_median_seconds": 0.008147749933414161,
+      "coo_entry_count": 73728,
+      "csr_nnz": 29444,
+      "data_exactly_equal": true,
+      "dofs": 2178,
+      "graph_exactly_equal": true,
+      "numeric_refill_median_seconds": 6.104097701609135e-05,
+      "pattern_build_median_seconds": 0.008131874958053231,
+      "pattern_storage_bytes": 842808,
+      "refill_speedup_over_cold_canonicalization": 133.48000526378024,
+      "resolution": 32,
+      "structure_digest": "9b08671a8ab8883847ac7a74f12ac203a777eafa3c1e4eba739beb53ee791d8c"
+    },
+    {
+      "cells": 8192,
+      "cold_canonicalization_median_seconds": 0.03516225004568696,
+      "coo_entry_count": 294912,
+      "csr_nnz": 116228,
+      "data_exactly_equal": true,
+      "dofs": 8450,
+      "graph_exactly_equal": true,
+      "numeric_refill_median_seconds": 0.0002470000181347132,
+      "pattern_build_median_seconds": 0.03336679202038795,
+      "pattern_storage_bytes": 3356728,
+      "refill_speedup_over_cold_canonicalization": 142.35727718250433,
+      "resolution": 64,
+      "structure_digest": "c8dca489cda2db0f8b971408cabd4a53685a7386ccb4520f30811dda9711a04d"
+    },
+    {
+      "cells": 32768,
+      "cold_canonicalization_median_seconds": 0.14881079201586545,
+      "coo_entry_count": 1179648,
+      "csr_nnz": 461828,
+      "data_exactly_equal": true,
+      "dofs": 33282,
+      "graph_exactly_equal": true,
+      "numeric_refill_median_seconds": 0.0010147090069949627,
+      "pattern_build_median_seconds": 0.14598295895848423,
+      "pattern_storage_bytes": 13398072,
+      "refill_speedup_over_cold_canonicalization": 146.65366227167448,
+      "resolution": 128,
+      "structure_digest": "7fc27dd08e831b86c472cd1ba447cf39fe5cf4bf33087b0f47f595cbb9b6fea5"
+    }
+  ],
+  "claim_boundary": "\u53ea\u6d4b\u91cf\u5df2\u6709 COO \u5230\u89c4\u8303 CSR \u7684\u51b7\u8f6c\u6362\u4e0e\u590d\u7528\u56fe\u6570\u503c\u56de\u586b\uff1b\u4e0d\u5305\u542b\u5355\u5143\u88c5\u914d\u3001\u7ea6\u675f\u6216\u6c42\u89e3\uff0c\u4e0d\u80fd\u89e3\u91ca\u4e3a\u7aef\u5230\u7aef\u52a0\u901f\u3002",
+  "environment": {
+    "agentfem_native": "0.7.0a1",
+    "architecture": "arm64",
+    "native_kernel": {
+      "abi_version": "1.3",
+      "available": true,
+      "name": "cpp20",
+      "required_abi_version": "1.3"
+    },
+    "numpy": "2.3.5",
+    "os": "Darwin",
+    "python": "3.12.14"
+  },
+  "repetitions": 9,
+  "schema": "agentfem-native.sparse-pattern-reuse/0.1"
+}

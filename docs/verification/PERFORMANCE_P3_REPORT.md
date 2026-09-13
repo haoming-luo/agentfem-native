@@ -22,6 +22,11 @@ CPU-parallel candidate and its honest local scaling boundary are recorded in
 SIMD and stronger preconditioners remain P3 work. ABI 1.3 passed hosted Tier-1
 acceptance in run `34752687326`; P3 as a whole is still active.
 
+The subsequent reusable sparse-pattern reference candidate is recorded in
+[`SPARSE_PATTERN_P3_REPORT.md`](SPARSE_PATTERN_P3_REPORT.md). It separates
+one-time canonical graph construction from repeated numeric fill; C++ direct
+fill and end-to-end repeated-solve evidence remain open.
+
 ## Local numerical evidence
 
 Host: Darwin arm64, Python 3.11.15, NumPy 2.4.6. Each local timing is the median
