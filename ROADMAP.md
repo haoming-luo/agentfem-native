@@ -165,7 +165,8 @@ Gate and maturity boundary.
   Windows/Linux/macOS Tier-1 验收，ABI 1.3 平台边界关闭。
 - 本地参考候选已完成：不可变 `CSRPattern` 分离规范图和多次数值回填，并为图
   提供稳定摘要。代表 T3 结构的局部回填比重新排序/归并 COO 快 133×–147×；
-  这不是端到端速度声明，C++ 直接数值回填仍是下一生产增量。
+  这不是端到端速度声明。源提交 `9e33b6c` 的 Linux 快检运行 `34753072074`
+  已通过；C++ 直接数值回填仍是下一生产增量。
 - Remaining: C++ preallocated numeric fill, SIMD, and stronger preconditioners.
 - Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
   narrow contracts and after license, platform, determinism, and performance
