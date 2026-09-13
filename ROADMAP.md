@@ -1,5 +1,9 @@
 # AgentFEM Native roadmap
 
+2026-09-13 形成的下一阶段架构收敛、功能优先级和四周执行计划见
+`docs/charter/NEXT_DEVELOPMENT_PLAN.md`。该计划以关闭 P3、验证 Gate 2 和
+Gate 3 线性部分为主线，不改变本文件的 Gate 证据要求。
+
 This roadmap is gate-based. A gate advances only when its claims have evidence;
 calendar pressure does not lower mathematical or independence requirements.
 Native Windows, macOS, and Linux are required from Gate 0 onward. WSL may be offered as an

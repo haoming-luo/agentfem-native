@@ -59,6 +59,11 @@ use. Ordinary pushes run one Linux fast job; full native Tier-1 acceptance is
 manual or tag-triggered. See
 [CI governance](docs/development/CI_GOVERNANCE.md).
 
+项目的重要注释、介绍、规格和验证说明从 2026-09-13 起以中文为主要工程表达
+语言；稳定代码标识符和机器契约继续使用英文。参见
+[中文工程表达规范](docs/development/CHINESE_DOCUMENTATION_POLICY.md)和
+[后续架构与开发计划](docs/charter/NEXT_DEVELOPMENT_PLAN.md)。
+
 ## Current evidence
 
 Create the repository-local environment on Windows, macOS, or Linux:

@@ -18,3 +18,7 @@ unclear license or ownership chain.
 
 The project owner records CLA acceptance before merging an external
 contribution.
+
+重要代码注释、公开说明、数学规格、ADR 和验证报告以中文为主。稳定代码
+标识符、JSON 字段、ABI 和错误码保留英文，并提供中文含义与诊断。完整规则见
+`docs/development/CHINESE_DOCUMENTATION_POLICY.md`。

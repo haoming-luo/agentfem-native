@@ -313,3 +313,23 @@ license-incompatible code is rejected.
   completed successfully with 14 acceptance jobs at commit `4f3da30`; this
   replaces the pending hosted boundary for ABI 1.2 without publishing a
   package.
+
+## 后续架构规划与中文工程表达 — 2026-09-13
+
+- 任务来源：项目负责人要求结合优秀有限元内核与 AgentFEM 需求规划后续架构、
+  功能和工作计划，并明确要求重要代码注释与项目介绍使用中文。
+- AI 辅助范围：检查本项目宪章、路线图、架构、规格、ADR、测试结构、能力输出
+  和已记录验证证据；编写后续架构计划与中文工程表达规范；修正项目指令中已经
+  过期的 Gate 1 下一里程碑表述。没有修改科学代码。
+- 外部资料边界：仅查阅 FEniCSx、DOLFINx、Basix、UFL、FFCx、Akantu 和
+  PETSc 的官方公开文档，用于理解公开能力划分、产品结构和依赖边界。没有查看、
+  复制、翻译、重排或 AI 改写任何第三方有限元实现源码。
+- 规划决策：下一主线是 `KernelPlan`、可复用稀疏图、C++20 CPU 线程化、Gate 2
+  验证、Gate 3 线性验证和 Kernel Contract 0.2；全局非线性、MPI、GPU、接触与
+  断裂继续保持后置或实验成熟度。
+- 语言决策：重要注释、文档字符串、项目介绍、ADR、规格、验证与诊断以中文为
+  主；稳定标识符、JSON 字段、ABI 和错误码保留英文并配中文解释。已有记录采用
+  触及即迁移，不做破坏证据含义的机械翻译。
+- 当前复核：仓库 `.venv` 中 AgentFEM Native 版本为 `0.7.0a1`，C++ ABI 1.2
+  可用，169 项测试通过。误用未安装项目依赖的系统 Python 会产生导入错误，
+  该结果不属于科学回归；自动化和开发命令应显式使用仓库环境。

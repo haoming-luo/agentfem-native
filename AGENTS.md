@@ -59,8 +59,19 @@ changing scientific code.
   customer data, or proprietary benchmark inputs; review visibility on
   2026-10-01.
 
+## 中文工程表达
+
+- 遵循 `docs/development/CHINESE_DOCUMENTATION_POLICY.md`。重要代码注释、
+  文档字符串、项目介绍、ADR、规格、路线图、验证结论和面向人的诊断以中文
+  为主。
+- Python/C/C++ 标识符、JSON 字段、ABI、稳定错误码和第三方专有名称保留
+  英文；它们的用途、数学含义和修复建议使用中文解释。
+- 注释说明为什么这样实现、数学与状态不变量、性能取舍和证据边界，不逐行
+  复述代码。已有英文内容采用“触及即迁移”，不得机械翻译科学记录。
+
 ## Scope discipline
 
-Work gate by gate. The next milestone is the Gate 1 steady-diffusion vertical
-slice. Do not start nonlinear mechanics, MPI, or GPU implementation before its
-mesh-to-result verification chain passes.
+Work gate by gate. Gates 0 and 1 are complete. The next milestone is closing
+Performance P3 and verifying the Gate 2 T3/T4 mesh-to-result chain. Do not move
+global nonlinear mechanics, MPI, or GPU work into the production path before
+Gate 2 passes; isolated experiments retain their explicit maturity labels.
