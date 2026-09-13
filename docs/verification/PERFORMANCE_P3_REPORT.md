@@ -1,6 +1,6 @@
 # Performance P3 sparse-foundation report
 
-**Date:** 2026-09-07
+**Date:** 2026-09-14
 
 **Maturity:** implemented and locally verified; hosted-platform evidence pending
 
@@ -18,14 +18,18 @@
 Scalar CSR is complete for this reference foundation. BSR/block-Jacobi and
 C++20 CSR SpMV were subsequently implemented. The ABI 1.3 deterministic T3/T4
 CPU-parallel candidate and its honest local scaling boundary are recorded in
-[`CPU_PARALLEL_P3_REPORT.md`](CPU_PARALLEL_P3_REPORT.md). Reusable sparse graphs,
-SIMD and stronger preconditioners remain P3 work. ABI 1.3 passed hosted Tier-1
+[`CPU_PARALLEL_P3_REPORT.md`](CPU_PARALLEL_P3_REPORT.md). Direct element-to-CSR
+memory reduction, SIMD, and stronger preconditioners remain P3 work. ABI 1.3 passed hosted Tier-1
 acceptance in run `34752687326`; P3 as a whole is still active.
 
 The subsequent reusable sparse-pattern reference candidate is recorded in
 [`SPARSE_PATTERN_P3_REPORT.md`](SPARSE_PATTERN_P3_REPORT.md). It separates
 one-time canonical graph construction from repeated numeric fill; C++ direct
-fill and end-to-end repeated-solve evidence remain open.
+fill subsequently passed ABI 1.4 Tier-1 acceptance. T3/T4 prepared assembly and
+fixed-matrix repeated constrained solve are now implemented locally; their
+latest evidence is recorded in
+[`PREPARED_CONSTRAINED_SOLVE_REPORT.md`](PREPARED_CONSTRAINED_SOLVE_REPORT.md).
+Direct element-to-CSR memory reduction remains open.
 
 ## Local numerical evidence
 

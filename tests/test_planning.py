@@ -128,6 +128,15 @@ class PlanningTests(unittest.TestCase):
             providers["native_sparse"]["prepared_assembly"]["elements"],
             ["T3", "T4"],
         )
+        self.assertEqual(
+            providers["native_sparse"]["prepared_solve"],
+            {
+                "scope": "fixed_matrix_multiple_rhs",
+                "constraints": "strong_dirichlet",
+                "preconditioners": ["jacobi", "block_jacobi"],
+                "maturity": "implemented",
+            },
+        )
         execution = {item["name"]: item for item in capabilities["execution"]}
         parallel = execution["deterministic_cpu_parallel_assembly"]
         self.assertTrue(parallel["available"])

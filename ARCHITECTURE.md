@@ -44,6 +44,9 @@ than FEniCSx objects.
   implementations. Dense NumPy is a bounded oracle, not the production default.
 - `prepared assembly`：由调用方显式拥有 `CSRAssemblyPlan`，绑定单元 DOF 顺序
   与规范图；T3/T4 和动力学可复用它，COO/CSR 都通过同一提供者边界。
+- `prepared solve`：`CSRConstraintPlan` 固定约束图分析，
+  `NativeSparseSolvePlan` 固定约束后矩阵和数值预条件器；AgentFEM 可显式持有该
+  资源执行固定刚度多载荷，矩阵数值变化时必须重建预条件器。
 - `contract`: versioned JSON request/result execution and public AgentFEM
   AF-IR lowering boundary.
 - `verification`: tests and evidence that consume public results without

@@ -337,6 +337,12 @@ def native_capabilities() -> dict[str, object]:
                     "elements": ["T3", "T4"],
                     "maturity": "implemented",
                 },
+                "prepared_solve": {
+                    "scope": "fixed_matrix_multiple_rhs",
+                    "constraints": "strong_dirichlet",
+                    "preconditioners": ["jacobi", "block_jacobi"],
+                    "maturity": "implemented",
+                },
             },
             {
                 "name": "numpy_dense",

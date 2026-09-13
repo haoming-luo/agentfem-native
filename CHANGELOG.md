@@ -17,6 +17,11 @@
 - 新增 `CSRAssemblyPlan` 及 T3/T4 预备装配入口；固定拓扑的重复装配可以绕过
   CSR 图重建。自有、NumPy、SciPy 提供者接受规范 CSR，T3 动力构建可复用刚度
   图；`native_sparse` 提供者契约版本提升为 0.3。
+- 新增 `CSRConstraintPlan`、`PreparedPreconditioner` 与
+  `NativeSparseSolvePlan`：固定刚度的多载荷可复用约束图、约束后 CSR 和
+  Jacobi/块 Jacobi 数值预条件器；`native_sparse` 提供者版本提升为 0.4。
+- CG 收敛前复算真实残差，并把用户容差与 binary64 可达后向误差底线合并，
+  避免递推残差漂移造成虚假收敛或不可达到的无意义迭代。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

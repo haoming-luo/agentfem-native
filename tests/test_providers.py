@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import importlib.util
 import unittest
+from dataclasses import replace
 from unittest.mock import patch
 
 import numpy as np
 
 from agentfem_native import (
+    CSRMatrix,
     DirichletCondition,
     DisplacementCondition,
     LinearElasticMaterial,
@@ -42,7 +44,7 @@ class ProviderTests(unittest.TestCase):
     def test_default_provider_is_owned_sparse_baseline(self) -> None:
         result = solve_steady_diffusion(_problem())
         self.assertEqual(result.provider_name, "native_sparse")
-        self.assertEqual(result.provider_version, "0.3")
+        self.assertEqual(result.provider_version, "0.4")
 
     def test_unknown_provider_fails_explicitly(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unknown linear algebra provider"):
@@ -109,6 +111,49 @@ class ProviderTests(unittest.TestCase):
             solve_steady_diffusion(_problem(), provider=provider)
         self.assertIsNotNone(captured.exception.report)
         self.assertFalse(captured.exception.report.converged)
+        with self.assertRaisesRegex(ValueError, "块尺寸"):
+            NativeSparseProvider(block_size=0)
+
+    def test_native_sparse_plan_reuses_matrix_and_preconditioner(self) -> None:
+        matrix = np.array(((4.0, -1.0), (-1.0, 3.0)))
+        rows, columns = np.nonzero(matrix)
+        sparse = CSRMatrix.from_coo(
+            matrix.shape, rows, columns, matrix[rows, columns]
+        )
+        provider = NativeSparseProvider()
+        plan = provider.prepare_constrained(sparse, [0])
+        first = plan.solve([0.0, 2.0], [0.0])
+        second = plan.solve([0.0, 4.0], [0.0])
+        np.testing.assert_allclose(first.solution, (0.0, 2.0 / 3.0))
+        np.testing.assert_allclose(second.solution, 2.0 * first.solution)
+        self.assertIs(plan.constrained_matrix.data, plan.preconditioner.matrix_data)
+        self.assertEqual(first.provider.version, "0.4")
+        with self.assertRaisesRegex(ValueError, "约束后矩阵"):
+            replace(plan, constrained_matrix=sparse)
+
+    def test_block_solve_plan_matches_cold_for_multiple_loads(self) -> None:
+        dense = np.array(
+            (
+                (5.0, 1.0, -1.0, 0.0),
+                (1.0, 4.0, 0.0, -0.5),
+                (-1.0, 0.0, 5.0, 1.0),
+                (0.0, -0.5, 1.0, 4.0),
+            )
+        )
+        rows, columns = np.nonzero(dense)
+        matrix = CSRMatrix.from_coo(
+            dense.shape, rows, columns, dense[rows, columns]
+        )
+        provider = NativeSparseProvider(block_size=2)
+        constrained = np.array((0, 1), dtype=np.int64)
+        values = np.array((0.1, -0.2))
+        plan = provider.prepare_constrained(matrix, constrained)
+        for scale in (0.5, 1.0, 1.7):
+            load = scale * np.array((1.0, -2.0, 3.0, 4.0))
+            cold = provider.solve_constrained(matrix, load, constrained, values)
+            prepared = plan.solve(load, values)
+            np.testing.assert_allclose(prepared.solution, cold.solution, atol=1.0e-14)
+            self.assertTrue(prepared.convergence.converged)
 
     def test_availability_probe_does_not_import_scipy(self) -> None:
         self.assertEqual(

@@ -9,8 +9,10 @@ import numpy as np
 from agentfem_native.sparse import (
     BSRMatrix,
     CSRAssemblyPlan,
+    CSRConstraintPlan,
     CSRMatrix,
     CSRPattern,
+    PreparedPreconditioner,
     conjugate_gradient,
 )
 
@@ -166,6 +168,59 @@ class CSRAssemblyPlanTests(unittest.TestCase):
             CSRAssemblyPlan(2, cell_dofs)
 
 
+class CSRConstraintPlanTests(unittest.TestCase):
+    def test_plan_matches_cold_transform_and_reuses_target_graph(self) -> None:
+        dense = np.array(
+            ((4.0, -1.0, 0.0), (-1.0, 4.0, -1.0), (0.0, -1.0, 3.0))
+        )
+        rows, columns = np.nonzero(dense)
+        matrix = CSRMatrix.from_coo(
+            dense.shape, rows, columns, dense[rows, columns]
+        )
+        plan = CSRConstraintPlan.from_matrix(matrix, [2, 0])
+        prepared, rhs = plan.apply(matrix, [1.0, 2.0, 3.0], [2.5, -1.0])
+        cold, cold_rhs = matrix.with_dirichlet(
+            [1.0, 2.0, 3.0], [2, 0], [2.5, -1.0]
+        )
+        second = plan.transform_matrix(matrix)
+
+        np.testing.assert_array_equal(prepared.to_dense(), cold.to_dense())
+        np.testing.assert_array_equal(rhs, cold_rhs)
+        self.assertIs(prepared.indptr, second.indptr)
+        self.assertIs(prepared.indices, plan.pattern.indices)
+        self.assertEqual(len(plan.structure_digest), 64)
+        self.assertGreater(plan.storage_nbytes, 0)
+
+    def test_plan_inserts_missing_diagonal_once(self) -> None:
+        matrix = CSRMatrix.from_coo((2, 2), [0, 1], [1, 0], [1.0, 1.0])
+        plan = CSRConstraintPlan.from_matrix(matrix, [0])
+        transformed = plan.transform_matrix(matrix)
+        rhs = plan.transform_rhs(matrix, [0.0, 0.0], [3.0])
+        np.testing.assert_array_equal(
+            transformed.to_dense(), ((1.0, 0.0), (0.0, 0.0))
+        )
+        np.testing.assert_array_equal(rhs, (3.0, -3.0))
+
+    def test_plan_rejects_graph_and_value_mismatch(self) -> None:
+        matrix = CSRMatrix.from_coo((2, 2), [0, 1], [0, 1], [2.0, 3.0])
+        plan = CSRConstraintPlan.from_matrix(matrix, [0])
+        changed_graph = CSRMatrix.from_coo(
+            (2, 2), [0, 0, 1], [0, 1, 1], [2.0, 1.0, 3.0]
+        )
+        with self.assertRaisesRegex(ValueError, "图与约束计划"):
+            plan.transform_matrix(changed_graph)
+        with self.assertRaisesRegex(ValueError, "数量"):
+            plan.transform_rhs(matrix, [1.0, 2.0], [])
+        with self.assertRaisesRegex(ValueError, "不得重复"):
+            CSRConstraintPlan.from_matrix(matrix, [0, 0])
+        huge = CSRMatrix.from_coo(
+            (2, 2), [0, 1], [1, 0], [np.finfo(float).max, 1.0]
+        )
+        huge_plan = CSRConstraintPlan.from_matrix(huge, [1])
+        with self.assertRaisesRegex(ValueError, "不是有限数"):
+            huge_plan.transform_rhs(huge, [0.0, 0.0], [2.0])
+
+
 class ConjugateGradientTests(unittest.TestCase):
     @staticmethod
     def _spd() -> tuple[CSRMatrix, np.ndarray, np.ndarray]:
@@ -183,6 +238,10 @@ class ConjugateGradientTests(unittest.TestCase):
         self.assertLessEqual(result.report.iterations, 3)
         np.testing.assert_allclose(result.solution, exact, atol=2.0e-15)
         self.assertLessEqual(result.report.residual_norm, result.report.threshold)
+        self.assertEqual(
+            result.report.residual_norm,
+            float(np.linalg.norm(rhs - matrix.matvec(result.solution))),
+        )
 
     def test_initial_solution_and_iteration_limit_are_distinct(self) -> None:
         matrix, rhs, exact = self._spd()
@@ -202,8 +261,30 @@ class ConjugateGradientTests(unittest.TestCase):
 
     def test_invalid_jacobi_diagonal_fails(self) -> None:
         matrix = CSRMatrix.from_coo((2, 2), [0, 1], [0, 1], [1.0, 0.0])
-        with self.assertRaisesRegex(ValueError, "positive diagonal"):
+        with self.assertRaisesRegex(ValueError, "严格正"):
             conjugate_gradient(matrix, [1.0, 1.0])
+
+    def test_prepared_preconditioner_matches_cold_and_rejects_stale_values(self) -> None:
+        matrix, rhs, exact = self._spd()
+        prepared = PreparedPreconditioner.from_matrix(matrix)
+        outcome = conjugate_gradient(
+            matrix, rhs, prepared_preconditioner=prepared
+        )
+        np.testing.assert_allclose(outcome.solution, exact, atol=2.0e-15)
+        changed = CSRMatrix(
+            matrix.shape, matrix.indptr, matrix.indices, 1.1 * matrix.data
+        )
+        with self.assertRaisesRegex(ValueError, "数值已改变"):
+            conjugate_gradient(
+                changed, rhs, prepared_preconditioner=prepared
+            )
+        with self.assertRaisesRegex(ValueError, "数值已改变"):
+            conjugate_gradient(
+                changed,
+                changed.matvec(exact),
+                initial_guess=exact,
+                prepared_preconditioner=prepared,
+            )
 
 
 class BSRMatrixTests(unittest.TestCase):
@@ -254,7 +335,7 @@ class BSRMatrixTests(unittest.TestCase):
         matrix = CSRMatrix.from_coo((3, 3), [0, 1, 2], [0, 1, 2], [1, 1, 1])
         with self.assertRaisesRegex(ValueError, "divisible"):
             BSRMatrix.from_csr(matrix, 2)
-        with self.assertRaisesRegex(ValueError, "explicit block size"):
+        with self.assertRaisesRegex(ValueError, "显式块尺寸"):
             conjugate_gradient(matrix, [1, 1, 1], preconditioner="block_jacobi")
 
 

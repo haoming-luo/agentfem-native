@@ -90,11 +90,17 @@ The baseline CG algorithm solves symmetric positive-definite systems. Optional
 Jacobi preconditioning uses `M^-1 r = r / diag(A)` and requires finite strictly
 positive diagonal entries.
 
-With right-hand side `b`, the stopping threshold is:
+给定右端项 `b`，用户要求的停止阈值为：
 
 ```text
 max(atol, rtol * ||b||_2).
 ```
+
+生产报告还把该值与 binary64 的保守可达后向误差底线取最大值。底线按
+`eps sqrt(n) (||A||_inf ||x||_inf + ||b||_inf)` 计算，防止条件较差的问题因
+递推残差舍入漂移而虚假收敛，也避免在用户阈值低于当前浮点问题可达精度时无意义
+迭代。CG 命中阈值后重新计算 `b-Ax`；只有真实残差不超过报告中的实际阈值才
+返回收敛，否则替换残差并重启搜索方向。
 
 The report records convergence, reason, iteration count, initial residual,
 final residual, threshold, and configured tolerances. The following paths are

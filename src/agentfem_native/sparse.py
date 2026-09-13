@@ -512,6 +512,227 @@ class CSRAssemblyPlan:
 
 
 @dataclass(frozen=True, slots=True)
+class CSRConstraintPlan:
+    """固定规范 CSR 图和约束集合的强制 Dirichlet 变换计划。"""
+
+    shape: tuple[int, int]
+    source_indptr: IndexArray
+    source_indices: IndexArray
+    constrained: IndexArray
+    pattern: CSRPattern = field(init=False, repr=False)
+    source_to_target: IndexArray = field(init=False, repr=False)
+    retained_source: IndexArray = field(init=False, repr=False)
+    lift_source: IndexArray = field(init=False, repr=False)
+    lift_rows: IndexArray = field(init=False, repr=False)
+    lift_value_positions: IndexArray = field(init=False, repr=False)
+    diagonal_slots: IndexArray = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        shape = _validate_shape(self.shape)
+        if shape[0] != shape[1]:
+            raise ValueError("约束变换计划要求方阵。")
+        graph = CSRMatrix(
+            shape,
+            self.source_indptr,
+            self.source_indices,
+            np.zeros(np.asarray(self.source_indices).size, dtype=np.float64),
+        )
+        constrained = _readonly_indices(self.constrained, name="约束自由度")
+        if np.any(constrained < 0) or np.any(constrained >= shape[0]):
+            raise ValueError("约束自由度超出矩阵范围。")
+        if np.unique(constrained).size != constrained.size:
+            raise ValueError("约束自由度不得重复。")
+
+        rows = graph.row_indices()
+        missing: list[int] = []
+        for raw_index in constrained:
+            index = int(raw_index)
+            start, stop = int(graph.indptr[index]), int(graph.indptr[index + 1])
+            position = int(np.searchsorted(graph.indices[start:stop], index)) + start
+            if position >= stop or graph.indices[position] != index:
+                missing.append(index)
+        augmented_rows = np.concatenate(
+            (rows, np.asarray(missing, dtype=np.int64))
+        )
+        augmented_columns = np.concatenate(
+            (graph.indices, np.asarray(missing, dtype=np.int64))
+        )
+        augmented = CSRPattern.from_coo(shape, augmented_rows, augmented_columns)
+        # 目标图只承担后续数值容器职责；源图到目标槽位的关系由独立映射保存。
+        pattern = CSRPattern(
+            augmented.shape,
+            augmented.indptr,
+            augmented.indices,
+            np.arange(augmented.nnz, dtype=np.int64),
+        )
+        source_to_target = _readonly_indices(
+            augmented.coo_to_csr[: graph.nnz], name="源图到约束图映射"
+        )
+
+        is_constrained = np.zeros(shape[0], dtype=bool)
+        is_constrained[constrained] = True
+        retained = np.flatnonzero(
+            ~is_constrained[rows] & ~is_constrained[graph.indices]
+        )
+        lift = np.flatnonzero(
+            ~is_constrained[rows] & is_constrained[graph.indices]
+        )
+        value_position_by_dof = np.full(shape[0], -1, dtype=np.int64)
+        value_position_by_dof[constrained] = np.arange(
+            constrained.size, dtype=np.int64
+        )
+        diagonal_slots = np.empty(constrained.size, dtype=np.int64)
+        for offset, raw_index in enumerate(constrained):
+            index = int(raw_index)
+            start, stop = int(pattern.indptr[index]), int(pattern.indptr[index + 1])
+            position = int(np.searchsorted(pattern.indices[start:stop], index)) + start
+            if position >= stop or pattern.indices[position] != index:
+                raise RuntimeError("约束计划未能建立显式单位对角槽位。")
+            diagonal_slots[offset] = position
+
+        object.__setattr__(self, "shape", graph.shape)
+        object.__setattr__(self, "source_indptr", graph.indptr)
+        object.__setattr__(self, "source_indices", graph.indices)
+        object.__setattr__(self, "constrained", constrained)
+        object.__setattr__(self, "pattern", pattern)
+        object.__setattr__(self, "source_to_target", source_to_target)
+        object.__setattr__(
+            self, "retained_source", _readonly_indices(retained, name="保留项")
+        )
+        object.__setattr__(self, "lift_source", _readonly_indices(lift, name="提升项"))
+        object.__setattr__(
+            self, "lift_rows", _readonly_indices(rows[lift], name="提升项行")
+        )
+        object.__setattr__(
+            self,
+            "lift_value_positions",
+            _readonly_indices(
+                value_position_by_dof[graph.indices[lift]], name="约束值位置"
+            ),
+        )
+        object.__setattr__(
+            self,
+            "diagonal_slots",
+            _readonly_indices(diagonal_slots, name="约束对角槽位"),
+        )
+
+    @classmethod
+    def from_matrix(
+        cls, matrix: CSRMatrix, constrained: ArrayLike
+    ) -> CSRConstraintPlan:
+        """从已规范矩阵图准备一次约束结构分析。"""
+
+        if not isinstance(matrix, CSRMatrix):
+            raise TypeError("约束计划要求 CSRMatrix。")
+        result = cls(matrix.shape, matrix.indptr, matrix.indices, constrained)
+        # CSRMatrix 已保证图只读；保留同一引用可让稳态路径常数时间确认图身份。
+        object.__setattr__(result, "source_indptr", matrix.indptr)
+        object.__setattr__(result, "source_indices", matrix.indices)
+        return result
+
+    @property
+    def storage_nbytes(self) -> int:
+        arrays = (
+            self.source_indptr,
+            self.source_indices,
+            self.constrained,
+            self.pattern.indptr,
+            self.pattern.indices,
+            self.pattern.coo_to_csr,
+            self.source_to_target,
+            self.retained_source,
+            self.lift_source,
+            self.lift_rows,
+            self.lift_value_positions,
+            self.diagonal_slots,
+        )
+        return int(sum(array.nbytes for array in arrays))
+
+    @property
+    def structure_digest(self) -> str:
+        """返回源图、约束顺序和目标图共同决定的跨平台摘要。"""
+
+        digest = sha256()
+        digest.update(np.asarray(self.shape, dtype="<i8").tobytes())
+        for array in (
+            self.source_indptr,
+            self.source_indices,
+            self.constrained,
+            self.pattern.indptr,
+            self.pattern.indices,
+        ):
+            digest.update(np.asarray(array, dtype="<i8").tobytes())
+        return digest.hexdigest()
+
+    def validate_matrix(self, matrix: CSRMatrix) -> None:
+        """拒绝把计划用于不同形状或不同规范图。"""
+
+        if not isinstance(matrix, CSRMatrix):
+            raise TypeError("约束计划只接受 CSRMatrix。")
+        if (
+            matrix.shape != self.shape
+            or (
+                matrix.indptr is not self.source_indptr
+                and not np.array_equal(matrix.indptr, self.source_indptr)
+            )
+            or (
+                matrix.indices is not self.source_indices
+                and not np.array_equal(matrix.indices, self.source_indices)
+            )
+        ):
+            raise ValueError("CSR 图与约束计划不一致，必须重新准备计划。")
+
+    def transform_matrix(self, matrix: CSRMatrix) -> CSRMatrix:
+        """只更新约束后矩阵数值；结果与具体约束值无关。"""
+
+        self.validate_matrix(matrix)
+        data = np.zeros(self.pattern.nnz, dtype=np.float64)
+        retained_targets = self.source_to_target[self.retained_source]
+        data[retained_targets] = matrix.data[self.retained_source]
+        data[self.diagonal_slots] = 1.0
+        return CSRMatrix._from_pattern(self.pattern, data)
+
+    def transform_rhs(
+        self,
+        matrix: CSRMatrix,
+        right_hand_side: ArrayLike,
+        values: ArrayLike,
+    ) -> FloatArray:
+        """按准备时的约束顺序生成强制 Dirichlet 右端项。"""
+
+        self.validate_matrix(matrix)
+        rhs = np.array(right_hand_side, dtype=np.float64, copy=True)
+        if rhs.shape != (self.shape[0],) or not np.all(np.isfinite(rhs)):
+            raise ValueError("右端项必须为每行一个有限标量。")
+        prescribed = _readonly_values(values, name="约束值")
+        if prescribed.shape != self.constrained.shape:
+            raise ValueError("约束值数量必须与计划的约束自由度数量一致。")
+        if self.lift_source.size:
+            with np.errstate(over="ignore", invalid="ignore"):
+                correction = -matrix.data[self.lift_source] * prescribed[
+                    self.lift_value_positions
+                ]
+            np.add.at(rhs, self.lift_rows, correction)
+        rhs[self.constrained] = prescribed
+        if not np.all(np.isfinite(rhs)):
+            raise ValueError("约束变换后的右端项不是有限数。")
+        return rhs
+
+    def apply(
+        self,
+        matrix: CSRMatrix,
+        right_hand_side: ArrayLike,
+        values: ArrayLike,
+    ) -> tuple[CSRMatrix, FloatArray]:
+        """一次返回约束后矩阵和右端项，供冷路径及差分验证使用。"""
+
+        return (
+            self.transform_matrix(matrix),
+            self.transform_rhs(matrix, right_hand_side, values),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class BSRMatrix:
     """Immutable square-block CSR matrix for node-major vector fields."""
 
@@ -686,6 +907,162 @@ class BSRMatrix:
 
 
 @dataclass(frozen=True, slots=True)
+class PreparedPreconditioner:
+    """绑定一个 CSR 数值快照的 CG 预条件器。"""
+
+    kind: Literal["none", "jacobi", "block_jacobi"]
+    shape: tuple[int, int]
+    indptr: IndexArray
+    indices: IndexArray
+    matrix_data: FloatArray
+    inverse_diagonal: FloatArray | None = None
+    inverse_blocks: FloatArray | None = None
+    block_size: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.kind not in {"none", "jacobi", "block_jacobi"}:
+            raise ValueError(f"未知 CG 预条件器 {self.kind!r}。")
+        graph = CSRMatrix(
+            self.shape, self.indptr, self.indices, self.matrix_data
+        )
+        inverse_diagonal = self.inverse_diagonal
+        inverse_blocks = self.inverse_blocks
+        if inverse_diagonal is not None:
+            inverse_diagonal = _readonly_values(
+                inverse_diagonal, name="Jacobi 逆对角"
+            )
+        if inverse_blocks is not None:
+            blocks = np.array(inverse_blocks, dtype=np.float64, copy=True)
+            if blocks.ndim != 3 or not np.all(np.isfinite(blocks)):
+                raise ValueError("块 Jacobi 逆块必须是有限三维数组。")
+            blocks.setflags(write=False)
+            inverse_blocks = blocks
+        if self.kind == "none":
+            if inverse_diagonal is not None or inverse_blocks is not None:
+                raise ValueError("无预条件模式不得携带逆对角数据。")
+        elif self.kind == "jacobi":
+            if inverse_diagonal is None or inverse_diagonal.shape != (graph.shape[0],):
+                raise ValueError("Jacobi 逆对角长度必须等于矩阵行数。")
+            if inverse_blocks is not None:
+                raise ValueError("Jacobi 预条件器不得携带块逆矩阵。")
+        else:
+            if (
+                self.block_size is None
+                or inverse_blocks is None
+                or inverse_diagonal is not None
+            ):
+                raise ValueError("块 Jacobi 预条件器缺少合法块尺寸或逆块。")
+            size = int(self.block_size)
+            if size < 1 or inverse_blocks.shape != (
+                graph.shape[0] // size,
+                size,
+                size,
+            ):
+                raise ValueError("块 Jacobi 逆块形状与矩阵不一致。")
+        object.__setattr__(self, "shape", graph.shape)
+        object.__setattr__(self, "indptr", graph.indptr)
+        object.__setattr__(self, "indices", graph.indices)
+        object.__setattr__(self, "matrix_data", graph.data)
+        object.__setattr__(self, "inverse_diagonal", inverse_diagonal)
+        object.__setattr__(self, "inverse_blocks", inverse_blocks)
+
+    @classmethod
+    def from_matrix(
+        cls,
+        matrix: CSRMatrix,
+        kind: Literal["none", "jacobi", "block_jacobi"] = "jacobi",
+        *,
+        block_size: int | None = None,
+    ) -> PreparedPreconditioner:
+        """构造数值预条件器，并保存防止陈旧复用的矩阵快照。"""
+
+        if kind == "none":
+            result = cls(
+                kind, matrix.shape, matrix.indptr, matrix.indices, matrix.data
+            )
+            object.__setattr__(result, "matrix_data", matrix.data)
+            return result
+        if kind == "jacobi":
+            diagonal = matrix.diagonal()
+            if not np.all(np.isfinite(diagonal)) or np.any(diagonal <= 0.0):
+                raise ValueError("Jacobi 预条件要求严格正的有限对角。")
+            result = cls(
+                kind,
+                matrix.shape,
+                matrix.indptr,
+                matrix.indices,
+                matrix.data,
+                inverse_diagonal=1.0 / diagonal,
+            )
+            object.__setattr__(result, "matrix_data", matrix.data)
+            return result
+        if kind != "block_jacobi":
+            raise ValueError(f"未知 CG 预条件器 {kind!r}。")
+        if block_size is None:
+            raise ValueError("块 Jacobi 要求显式块尺寸。")
+        blocks = BSRMatrix.from_csr(matrix, block_size).diagonal_blocks()
+        try:
+            eigenvalues = np.linalg.eigvalsh(blocks)
+            if np.any(eigenvalues <= 0.0):
+                raise ValueError("块 Jacobi 要求对称正定的对角块。")
+            inverse_blocks = np.linalg.inv(blocks)
+        except np.linalg.LinAlgError as error:
+            raise ValueError("块 Jacobi 对角块不可逆。") from error
+        result = cls(
+            kind,
+            matrix.shape,
+            matrix.indptr,
+            matrix.indices,
+            matrix.data,
+            inverse_blocks=inverse_blocks,
+            block_size=int(block_size),
+        )
+        object.__setattr__(result, "matrix_data", matrix.data)
+        return result
+
+    @property
+    def storage_nbytes(self) -> int:
+        return int(
+            self.indptr.nbytes
+            + self.indices.nbytes
+            + self.matrix_data.nbytes
+            + (0 if self.inverse_diagonal is None else self.inverse_diagonal.nbytes)
+            + (0 if self.inverse_blocks is None else self.inverse_blocks.nbytes)
+        )
+
+    def validate_matrix(self, matrix: CSRMatrix) -> None:
+        """图或数值改变都拒绝旧预条件器，避免错误缓存命中。"""
+
+        if (
+            matrix.shape != self.shape
+            or (
+                matrix.indptr is not self.indptr
+                and not np.array_equal(matrix.indptr, self.indptr)
+            )
+            or (
+                matrix.indices is not self.indices
+                and not np.array_equal(matrix.indices, self.indices)
+            )
+        ):
+            raise ValueError("CSR 图与预备预条件器不一致，必须重新准备。")
+        if matrix.data is not self.matrix_data and not np.array_equal(
+            matrix.data, self.matrix_data
+        ):
+            raise ValueError("CSR 数值已改变，必须重建数值预条件器。")
+
+    def apply(self, values: FloatArray) -> FloatArray:
+        """应用已准备的数值预条件器。"""
+
+        if self.inverse_diagonal is not None:
+            return self.inverse_diagonal * values
+        if self.inverse_blocks is not None:
+            assert self.block_size is not None
+            blocked = values.reshape(self.inverse_blocks.shape[0], self.block_size)
+            return np.einsum("bij,bj->bi", self.inverse_blocks, blocked).ravel()
+        return values.copy()
+
+
+@dataclass(frozen=True, slots=True)
 class CGReport:
     converged: bool
     reason: CGReason
@@ -745,8 +1122,9 @@ def conjugate_gradient(
     maximum_iterations: int | None = None,
     preconditioner: Literal["none", "jacobi", "block_jacobi"] = "jacobi",
     block_size: int | None = None,
+    prepared_preconditioner: PreparedPreconditioner | None = None,
 ) -> CGResult:
-    """Solve an SPD system and return explicit convergence or breakdown evidence."""
+    """求解对称正定系统，并返回明确的收敛、上限或失效证据。"""
 
     if matrix.shape[0] != matrix.shape[1]:
         raise ValueError("Conjugate gradient requires a square matrix.")
@@ -770,6 +1148,10 @@ def conjugate_gradient(
     maximum_iterations = int(maximum_iterations)
     if preconditioner not in {"none", "jacobi", "block_jacobi"}:
         raise ValueError(f"Unknown CG preconditioner {preconditioner!r}.")
+    if prepared_preconditioner is not None:
+        if not isinstance(prepared_preconditioner, PreparedPreconditioner):
+            raise TypeError("预备预条件器必须为 PreparedPreconditioner。")
+        prepared_preconditioner.validate_matrix(matrix)
 
     if initial_guess is None:
         solution = np.zeros(matrix.shape[1], dtype=np.float64)
@@ -779,10 +1161,36 @@ def conjugate_gradient(
             raise ValueError("Initial guess must be one finite scalar per column.")
     residual = rhs - matrix.matvec(solution)
     initial_norm = float(np.linalg.norm(residual))
-    threshold = max(
+    requested_threshold = max(
         float(absolute_tolerance),
         float(relative_tolerance) * float(np.linalg.norm(rhs)),
     )
+    absolute_row_sums = np.zeros(matrix.shape[0], dtype=np.float64)
+    np.add.at(absolute_row_sums, matrix.row_indices(), np.abs(matrix.data))
+    matrix_infinity_norm = (
+        0.0 if absolute_row_sums.size == 0 else float(np.max(absolute_row_sums))
+    )
+
+    def attainable_threshold(current_solution: FloatArray) -> float:
+        """把用户阈值与 binary64 可达到的保守后向误差底线合并。"""
+
+        solution_norm = (
+            0.0
+            if current_solution.size == 0
+            else float(np.linalg.norm(current_solution, ord=np.inf))
+        )
+        rhs_infinity_norm = (
+            0.0 if rhs.size == 0 else float(np.linalg.norm(rhs, ord=np.inf))
+        )
+        scale = matrix_infinity_norm * solution_norm + rhs_infinity_norm
+        roundoff_floor = (
+            np.finfo(np.float64).eps
+            * np.sqrt(max(matrix.shape[0], 1))
+            * scale
+        )
+        return max(requested_threshold, roundoff_floor)
+
+    threshold = attainable_threshold(solution)
     if initial_norm <= threshold:
         return _cg_result(
             solution,
@@ -796,36 +1204,14 @@ def conjugate_gradient(
             atol=float(absolute_tolerance),
         )
 
-    inverse_diagonal: FloatArray | None = None
-    inverse_blocks: FloatArray | None = None
-    if preconditioner == "jacobi":
-        diagonal = matrix.diagonal()
-        if not np.all(np.isfinite(diagonal)) or np.any(diagonal <= 0.0):
-            raise ValueError("Jacobi preconditioning requires a positive diagonal.")
-        inverse_diagonal = 1.0 / diagonal
-    elif preconditioner == "block_jacobi":
-        if block_size is None:
-            raise ValueError("Block-Jacobi requires an explicit block size.")
-        blocks = BSRMatrix.from_csr(matrix, block_size).diagonal_blocks()
-        try:
-            eigenvalues = np.linalg.eigvalsh(blocks)
-            if np.any(eigenvalues <= 0.0):
-                raise ValueError(
-                    "Block-Jacobi requires symmetric positive-definite diagonal blocks."
-                )
-            inverse_blocks = np.linalg.inv(blocks)
-        except np.linalg.LinAlgError as error:
-            raise ValueError("Block-Jacobi diagonal block is singular.") from error
+    if prepared_preconditioner is None:
+        active_preconditioner = PreparedPreconditioner.from_matrix(
+            matrix, preconditioner, block_size=block_size
+        )
+    else:
+        active_preconditioner = prepared_preconditioner
 
-    def apply_preconditioner(values: FloatArray) -> FloatArray:
-        if inverse_diagonal is not None:
-            return inverse_diagonal * values
-        if inverse_blocks is not None:
-            blocked = values.reshape(inverse_blocks.shape[0], inverse_blocks.shape[1])
-            return np.einsum("bij,bj->bi", inverse_blocks, blocked).ravel()
-        return values.copy()
-
-    z = apply_preconditioner(residual)
+    z = active_preconditioner.apply(residual)
     rho = float(residual @ z)
     if not np.isfinite(rho) or rho <= 0.0:
         return _cg_result(
@@ -860,6 +1246,7 @@ def conjugate_gradient(
         solution += alpha * direction
         residual -= alpha * image
         residual_norm = float(np.linalg.norm(residual))
+        threshold = attainable_threshold(solution)
         if not np.isfinite(residual_norm) or not np.all(np.isfinite(solution)):
             return _cg_result(
                 solution,
@@ -873,18 +1260,53 @@ def conjugate_gradient(
                 atol=float(absolute_tolerance),
             )
         if residual_norm <= threshold:
-            return _cg_result(
-                solution,
-                converged=True,
-                reason="converged",
-                iterations=iteration,
-                initial_norm=initial_norm,
-                residual_norm=residual_norm,
-                threshold=threshold,
-                rtol=float(relative_tolerance),
-                atol=float(absolute_tolerance),
-            )
-        z = apply_preconditioner(residual)
+            # 递推残差会积累舍入漂移；对外报告收敛前必须用 A*x 复核真实残差。
+            verified_residual = rhs - matrix.matvec(solution)
+            verified_norm = float(np.linalg.norm(verified_residual))
+            if np.isfinite(verified_norm) and verified_norm <= threshold:
+                return _cg_result(
+                    solution,
+                    converged=True,
+                    reason="converged",
+                    iterations=iteration,
+                    initial_norm=initial_norm,
+                    residual_norm=verified_norm,
+                    threshold=threshold,
+                    rtol=float(relative_tolerance),
+                    atol=float(absolute_tolerance),
+                )
+            if not np.isfinite(verified_norm):
+                return _cg_result(
+                    solution,
+                    converged=False,
+                    reason="breakdown",
+                    iterations=iteration,
+                    initial_norm=initial_norm,
+                    residual_norm=verified_norm,
+                    threshold=threshold,
+                    rtol=float(relative_tolerance),
+                    atol=float(absolute_tolerance),
+                )
+            # 残差替换后重新开始共轭方向，避免把不一致递推状态带入下一步。
+            residual = verified_residual
+            residual_norm = verified_norm
+            z = active_preconditioner.apply(residual)
+            rho = float(residual @ z)
+            if not np.isfinite(rho) or rho <= 0.0:
+                return _cg_result(
+                    solution,
+                    converged=False,
+                    reason="breakdown",
+                    iterations=iteration,
+                    initial_norm=initial_norm,
+                    residual_norm=residual_norm,
+                    threshold=threshold,
+                    rtol=float(relative_tolerance),
+                    atol=float(absolute_tolerance),
+                )
+            direction = z.copy()
+            continue
+        z = active_preconditioner.apply(residual)
         next_rho = float(residual @ z)
         if not np.isfinite(next_rho) or next_rho <= 0.0:
             return _cg_result(
@@ -901,13 +1323,15 @@ def conjugate_gradient(
         direction = z + (next_rho / rho) * direction
         rho = next_rho
 
+    verified_residual_norm = float(np.linalg.norm(rhs - matrix.matvec(solution)))
+    threshold = attainable_threshold(solution)
     return _cg_result(
         solution,
         converged=False,
         reason="iteration_limit",
         iterations=maximum_iterations,
         initial_norm=initial_norm,
-        residual_norm=residual_norm,
+        residual_norm=verified_residual_norm,
         threshold=threshold,
         rtol=float(relative_tolerance),
         atol=float(absolute_tolerance),

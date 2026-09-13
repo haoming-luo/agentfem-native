@@ -174,13 +174,17 @@ Gate and maturity boundary.
   索引缓冲，且不把阶段倍率解释为完整求解倍率。
   源提交 `628d9a4` 的 Linux 快检 `34775672146` 已通过；本能力标记为
   `implemented`，不据此提升 Gate 2。
-- Remaining: constrained-graph and preconditioner reuse, direct element-to-CSR
-  memory reduction, complete repeated-solve evidence, SIMD, and stronger providers.
-- Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
-  narrow contracts and after license, platform, determinism, and performance
-  evidence.
-- Begin vector DOFs and the readable T3 plane-stress/plane-strain oracle in the
-  same sprint so the sparse design serves mechanics rather than a scalar demo.
+- 本地候选已完成：固定 CSR 数值与约束集合可建立 `NativeSparseSolvePlan`，复用
+  约束图、约束后矩阵和 Jacobi/块 Jacobi 数值预条件器；CG 在声明收敛前复算
+  真实残差，并报告 binary64 可达后向误差底线。macOS arm64 六载荷 T3/T4
+  记录中，稳态完整约束求解约为冷路径的 2.5×–4.4×，计入一次准备成本后约为
+  2.0×–2.8×；解和应变能逐项一致。该能力仍待 Linux 快检，不外推平台性能。
+- 剩余：直接元素到 CSR 的内存缩减、SIMD、强预条件器，以及把预备生命周期
+  纳入版本化力学 Kernel Contract。
+- Ginkgo、PETSc/hypre 或其他宽松许可提供者只允许进入窄接口，并先完成许可、
+  平台、确定性和性能证据；它们不拥有有限元语义。
+- 下一主线是力学 Kernel Contract 0.2 与 Gate 2 正式验收，不能再用扩大孤立
+  稀疏功能替代产品闭环。
 
 ## AgentFEM integration track — deferred, non-blocking
 
@@ -216,8 +220,9 @@ required.
 求解收敛、合法畸变 patch、尺度化残差/平衡和 Agent 可读分析摘要。当前科学
 矩阵 G2-01 至 G2-10 本地通过；力学 JSON Contract 0.2 和最终 Tier-1 Gate
 候选仍未关闭。P3 CPU 并行与 ABI 1.4 可复用图数值回填已完成本地与三平台
-验收；预备装配生命周期已形成本地候选，但约束/预条件器复用、完整重复求解和
-力学 Contract 仍未关闭，因此 Gate 2 继续保持 `implemented`。
+验收；预备装配以及固定矩阵的约束/预条件器复用已形成完整本地候选。力学
+Kernel Contract 0.2 与最终 Gate 2 Tier-1 验收仍未关闭，因此 Gate 2 继续保持
+`implemented`。
 
 ## Gate 3 — time and nonlinear lifecycle
 
