@@ -43,10 +43,10 @@ study.solve(backend="native")
 
 Windows、macOS 和 Linux 都是一等发布目标；三者共享同一公开契约、科学测试、
 构建和独立性检查，不维护不同物理分支。本地开发负责 macOS，GitHub CI 负责
-Windows、Linux 以及最终 Tier-1 权威验收。当前远端基线是提交 `4f3da30` 的
-GitHub Actions 运行 `34566488847`：ABI 1.2 的 14 项 Windows/Linux/macOS 验收
-全部通过。ABI 1.3 并行候选尚需新的 Tier-1 运行。CI wheel 只是短期安装测试
-工件，不是公开发布包；项目仍快速迭代，尚未发布到 PyPI 或 GitHub Releases。
+Windows、Linux 以及最终 Tier-1 权威验收。当前远端基线是提交 `da92dbd` 的
+GitHub Actions 运行 `34752687326`：ABI 1.3 的 14 项 Windows/Linux/macOS 验收
+全部通过。CI wheel 只是短期安装测试工件，不是公开发布包；项目仍快速迭代，
+尚未发布到 PyPI 或 GitHub Releases。
 
 The GitHub repository is temporarily public through September 2026 to avoid
 private Actions-minute pressure during intensive development. This does not

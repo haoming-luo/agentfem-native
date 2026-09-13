@@ -19,8 +19,8 @@ Scalar CSR is complete for this reference foundation. BSR/block-Jacobi and
 C++20 CSR SpMV were subsequently implemented. The ABI 1.3 deterministic T3/T4
 CPU-parallel candidate and its honest local scaling boundary are recorded in
 [`CPU_PARALLEL_P3_REPORT.md`](CPU_PARALLEL_P3_REPORT.md). Reusable sparse graphs,
-SIMD, stronger preconditioners, and hosted ABI 1.3 acceptance remain P3 work;
-therefore P3 as a whole is still active.
+SIMD and stronger preconditioners remain P3 work. ABI 1.3 passed hosted Tier-1
+acceptance in run `34752687326`; P3 as a whole is still active.
 
 ## Local numerical evidence
 

@@ -1,7 +1,7 @@
 # Native P1/T3/T4 与稀疏 C ABI 1.3
 
-**状态：** ABI 1.3 本地实现候选；ABI 1.2 已通过三平台验收。Rust 对照实验仅
-实现 ABI 1.0 扩散子集。
+**状态：** ABI 1.3 已实现并通过 Tier-1 三平台验收。Rust 对照实验仅实现 ABI
+1.0 扩散子集。
 
 ## 版本与所有权
 
@@ -115,5 +115,6 @@ CSR SpMV 在每行内按存储列顺序归约。项目维护的 Python 有限元
 对应次版本中已经存在的函数。缓冲布局、标量宽度、排序、状态或数学语义发生不
 兼容变化时必须提升主版本。
 
-ABI 1.3 必须经过 Windows x86_64、Linux x86_64、macOS x86_64/arm64 wheel、
-C/C++ 契约、sanitizer 和 Python Stable ABI 复用验收后，才能成为正式平台证据。
+ABI 1.3 已在源提交 `da92dbd` 的 GitHub Actions 运行 `34752687326` 中通过
+Windows x86_64、Linux x86_64、macOS x86_64/arm64 wheel、C/C++ 契约、
+sanitizer、Python 3.13 Stable ABI 复用和独立 Rust 对照验收。

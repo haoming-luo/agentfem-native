@@ -6,8 +6,8 @@
   独占 COO 写入和固定顺序载荷归并；旧串行 ABI 保持不变。
 - 线程数与线程私有载荷内存进入 Agent 执行计划、摘要、能力清单和结果证据；
   默认仍为单线程，并行资源创建失败具有稳定状态码。
-- 新增可重跑的 macOS arm64 并行性能记录；本地结果不外推为跨平台性能声明，
-  ABI 1.3 的 Windows/Linux/macOS 验收仍由 Tier-1 CI 决定。
+- 新增可重跑的 macOS arm64 并行性能记录；本地结果不外推为跨平台性能声明。
+  ABI 1.3 已在运行 `34752687326` 中通过 14 项 Windows/Linux/macOS Tier-1 验收。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

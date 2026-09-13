@@ -161,9 +161,10 @@ Gate and maturity boundary.
 - 本地候选已完成：C++20 ABI 1.3 为 T3/T4 增加显式线程数、静态连续分块、
   独占 COO 写入和确定性载荷归并；线程临时内存进入 Agent 执行计划与收据。
   macOS arm64 代表规模记录中，T3 四线程为串行的 2.53×，T4 八线程为 4.00×；
-  这不是跨平台速度声明，须经一次 ABI 1.3 Tier-1 验收后才关闭平台边界。
-- Remaining: reusable preallocated sparse graph/numeric fill, SIMD, stronger
-  preconditioners, and ABI 1.3 hosted acceptance.
+  这不是跨平台速度声明。源提交 `da92dbd` 已在运行 `34752687326` 中通过 14 项
+  Windows/Linux/macOS Tier-1 验收，ABI 1.3 平台边界关闭。
+- Remaining: reusable preallocated sparse graph/numeric fill, SIMD, and
+  stronger preconditioners.
 - Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
   narrow contracts and after license, platform, determinism, and performance
   evidence.
@@ -203,8 +204,8 @@ required.
 2026-09-13 本地科学验收候选已把分散证据收敛为十二项矩阵，并强化 T3/T4 实际
 求解收敛、合法畸变 patch、尺度化残差/平衡和 Agent 可读分析摘要。当前科学
 矩阵 G2-01 至 G2-10 本地通过；力学 JSON Contract 0.2 和最终 Tier-1 Gate
-候选仍未关闭。P3 CPU 并行已形成 ABI 1.3 本地候选但尚未完成三平台验收，因此
-Gate 2 继续保持 `implemented`。
+候选仍未关闭。P3 CPU 并行 ABI 1.3 已完成本地与三平台验收，但预分配稀疏图和
+力学 Contract 仍未关闭，因此 Gate 2 继续保持 `implemented`。
 
 ## Gate 3 — time and nonlinear lifecycle
 

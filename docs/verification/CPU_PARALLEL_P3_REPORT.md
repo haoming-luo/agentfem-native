@@ -2,7 +2,7 @@
 
 **日期：** 2026-09-13
 
-**成熟度：** 本地实现候选；Tier-1 平台验收待执行
+**成熟度：** 已实现；ABI 1.3 Tier-1 平台验收通过
 
 **范围：** C++ ABI 1.3 的 T3/T4 体积装配
 
@@ -53,7 +53,9 @@ T3 最大并行载荷差为 `1.70e-21`，T4 为 `6.51e-19`；所有记录的 COO
   CPU 的性能；
 - 2.53×/4.00× 尚未达到长期“八核至少 6×”目标，后续需通过复用稀疏图、减少
   中间 COO、线程池/批次粒度和 SIMD 继续优化，而不是夸大当前结果；
-- ABI 1.3 必须通过 Windows x86_64、Linux x86_64、macOS x86_64/arm64 的 wheel、
-  C/C++ 契约、sanitizer、Python Stable ABI 与科学套件，才成为正式平台证据；
+- 源提交 `da92dbd` 已在 [GitHub Actions 运行 `34752687326`](https://github.com/haoming-luo/agentfem-native/actions/runs/34752687326)
+  中通过全部 14 项验收，包括 Windows x86_64、Linux x86_64、macOS
+  x86_64/arm64 wheel，Windows/Linux/macOS C/C++ 契约、Linux sanitizer、
+  Python 3.13 Stable ABI 三平台复用、Rust 对照、工件清单和最终汇总；
 - CI 成功也只关闭本次并行增量的平台验收，不自动完成 Kernel Contract 0.2、
   Gate 2 或 P3 的其他剩余项。

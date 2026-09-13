@@ -421,3 +421,6 @@ license-incompatible code is rejected.
   CI 通过也不自动提升 Gate 2/P3 整体成熟度。
 - 独立性声明：未查看、复制、翻译、重排或 AI 改写 DOLFINx、Basix、UFL、FFCx、
   Akantu 或其他第三方有限元实现源码。
+- 远端证据：源提交 `da92dbd` 的普通 Linux 快检运行 `34752678699` 通过；显式
+  Tier-1 运行 `34752687326` 的 14 项验收全部通过。文档后续提交复用该源提交
+  证据，不重复消耗编译矩阵。
