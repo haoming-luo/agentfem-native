@@ -163,11 +163,13 @@ Gate and maturity boundary.
   macOS arm64 代表规模记录中，T3 四线程为串行的 2.53×，T4 八线程为 4.00×；
   这不是跨平台速度声明。源提交 `da92dbd` 已在运行 `34752687326` 中通过 14 项
   Windows/Linux/macOS Tier-1 验收，ABI 1.3 平台边界关闭。
-- 本地参考候选已完成：不可变 `CSRPattern` 分离规范图和多次数值回填，并为图
-  提供稳定摘要。代表 T3 结构的局部回填比重新排序/归并 COO 快 133×–147×；
-  这不是端到端速度声明。源提交 `9e33b6c` 的 Linux 快检运行 `34753072074`
-  已通过；C++ 直接数值回填仍是下一生产增量。
-- Remaining: C++ preallocated numeric fill, SIMD, and stronger preconditioners.
+- 已完成并验收：不可变 `CSRPattern` 分离规范图和多次数值回填，C++20 ABI 1.4
+  按原贡献顺序确定性生成 CSR 数值。代表 T3 结构的生产回填比重新排序/归并
+  COO 快 134×–146×，但相对 NumPy 参考回填仅快 1.02×–1.07×，因此不宣称
+  端到端巨大加速。源提交 `d172cf6` 的 Linux 快检 `34757574303` 与 14 项完整
+  Tier-1 验收 `34757610403` 均通过。
+- Remaining: reusable-pattern integration into repeated engineering workflows,
+  end-to-end memory/time evidence, SIMD, and stronger preconditioners.
 - Admit optional Ginkgo, PETSc/hypre, or other permissive providers only behind
   narrow contracts and after license, platform, determinism, and performance
   evidence.
@@ -207,8 +209,9 @@ required.
 2026-09-13 本地科学验收候选已把分散证据收敛为十二项矩阵，并强化 T3/T4 实际
 求解收敛、合法畸变 patch、尺度化残差/平衡和 Agent 可读分析摘要。当前科学
 矩阵 G2-01 至 G2-10 本地通过；力学 JSON Contract 0.2 和最终 Tier-1 Gate
-候选仍未关闭。P3 CPU 并行 ABI 1.3 已完成本地与三平台验收，但预分配稀疏图和
-力学 Contract 仍未关闭，因此 Gate 2 继续保持 `implemented`。
+候选仍未关闭。P3 CPU 并行与 ABI 1.4 可复用图数值回填已完成本地与三平台
+验收，但真实重复装配生命周期和力学 Contract 仍未关闭，因此 Gate 2 继续保持
+`implemented`。
 
 ## Gate 3 — time and nonlinear lifecycle
 

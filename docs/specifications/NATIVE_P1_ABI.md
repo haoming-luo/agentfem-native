@@ -1,7 +1,7 @@
 # Native P1/T3/T4 与稀疏 C ABI 1.4
 
-**状态：** ABI 1.4 本地生产候选，等待 Tier-1 三平台验收。ABI 1.3 已完成验收；
-Rust 对照实验仅实现 ABI 1.0 扩散子集。
+**状态：** ABI 1.4 已实现并通过 Tier-1 三平台验收。Rust 对照实验仅实现 ABI
+1.0 扩散子集。
 
 ## 版本与所有权
 
@@ -134,5 +134,6 @@ ABI 1.3 已在源提交 `da92dbd` 的 GitHub Actions 运行 `34752687326` 中通
 Windows x86_64、Linux x86_64、macOS x86_64/arm64 wheel、C/C++ 契约、
 sanitizer、Python 3.13 Stable ABI 复用和独立 Rust 对照验收。
 
-ABI 1.4 的本地证据只能支持 macOS arm64 编译扩展、Python 差分、177 项回归和
-性能候选；在完整 CI 通过前不得改写为三平台已验收。
+ABI 1.4 已在源提交 `d172cf6` 的 GitHub Actions 运行 `34757610403` 中通过
+Windows x86_64、Linux x86_64、macOS x86_64/arm64 wheel、三平台 C/C++ 合约、
+sanitizer、Python 3.13 Stable ABI 复用、独立 Rust 对照和工件清单验收。

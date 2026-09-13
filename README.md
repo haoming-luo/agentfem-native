@@ -18,9 +18,9 @@ AgentFEM Native 同时承担国产替代和自主掌握有限元求解内核的�
 已验证串行内核覆盖二维 P1 三角形稳态扩散、命名集合、材料区域、各向异性电导、
 确定性 COO、自有 CSR/CG/Jacobi、可选 NumPy/SciPy 对照与提供者、平衡证据和
 VTK 输出。力学切片覆盖向量 DOF、T3 平面应力/应变、T4 三维弹性、体力与面力、
-位移约束、反力、能量和应力/应变恢复。C++20 ABI 1.3 本地候选在 ABI 1.2 的
-T3/T4 与 CSR SpMV 基础上，新增显式线程数的确定性 T3/T4 CPU 并行装配；默认
-仍为单线程，避免 Agent 工作流过度订阅。固定 DOF 线性动力学、功—能量证据、
+位移约束、反力、能量和应力/应变恢复。C++20 ABI 1.4 在 T3/T4 与 CSR SpMV
+基础上，拥有显式线程数的确定性 T3/T4 CPU 并行装配和可复用图的确定性 CSR
+数值回填；默认仍为单线程，避免 Agent 工作流过度订阅。固定 DOF 线性动力学、功—能量证据、
 内部网格/结果交换和 Agent 的计划—执行—解释收据也已实现，且不把 AF-IR 作为
 核心依赖。API 仍处于 1.0 前实验阶段，Gate 2 尚未因实现完成而自动提升为已验证。
 
@@ -43,8 +43,8 @@ study.solve(backend="native")
 
 Windows、macOS 和 Linux 都是一等发布目标；三者共享同一公开契约、科学测试、
 构建和独立性检查，不维护不同物理分支。本地开发负责 macOS，GitHub CI 负责
-Windows、Linux 以及最终 Tier-1 权威验收。当前远端基线是提交 `da92dbd` 的
-GitHub Actions 运行 `34752687326`：ABI 1.3 的 14 项 Windows/Linux/macOS 验收
+Windows、Linux 以及最终 Tier-1 权威验收。当前远端基线是提交 `d172cf6` 的
+GitHub Actions 运行 `34757610403`：ABI 1.4 的 14 项 Windows/Linux/macOS 验收
 全部通过。CI wheel 只是短期安装测试工件，不是公开发布包；项目仍快速迭代，
 尚未发布到 PyPI 或 GitHub Releases。
 

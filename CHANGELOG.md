@@ -11,6 +11,9 @@
 - 新增不可变 `CSRPattern`，把规范稀疏图与重复数值回填分离；支持一般 COO 和
   单元 DOF 构图、只读图共享、稳定摘要与明确失败语义。局部记录显示数值回填
   比每次重新规范化 COO 快 133×–147×，但不把它解释为端到端求解加速。
+- C++ Stable ABI 提升到 1.4，新增按原 COO 贡献顺序的确定性 CSR 数值回填；
+  保留独立 `fill_reference`，生产/参考输出逐位一致。源提交 `d172cf6` 已在运行
+  `34757610403` 中通过 14 项 Windows/Linux/macOS Tier-1 验收。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

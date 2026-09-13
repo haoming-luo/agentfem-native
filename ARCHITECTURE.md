@@ -67,8 +67,8 @@ Kernel Contract 在原生 Windows、macOS、Linux 上保持一致。代码使用
 与 `pathlib`，不要求 POSIX shell，显式处理文件系统大小写差异，也不在工件中
 嵌入开发者绝对路径。
 
-基础包只依赖 Python、NumPy 和平台 C/C++ 运行时。C++20 扩展通过 C ABI 1.3
-提供 P1 扩散、T3/T4 串行与并行体积装配和 CSR SpMV，并使用 CPython 3.11+
+基础包只依赖 Python、NumPy 和平台 C/C++ 运行时。C++20 扩展通过 C ABI 1.4
+提供 P1 扩散、T3/T4 串行与并行体积装配、CSR SpMV 和确定性数值回填，并使用 CPython 3.11+
 Stable ABI，不使用第三方绑定框架。PETSc、SciPy、MPI、GPU 和厂商求解器只能是
 可选提供者，不能成为参考路径的导入时依赖。
 
