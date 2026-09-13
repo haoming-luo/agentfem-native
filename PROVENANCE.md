@@ -404,3 +404,20 @@ license-incompatible code is rejected.
   Tier-1 任务按治理规则跳过，没有据此声明 Windows/macOS 新验收。
 - 外部代码：没有查看、复制、翻译、重排或 AI 改写 FEniCSx、Basix、UFL、FFCx、
   Akantu 或其他第三方有限元实现源码；没有新增依赖。
+
+## P3 确定性 CPU 并行装配候选 — 2026-09-13
+
+- 任务来源：项目负责人要求持续大力推进，并指定最终验收使用 CI。
+- 数学与架构来源：沿用项目自有 T3/T4 规格和 ABI 1.2 串行实现，新增 ABI 1.3
+  并行入口；使用 C++20 标准线程、静态连续单元分块、独占 COO 写入、线程私有
+  载荷和固定线程顺序归并。没有引入新的第三方代码或运行时依赖。
+- AgentFEM 适配：线程数由请求对象显式给出，默认一个线程；执行计划、摘要、
+  能力清单和结果收据报告线程数及额外工作区，使 Agent 可在执行前预算资源。
+- 本地证据：172 项科学/契约测试、严格 C/C++ 编译、ASan/UBSan、Ruff 和独立性
+  扫描通过。macOS arm64 七次中位数记录显示 T3 四线程 2.53×、T4 八线程 4.00×；
+  COO 完全相同，载荷差为舍入量级。该速度不向其他平台外推。
+- 验收边界：ABI 1.3 的 Windows x86_64、Linux x86_64、macOS x86_64/arm64
+  wheel、Stable ABI、C/C++、sanitizer 与科学测试必须由显式 Tier-1 CI 决定；
+  CI 通过也不自动提升 Gate 2/P3 整体成熟度。
+- 独立性声明：未查看、复制、翻译、重排或 AI 改写 DOLFINx、Basix、UFL、FFCx、
+  Akantu 或其他第三方有限元实现源码。

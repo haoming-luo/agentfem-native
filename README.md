@@ -1,8 +1,7 @@
-# AgentFEM Native Engine
+# AgentFEM Native 自主有限元内核
 
-AgentFEM Native is the independently developed finite-element engine for
-AgentFEM. It is an official autonomous computation backend, not a FEniCSx
-fork and not a second end-user product.
+AgentFEM Native 是面向 AgentFEM 独立开发的有限元求解内核。它是正式的自主
+计算后端，不是 FEniCSx 分支，也不是第二个面向最终用户的产品。
 
 本项目唯一首要的产品目标，是成为 AgentFEM 面向未来工程建模、Agent 自动
 求解与可信解释的自主计算底座。Native 保持独立的数学与运行时边界，但不发展
@@ -15,27 +14,17 @@ AgentFEM Native 同时承担国产替代和自主掌握有限元求解内核的�
 基础设施可以作为可替换能力使用，但不能控制 Native 的数学定义或成为串行核心
 唯一可运行的条件。
 
-The repository has **completed Gate 1** and now has implemented T3/T4 Gate 2
-vertical slices plus a linear Gate 3 candidate. The
-verified serial kernel solves two-dimensional steady scalar diffusion on
-affine P1 triangles with named node, boundary, and material regions;
-scalar, spatially varying, or symmetric positive-definite tensor
-conductivity; deterministic COO assembly; an owned dependency-free CSR/CG/
-Jacobi solve path; optional NumPy/SciPy oracle/providers; balance evidence; and
-portable VTK output. The initial mechanics slice adds vector DOFs, T3 plane
-stress/strain, body and traction loads, displacement constraints, reactions,
-energy, and cell stress/strain recovery. Static diffusion problems
-automatically use the packaged C++20 kernel when its ABI is available, with
-bounded vectorized NumPy as the portable fallback; callable fields retain the
-element-by-element oracle. C++20 ABI 1.2 also accelerates T3/T4 volume assembly
-and nontrivial canonical CSR SpMV. Fixed-DOF linear dynamics, external-work and
-energy evidence, internal mesh/result interchange, and Agent plan/execute/
-explain receipts are implemented without making AF-IR a core dependency. A measured C++/Rust comparison selected C++20 as
-the production compiled-kernel direction. Native installability and scientific
-checks pass on all Tier-1 platforms. The API remains experimental because it
-is pre-1.0; optional AF-IR promotion is no longer a Native gate blocker.
+仓库已经完成 **Gate 1**，并实现 T3/T4 Gate 2 垂直切片和 Gate 3 线性候选。
+已验证串行内核覆盖二维 P1 三角形稳态扩散、命名集合、材料区域、各向异性电导、
+确定性 COO、自有 CSR/CG/Jacobi、可选 NumPy/SciPy 对照与提供者、平衡证据和
+VTK 输出。力学切片覆盖向量 DOF、T3 平面应力/应变、T4 三维弹性、体力与面力、
+位移约束、反力、能量和应力/应变恢复。C++20 ABI 1.3 本地候选在 ABI 1.2 的
+T3/T4 与 CSR SpMV 基础上，新增显式线程数的确定性 T3/T4 CPU 并行装配；默认
+仍为单线程，避免 Agent 工作流过度订阅。固定 DOF 线性动力学、功—能量证据、
+内部网格/结果交换和 Agent 的计划—执行—解释收据也已实现，且不把 AF-IR 作为
+核心依赖。API 仍处于 1.0 前实验阶段，Gate 2 尚未因实现完成而自动提升为已验证。
 
-## Stable direction
+## 稳定架构方向
 
 ```text
 AgentFEM engineering model
@@ -52,16 +41,12 @@ study.solve(backend="fenicsx")
 study.solve(backend="native")
 ```
 
-Native Windows, macOS, and Linux are all first-class release targets. Platform
-support is defined by the same public contract, scientific tests, package
-build, and independence checks passing on each operating system; it is not
-implemented as separate physics forks. Local development validates macOS;
-GitHub CI owns the authoritative native Windows and Linux acceptance runs.
-The current hosted baseline is GitHub Actions run `34566488847` at commit
-`4f3da30`; all 14 explicit Tier-1 acceptance jobs passed, including ABI 1.2 on
-native Windows, Linux, macOS x86_64, and macOS arm64. CI wheels are short-lived
-installation-test artifacts, not a public package release; the project is still
-in rapid iteration and has not published to PyPI or GitHub Releases.
+Windows、macOS 和 Linux 都是一等发布目标；三者共享同一公开契约、科学测试、
+构建和独立性检查，不维护不同物理分支。本地开发负责 macOS，GitHub CI 负责
+Windows、Linux 以及最终 Tier-1 权威验收。当前远端基线是提交 `4f3da30` 的
+GitHub Actions 运行 `34566488847`：ABI 1.2 的 14 项 Windows/Linux/macOS 验收
+全部通过。ABI 1.3 并行候选尚需新的 Tier-1 运行。CI wheel 只是短期安装测试
+工件，不是公开发布包；项目仍快速迭代，尚未发布到 PyPI 或 GitHub Releases。
 
 The GitHub repository is temporarily public through September 2026 to avoid
 private Actions-minute pressure during intensive development. This does not
@@ -75,7 +60,7 @@ manual or tag-triggered. See
 [中文工程表达规范](docs/development/CHINESE_DOCUMENTATION_POLICY.md)和
 [后续架构与开发计划](docs/charter/NEXT_DEVELOPMENT_PLAN.md)。
 
-## Current evidence
+## 当前证据与环境
 
 Create the repository-local environment on Windows, macOS, or Linux:
 
@@ -112,20 +97,14 @@ structured and the command exits nonzero.
 See [ROADMAP.md](ROADMAP.md), [ARCHITECTURE.md](ARCHITECTURE.md), the
 [project charter](docs/charter/PROJECT_CHARTER.md), and the
 [steady-diffusion specification](docs/specifications/STEADY_DIFFUSION.md).
-Environment details are in
-[docs/development/ENVIRONMENT.md](docs/development/ENVIRONMENT.md).
-The compiled boundary is specified in
-[docs/specifications/NATIVE_P1_ABI.md](docs/specifications/NATIVE_P1_ABI.md),
-and the P2 evidence is summarized in
-[docs/verification/PERFORMANCE_P2_REPORT.md](docs/verification/PERFORMANCE_P2_REPORT.md).
-The owned sparse and first mechanics evidence is in
-[docs/verification/PERFORMANCE_P3_REPORT.md](docs/verification/PERFORMANCE_P3_REPORT.md)
-and
-[docs/verification/GATE_2_T3_REFERENCE_REPORT.md](docs/verification/GATE_2_T3_REFERENCE_REPORT.md).
-The latest P0-closure evidence is in
-[docs/verification/MECHANICS_ALPHA_0_2_REPORT.md](docs/verification/MECHANICS_ALPHA_0_2_REPORT.md).
-The long-term technical thesis is recorded in
-[docs/charter/NATIVE_VISION_2035.md](docs/charter/NATIVE_VISION_2035.md).
+环境说明见[开发环境](docs/development/ENVIRONMENT.md)，编译边界见
+[Native ABI 规格](docs/specifications/NATIVE_P1_ABI.md)。性能与力学证据分别见
+[P2 报告](docs/verification/PERFORMANCE_P2_REPORT.md)、
+[P3 稀疏报告](docs/verification/PERFORMANCE_P3_REPORT.md)、
+[P3 CPU 并行候选报告](docs/verification/CPU_PARALLEL_P3_REPORT.md)、
+[Gate 2 T3 参考报告](docs/verification/GATE_2_T3_REFERENCE_REPORT.md)和
+[Mechanics Alpha 0.2 报告](docs/verification/MECHANICS_ALPHA_0_2_REPORT.md)。
+长期技术判断记录在[2035 愿景](docs/charter/NATIVE_VISION_2035.md)中。
 
 ## Licensing
 

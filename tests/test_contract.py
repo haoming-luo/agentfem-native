@@ -132,7 +132,7 @@ class ContractTests(unittest.TestCase):
         result = run_kernel_request(request)
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["runtime"]["assembly"]["name"], "native")  # type: ignore[index]
-        self.assertEqual(result["runtime"]["native_kernel"]["abi_version"], "1.2")  # type: ignore[index]
+        self.assertEqual(result["runtime"]["native_kernel"]["abi_version"], "1.3")  # type: ignore[index]
 
     def test_portable_vtk_artifact_has_relative_path_and_digest(self) -> None:
         request = request_record(

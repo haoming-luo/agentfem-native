@@ -82,6 +82,16 @@ class LinearElastic3DProblem:
     dirichlet: tuple[SolidDisplacementCondition, ...] = ()
     traction: tuple[SolidTractionCondition, ...] = ()
     materials: tuple[SolidCellMaterial, ...] = ()
+    thread_count: int = 1
+
+    def __post_init__(self) -> None:
+        if isinstance(self.thread_count, (bool, np.bool_)) or not isinstance(
+            self.thread_count, (int, np.integer)
+        ):
+            raise TypeError("T4 装配线程数必须是正整数。")
+        if self.thread_count < 1:
+            raise ValueError("T4 装配线程数必须大于零。")
+        object.__setattr__(self, "thread_count", int(self.thread_count))
 
 
 @dataclass(frozen=True, slots=True)
@@ -232,6 +242,12 @@ def select_solid_assembly_mode(
 
     if assembly not in {"auto", "reference", "native"}:
         raise ValueError(f"Unknown T4 assembly mode {assembly!r}.")
+    if problem.thread_count > 1 and (
+        assembly == "reference"
+        or (assembly == "auto" and callable(problem.body_force))
+        or not native_kernel_available()
+    ):
+        raise ValueError("多线程 T4 装配要求可用的 native 静态体力路径。")
     if assembly == "native":
         if callable(problem.body_force):
             raise ValueError("Native T4 assembly requires a static body-force vector.")
@@ -261,7 +277,11 @@ def assemble_linear_elasticity_3d(
             0
         ]
         rows, columns, data, load = assemble_t4_volume(
-            mesh.points, mesh.cells, constitutive, body
+            mesh.points,
+            mesh.cells,
+            constitutive,
+            body,
+            thread_count=problem.thread_count,
         )
     else:
         cell_dofs = dofs.cell_dofs(mesh.cells)

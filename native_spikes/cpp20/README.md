@@ -1,17 +1,15 @@
-# C++20 Native kernel
+# C++20 Native 内核
 
-This is an independently implemented, standard-library-only performance
-kernel. It ships inside private validation wheels through a hand-written
-CPython Stable-ABI adapter and does not replace the readable NumPy oracle. Its
-public boundary is a true C ABI so the binding remains thin and replaceable.
+这是独立实现、只依赖标准库的生产性能内核。它通过手写 CPython Stable ABI
+适配器进入验证 wheel，但不替代可读 NumPy 数学参考。公开边界是真正的 C ABI，
+因此绑定层保持轻薄且可替换。
 
-ABI 1.2 emits deterministic per-cell COO entries and nodal loads for static
-anisotropic P1 diffusion and T3/T4 linear-elastic volume terms. It also applies
-canonical CSR matrices. A nonzero status invalidates all output buffers;
-callers must not consume partial output. See
-`docs/specifications/NATIVE_P1_ABI.md` for layouts and compatibility.
+ABI 1.3 为静态各向异性 P1 扩散、T3/T4 线弹性体积项生成确定性逐单元 COO 和
+节点载荷，也能应用规范 CSR。T3/T4 并行入口使用显式线程数、静态连续分块和
+固定载荷归并；原串行入口保持兼容。任何非零状态都使全部输出缓冲区无效，调用方
+不得使用部分结果。布局和兼容规则见 `docs/specifications/NATIVE_P1_ABI.md`。
 
-## Build and test
+## 构建与测试
 
 The same commands are intended for native Windows, macOS, and Linux:
 

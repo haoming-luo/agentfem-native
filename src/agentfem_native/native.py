@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Thin checked Python boundary for the owned C++20 assembly accelerator."""
+"""自研 C++20 装配加速器的轻量、受检 Python 边界。"""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Final
 import numpy as np
 from numpy.typing import NDArray
 
-NATIVE_P1_ABI_VERSION: Final = 0x0001_0002
+NATIVE_P1_ABI_VERSION: Final = 0x0001_0003
 
 try:
     from . import _p1_native
@@ -118,13 +118,15 @@ def assemble_t3_volume(
     constitutive: NDArray[np.float64],
     body_force: NDArray[np.float64],
     thickness: float,
+    *,
+    thread_count: int = 1,
 ) -> tuple[
     NDArray[np.int64],
     NDArray[np.int64],
     NDArray[np.float64],
     NDArray[np.float64],
 ]:
-    """Assemble static T3 volume terms through the versioned C++20 ABI."""
+    """通过有版本的 C++20 ABI 装配静态 T3 体积项。"""
 
     if not native_kernel_available():
         detail = f": {_IMPORT_ERROR}" if _IMPORT_ERROR is not None else ""
@@ -143,15 +145,27 @@ def assemble_t3_volume(
         raise ValueError("Native constitutive data must have shape (cell_count, 3, 3).")
     if body_values.shape != (2,):
         raise ValueError("Native body force must have shape (2,).")
+    if isinstance(thread_count, (bool, np.bool_)) or not isinstance(
+        thread_count, (int, np.integer)
+    ):
+        raise TypeError("并行装配线程数必须是正整数。")
+    if thread_count < 1:
+        raise ValueError("并行装配线程数必须大于零。")
     entry_count = cell_values.shape[0] * 36
     rows = np.empty(entry_count, dtype=np.int64)
     columns = np.empty(entry_count, dtype=np.int64)
     data = np.empty(entry_count, dtype=np.float64)
     load = np.empty(point_values.shape[0] * 2, dtype=np.float64)
+    assemble = (
+        _p1_native.assemble_t3_into
+        if thread_count == 1
+        else _p1_native.assemble_t3_parallel_into
+    )
     status = int(
-        _p1_native.assemble_t3_into(
+        assemble(
             point_values.shape[0],
             cell_values.shape[0],
+            *(() if thread_count == 1 else (int(thread_count),)),
             point_values,
             cell_values,
             constitutive_values,
@@ -168,6 +182,8 @@ def assemble_t3_volume(
         2: "Native T3 constitutive matrix must be finite, symmetric, and positive definite.",
         3: "Native T3 cell connectivity or geometry is invalid.",
         4: "Native T3 assembly input must be finite with positive thickness.",
+        5: "并行装配线程数必须大于零。",
+        6: "Native T3 并行装配无法创建所需线程或临时资源。",
     }
     if status != 0:
         raise ValueError(
@@ -181,13 +197,15 @@ def assemble_t4_volume(
     cells: NDArray[np.int64],
     constitutive: NDArray[np.float64],
     body_force: NDArray[np.float64],
+    *,
+    thread_count: int = 1,
 ) -> tuple[
     NDArray[np.int64],
     NDArray[np.int64],
     NDArray[np.float64],
     NDArray[np.float64],
 ]:
-    """Assemble static T4 volume terms through the versioned C++20 ABI."""
+    """通过有版本的 C++20 ABI 装配静态 T4 体积项。"""
 
     if not native_kernel_available():
         detail = f": {_IMPORT_ERROR}" if _IMPORT_ERROR is not None else ""
@@ -208,15 +226,27 @@ def assemble_t4_volume(
         )
     if body_values.shape != (3,):
         raise ValueError("Native T4 body force must have shape (3,).")
+    if isinstance(thread_count, (bool, np.bool_)) or not isinstance(
+        thread_count, (int, np.integer)
+    ):
+        raise TypeError("并行装配线程数必须是正整数。")
+    if thread_count < 1:
+        raise ValueError("并行装配线程数必须大于零。")
     entry_count = cell_values.shape[0] * 144
     rows = np.empty(entry_count, dtype=np.int64)
     columns = np.empty(entry_count, dtype=np.int64)
     data = np.empty(entry_count, dtype=np.float64)
     load = np.empty(point_values.shape[0] * 3, dtype=np.float64)
+    assemble = (
+        _p1_native.assemble_t4_into
+        if thread_count == 1
+        else _p1_native.assemble_t4_parallel_into
+    )
     status = int(
-        _p1_native.assemble_t4_into(
+        assemble(
             point_values.shape[0],
             cell_values.shape[0],
+            *(() if thread_count == 1 else (int(thread_count),)),
             point_values,
             cell_values,
             constitutive_values,
@@ -232,6 +262,8 @@ def assemble_t4_volume(
         2: "Native T4 constitutive matrix must be finite, symmetric, and positive definite.",
         3: "Native T4 cell connectivity or geometry is invalid.",
         4: "Native T4 assembly input must be finite.",
+        5: "并行装配线程数必须大于零。",
+        6: "Native T4 并行装配无法创建所需线程或临时资源。",
     }
     if status != 0:
         raise ValueError(

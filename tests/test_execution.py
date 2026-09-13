@@ -139,6 +139,8 @@ class PlannedExecutionTests(unittest.TestCase):
                 "element_family": "triangle_p1_vector2",
                 "dof_count": 8,
                 "assembly_mode": "native",
+                "thread_count": 1,
+                "thread_workspace_bytes": 0,
                 "provider": "native_sparse",
                 "claim_maturity": "implemented",
             },

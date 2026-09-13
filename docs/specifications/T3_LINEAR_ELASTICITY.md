@@ -91,10 +91,10 @@ applied force, total reaction, energy, provider identity, and solver report.
   constraints, and under-constrained systems;
 - dense-oracle and Native sparse provider equivalence on small problems.
 
-The admitted implementation has readable, bounded vectorized, and C++20 ABI
-1.1 volume paths. Static elastic material regions provide per-cell constitutive
-matrices; callable body forces retain the readable path. All paths reproduce the
-same owned COO/load semantics.
+已接纳实现包含可读、受限向量化和 C++20 体积路径。ABI 1.1 引入串行 T3，ABI
+1.3 新增显式线程数的确定性并行入口。静态材料区域提供逐单元本构矩阵；可调用
+体力继续使用可读路径。所有路径必须复现同一套项目自有 COO/载荷语义，并行 COO
+逐位一致，载荷只允许固定归约分组引起的舍入级差异。
 
 This remains an implemented Gate 2 slice. It does not by itself claim complete
 Gate 2 closure, compiled 3D mechanics, Q4/H8, or nonlinear state.

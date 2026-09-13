@@ -1,0 +1,91 @@
+{
+  "claim_boundary": "\u672c\u673a\u70ed\u8fdb\u7a0b\u4e2d\u4f4d\u6570\uff0c\u4ec5\u8bc1\u660e\u5f53\u524d macOS arm64 \u5019\u9009\u7684\u65b9\u5411\uff1b\u8de8\u5e73\u53f0\u6b63\u786e\u6027\u7531 Tier-1 CI \u9a8c\u6536\uff0c\u4e0d\u4ece\u672c\u8bb0\u5f55\u63a8\u65ad\u8de8\u5e73\u53f0\u901f\u5ea6\u3002",
+  "environment": {
+    "agentfem_native": "0.7.0a1",
+    "architecture": "arm64",
+    "logical_cpu_count": 10,
+    "native_kernel": {
+      "abi_version": "1.3",
+      "available": true,
+      "name": "cpp20",
+      "required_abi_version": "1.3"
+    },
+    "numpy": "2.3.5",
+    "os": "Darwin",
+    "python": "3.12.14"
+  },
+  "repetitions": 7,
+  "schema": "agentfem-native.cpu-parallel-assembly/0.1",
+  "t3": {
+    "cells": 131072,
+    "dofs": 132098,
+    "nodes": 66049,
+    "resolution": 256,
+    "threads": {
+      "1": {
+        "coo_exactly_equal": true,
+        "maximum_load_difference": 0.0,
+        "median_seconds": 0.006811667000874877,
+        "repeatable_for_fixed_thread_count": true,
+        "speedup_over_serial": 1.0
+      },
+      "2": {
+        "coo_exactly_equal": true,
+        "maximum_load_difference": 1.6940658945086007e-21,
+        "median_seconds": 0.00377520895563066,
+        "repeatable_for_fixed_thread_count": true,
+        "speedup_over_serial": 1.804315226238111
+      },
+      "4": {
+        "coo_exactly_equal": true,
+        "maximum_load_difference": 1.6940658945086007e-21,
+        "median_seconds": 0.0026966669829562306,
+        "repeatable_for_fixed_thread_count": true,
+        "speedup_over_serial": 2.5259578004724794
+      },
+      "8": {
+        "coo_exactly_equal": true,
+        "maximum_load_difference": 1.6940658945086007e-21,
+        "median_seconds": 0.0028075840091332793,
+        "repeatable_for_fixed_thread_count": true,
+        "speedup_over_serial": 2.4261667607152693
+      }
+    }
+  },
+  "t4": {
+    "cells": 10368,
+    "dofs": 6591,
+    "nodes": 2197,
+    "resolution": 12,
+    "threads": {
+      "1": {
+        "coo_exactly_equal": true,
+        "maximum_load_difference": 0.0,
+        "median_seconds": 0.007628082996234298,
+        "repeatable_for_fixed_thread_count": true,
+        "speedup_over_serial": 1.0
+      },
+      "2": {
+        "coo_exactly_equal": true,
+        "maximum_load_difference": 6.505213034913027e-19,
+        "median_seconds": 0.004064207896590233,
+        "repeatable_for_fixed_thread_count": true,
+        "speedup_over_serial": 1.876892912548609
+      },
+      "4": {
+        "coo_exactly_equal": true,
+        "maximum_load_difference": 6.505213034913027e-19,
+        "median_seconds": 0.002158625051379204,
+        "repeatable_for_fixed_thread_count": true,
+        "speedup_over_serial": 3.5337693275451008
+      },
+      "8": {
+        "coo_exactly_equal": true,
+        "maximum_load_difference": 6.505213034913027e-19,
+        "median_seconds": 0.00190550007391721,
+        "repeatable_for_fixed_thread_count": true,
+        "speedup_over_serial": 4.003192180702965
+      }
+    }
+  }
+}

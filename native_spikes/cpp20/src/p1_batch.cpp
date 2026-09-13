@@ -6,6 +6,8 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <thread>
+#include <vector>
 
 namespace {
 
@@ -224,6 +226,74 @@ int assemble_impl(
   return AFN_P1_SUCCESS;
 }
 
+// 每个工作线程只写独占的单元 COO 区间；节点载荷必须先写入线程私有缓冲区，
+// 再按线程编号归并。这个顺序是跨平台可重复性的组成部分，不能改成原子累加。
+template <typename AssembleRange>
+int assemble_parallel_ranges(
+    const std::size_t cell_count,
+    const std::size_t thread_count,
+    const std::size_t load_size,
+    double* load,
+    AssembleRange assemble_range) {
+  const std::size_t worker_count = std::min(cell_count, thread_count);
+  if (load_size > std::numeric_limits<std::size_t>::max() / worker_count) {
+    return AFN_P1_RESOURCE_FAILURE;
+  }
+
+  try {
+    std::vector<double> private_load(worker_count * load_size, 0.0);
+    std::vector<int> statuses(worker_count, AFN_P1_SUCCESS);
+    std::vector<std::thread> workers;
+    workers.reserve(worker_count);
+
+    const std::size_t base_count = cell_count / worker_count;
+    const std::size_t remainder = cell_count % worker_count;
+    std::size_t begin = 0;
+    try {
+      for (std::size_t worker = 0; worker < worker_count; ++worker) {
+        const std::size_t count = base_count + (worker < remainder ? 1 : 0);
+        const std::size_t range_begin = begin;
+        workers.emplace_back([&, worker, range_begin, count]() {
+          try {
+            statuses[worker] = assemble_range(
+                range_begin, count, private_load.data() + worker * load_size);
+          } catch (...) {
+            statuses[worker] = AFN_P1_RESOURCE_FAILURE;
+          }
+        });
+        begin += count;
+      }
+    } catch (...) {
+      for (auto& worker : workers) {
+        if (worker.joinable()) {
+          worker.join();
+        }
+      }
+      return AFN_P1_RESOURCE_FAILURE;
+    }
+
+    for (auto& worker : workers) {
+      worker.join();
+    }
+    for (const int status : statuses) {
+      if (status != AFN_P1_SUCCESS) {
+        return status;
+      }
+    }
+
+    std::fill(load, load + load_size, 0.0);
+    for (std::size_t worker = 0; worker < worker_count; ++worker) {
+      const double* source = private_load.data() + worker * load_size;
+      for (std::size_t index = 0; index < load_size; ++index) {
+        load[index] += source[index];
+      }
+    }
+    return AFN_P1_SUCCESS;
+  } catch (...) {
+    return AFN_P1_RESOURCE_FAILURE;
+  }
+}
+
 }  // namespace
 
 extern "C" AFN_API std::uint32_t afn_p1_abi_version() {
@@ -366,6 +436,50 @@ extern "C" AFN_API int afn_t3_elasticity_assemble_cells(
   return AFN_P1_SUCCESS;
 }
 
+extern "C" AFN_API int afn_t3_elasticity_assemble_cells_parallel(
+    const std::size_t node_count,
+    const std::size_t cell_count,
+    const std::size_t thread_count,
+    const double* points_xy,
+    const std::int64_t* cells,
+    const double* constitutive_cells_3x3,
+    const double* body_force_xy,
+    const double thickness,
+    std::int64_t* rows,
+    std::int64_t* columns,
+    double* data,
+    double* load) {
+  if (thread_count == 0) {
+    return AFN_P1_INVALID_THREAD_COUNT;
+  }
+  if (thread_count == 1 || cell_count <= 1) {
+    return afn_t3_elasticity_assemble_cells(
+        node_count, cell_count, points_xy, cells, constitutive_cells_3x3,
+        body_force_xy, thickness, rows, columns, data, load);
+  }
+  if (node_count == 0 || points_xy == nullptr || cells == nullptr ||
+      constitutive_cells_3x3 == nullptr || body_force_xy == nullptr ||
+      rows == nullptr || columns == nullptr || data == nullptr ||
+      load == nullptr) {
+    return AFN_P1_NULL_POINTER;
+  }
+  if (node_count > std::numeric_limits<std::size_t>::max() / 2 ||
+      cell_count > std::numeric_limits<std::size_t>::max() / 36) {
+    return AFN_P1_INVALID_CELL;
+  }
+
+  return assemble_parallel_ranges(
+      cell_count, thread_count, 2 * node_count, load,
+      [&](const std::size_t begin, const std::size_t count,
+          double* private_load) {
+        return afn_t3_elasticity_assemble_cells(
+            node_count, count, points_xy, cells + 3 * begin,
+            constitutive_cells_3x3 + 9 * begin, body_force_xy, thickness,
+            rows + 36 * begin, columns + 36 * begin, data + 36 * begin,
+            private_load);
+      });
+}
+
 extern "C" AFN_API int afn_t4_elasticity_assemble_cells(
     const std::size_t node_count,
     const std::size_t cell_count,
@@ -505,6 +619,49 @@ extern "C" AFN_API int afn_t4_elasticity_assemble_cells(
     }
   }
   return AFN_P1_SUCCESS;
+}
+
+extern "C" AFN_API int afn_t4_elasticity_assemble_cells_parallel(
+    const std::size_t node_count,
+    const std::size_t cell_count,
+    const std::size_t thread_count,
+    const double* points_xyz,
+    const std::int64_t* cells,
+    const double* constitutive_cells_6x6,
+    const double* body_force_xyz,
+    std::int64_t* rows,
+    std::int64_t* columns,
+    double* data,
+    double* load) {
+  if (thread_count == 0) {
+    return AFN_P1_INVALID_THREAD_COUNT;
+  }
+  if (thread_count == 1 || cell_count <= 1) {
+    return afn_t4_elasticity_assemble_cells(
+        node_count, cell_count, points_xyz, cells, constitutive_cells_6x6,
+        body_force_xyz, rows, columns, data, load);
+  }
+  if (node_count == 0 || points_xyz == nullptr || cells == nullptr ||
+      constitutive_cells_6x6 == nullptr || body_force_xyz == nullptr ||
+      rows == nullptr || columns == nullptr || data == nullptr ||
+      load == nullptr) {
+    return AFN_P1_NULL_POINTER;
+  }
+  if (node_count > std::numeric_limits<std::size_t>::max() / 3 ||
+      cell_count > std::numeric_limits<std::size_t>::max() / 144) {
+    return AFN_P1_INVALID_CELL;
+  }
+
+  return assemble_parallel_ranges(
+      cell_count, thread_count, 3 * node_count, load,
+      [&](const std::size_t begin, const std::size_t count,
+          double* private_load) {
+        return afn_t4_elasticity_assemble_cells(
+            node_count, count, points_xyz, cells + 4 * begin,
+            constitutive_cells_6x6 + 36 * begin, body_force_xyz,
+            rows + 144 * begin, columns + 144 * begin, data + 144 * begin,
+            private_load);
+      });
 }
 
 extern "C" AFN_API int afn_csr_spmv(

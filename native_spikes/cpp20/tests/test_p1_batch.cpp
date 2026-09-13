@@ -16,7 +16,7 @@ bool close(const double left, const double right, const double tolerance = 1e-15
 }  // namespace
 
 int main() {
-  static_assert(AFN_P1_ABI_VERSION == 0x00010002u);
+  static_assert(AFN_P1_ABI_VERSION == 0x00010003u);
   assert(afn_p1_abi_version() == AFN_P1_ABI_VERSION);
   const std::array<double, 8> points{{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}};
   const std::array<std::int64_t, 6> cells{{0, 1, 2, 0, 2, 3}};
@@ -106,6 +106,25 @@ int main() {
   assert(elasticity_rows[0] == 0 && elasticity_columns[35] == 5);
   assert(close(elasticity_load[0], 1.0 / 3.0));
   assert(close(elasticity_load[1], -1.0 / 6.0));
+  std::array<std::int64_t, 72> parallel_rows{};
+  std::array<std::int64_t, 72> parallel_columns{};
+  std::array<double, 72> parallel_data{};
+  std::array<double, 8> parallel_load{};
+  assert(afn_t3_elasticity_assemble_cells_parallel(
+             4, 2, 2, points.data(), cells.data(), constitutive.data(),
+             body.data(), 0.5, parallel_rows.data(), parallel_columns.data(),
+             parallel_data.data(), parallel_load.data()) == AFN_P1_SUCCESS);
+  assert(parallel_rows == elasticity_rows);
+  assert(parallel_columns == elasticity_columns);
+  assert(parallel_data == elasticity_data);
+  for (std::size_t index = 0; index < parallel_load.size(); ++index) {
+    assert(close(parallel_load[index], elasticity_load[index]));
+  }
+  assert(afn_t3_elasticity_assemble_cells_parallel(
+             4, 2, 0, points.data(), cells.data(), constitutive.data(),
+             body.data(), 0.5, parallel_rows.data(), parallel_columns.data(),
+             parallel_data.data(), parallel_load.data()) ==
+         AFN_P1_INVALID_THREAD_COUNT);
 
   const std::array<double, 12> solid_points{{
       0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
@@ -130,6 +149,20 @@ int main() {
              solid_constitutive.data(), solid_body.data(), solid_rows.data(),
              solid_columns.data(), solid_data.data(), solid_load.data()) ==
          AFN_P1_SUCCESS);
+  std::array<std::int64_t, 144> solid_parallel_rows{};
+  std::array<std::int64_t, 144> solid_parallel_columns{};
+  std::array<double, 144> solid_parallel_data{};
+  std::array<double, 12> solid_parallel_load{};
+  assert(afn_t4_elasticity_assemble_cells_parallel(
+             4, 1, 2, solid_points.data(), solid_cell.data(),
+             solid_constitutive.data(), solid_body.data(),
+             solid_parallel_rows.data(), solid_parallel_columns.data(),
+             solid_parallel_data.data(), solid_parallel_load.data()) ==
+         AFN_P1_SUCCESS);
+  assert(solid_parallel_rows == solid_rows);
+  assert(solid_parallel_columns == solid_columns);
+  assert(solid_parallel_data == solid_data);
+  assert(solid_parallel_load == solid_load);
   for (std::size_t row = 0; row < 12; ++row) {
     for (std::size_t column = 0; column < 12; ++column) {
       assert(close(solid_data[12 * row + column],

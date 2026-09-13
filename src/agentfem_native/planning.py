@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Execution-free resource planning and capability negotiation."""
+"""不执行计算的资源规划与能力协商。"""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class ExecutionPlan:
-    """Conservative JSON-safe work and memory estimate without assembly."""
+    """不执行装配，给出保守且可 JSON 序列化的工作量与内存估计。"""
 
     problem_kind: str
     maturity: str
@@ -43,6 +43,8 @@ class ExecutionPlan:
     peak_bytes_upper_bound: int
     provider: str
     assembly_mode: str
+    thread_count: int
+    thread_workspace_bytes: int
     structure_digest: str
     warnings: tuple[str, ...]
     digest: str
@@ -63,6 +65,7 @@ def _plan(
     provider: str,
     assembly_mode: str,
     structure_digest: str,
+    thread_count: int = 1,
     warnings: tuple[str, ...] = (),
 ) -> ExecutionPlan:
     coo_entries = cell_count * entries_per_cell
@@ -70,7 +73,8 @@ def _plan(
     csr_bytes = 8 * (dof_count + 1) + 16 * csr_upper
     coo_bytes = 24 * coo_entries
     solver_work_bytes = 8 * dof_count * 10
-    peak_bytes = csr_bytes + coo_bytes + solver_work_bytes
+    thread_workspace_bytes = 8 * dof_count * thread_count if thread_count > 1 else 0
+    peak_bytes = csr_bytes + coo_bytes + solver_work_bytes + thread_workspace_bytes
     payload: dict[str, object] = {
         "problem_kind": problem_kind,
         "maturity": maturity,
@@ -84,6 +88,8 @@ def _plan(
         "peak_bytes_upper_bound": peak_bytes,
         "provider": provider,
         "assembly_mode": assembly_mode,
+        "thread_count": thread_count,
+        "thread_workspace_bytes": thread_workspace_bytes,
         "structure_digest": structure_digest,
         "warnings": warnings,
     }
@@ -193,6 +199,8 @@ def plan_linear_elasticity(
     )
     if _provider_name(provider) == "numpy_dense":
         warnings += ("Dense provider is intended only for bounded oracle problems.",)
+    assembly = select_elasticity_assembly_mode(problem)
+    thread_count = problem.thread_count if assembly == "native" else 1
     return _plan(
         problem_kind="linear_elasticity_2d",
         maturity="implemented",
@@ -202,7 +210,8 @@ def plan_linear_elasticity(
         dof_count=2 * problem.mesh.node_count,
         entries_per_cell=36,
         provider=_provider_name(provider),
-        assembly_mode=select_elasticity_assembly_mode(problem),
+        assembly_mode=assembly,
+        thread_count=thread_count,
         structure_digest=_mesh_structure_digest(problem.mesh),
         warnings=warnings,
     )
@@ -221,6 +230,8 @@ def plan_linear_elasticity_3d(
     )
     if _provider_name(provider) == "numpy_dense":
         warnings += ("Dense provider is intended only for bounded oracle problems.",)
+    selected = select_solid_assembly_mode(problem, assembly)
+    thread_count = problem.thread_count if selected == "native" else 1
     return _plan(
         problem_kind="linear_elasticity_3d",
         maturity="implemented",
@@ -230,7 +241,8 @@ def plan_linear_elasticity_3d(
         dof_count=3 * problem.mesh.node_count,
         entries_per_cell=144,
         provider=_provider_name(provider),
-        assembly_mode=select_solid_assembly_mode(problem, assembly),
+        assembly_mode=selected,
+        thread_count=thread_count,
         structure_digest=_mesh_structure_digest(problem.mesh),
         warnings=warnings,
     )
@@ -257,6 +269,8 @@ def plan_linear_dynamics(system: LinearSecondOrderSystem) -> ExecutionPlan:
         "peak_bytes_upper_bound": csr_bytes + history_bytes + 12 * 8 * dofs,
         "provider": "native_sparse",
         "assembly_mode": "preassembled",
+        "thread_count": 1,
+        "thread_workspace_bytes": 0,
         "structure_digest": _dynamic_structure_digest(system),
         "warnings": (
             "Linear dynamics is implemented but Gate 3 verification is incomplete.",
@@ -269,7 +283,7 @@ def plan_linear_dynamics(system: LinearSecondOrderSystem) -> ExecutionPlan:
 
 
 def native_capabilities() -> dict[str, object]:
-    """Return installed runtime capabilities without importing optional providers."""
+    """不导入可选提供者，返回当前安装环境的运行能力。"""
 
     return {
         "backend": {"name": "native", "version": __version__},
@@ -295,6 +309,16 @@ def native_capabilities() -> dict[str, object]:
                 "name": "linear_dynamics_central_difference_newmark",
                 "maturity": "implemented",
             },
+        ],
+        "execution": [
+            {
+                "name": "deterministic_cpu_parallel_assembly",
+                "available": native_kernel_identity()["available"],
+                "maturity": "implemented",
+                "elements": ["T3", "T4"],
+                "thread_control": "explicit",
+                "default_thread_count": 1,
+            }
         ],
         "linear_algebra": [
             {

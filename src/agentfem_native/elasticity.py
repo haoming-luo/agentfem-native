@@ -107,6 +107,7 @@ class LinearElasticProblem:
     traction: tuple[TractionCondition, ...] = ()
     materials: tuple[ElasticCellMaterial, ...] = ()
     assembly_mode: ElasticAssemblyMode = "auto"
+    thread_count: int = 1
 
     def __post_init__(self) -> None:
         if isinstance(self.thickness, (bool, np.bool_)):
@@ -121,7 +122,14 @@ class LinearElasticProblem:
             raise ValueError(
                 f"Unknown elasticity assembly mode {self.assembly_mode!r}."
             )
+        if isinstance(self.thread_count, (bool, np.bool_)) or not isinstance(
+            self.thread_count, (int, np.integer)
+        ):
+            raise TypeError("T3 装配线程数必须是正整数。")
+        if self.thread_count < 1:
+            raise ValueError("T3 装配线程数必须大于零。")
         object.__setattr__(self, "thickness", thickness)
+        object.__setattr__(self, "thread_count", int(self.thread_count))
 
 
 @dataclass(frozen=True, slots=True)
@@ -299,6 +307,11 @@ def select_elasticity_assembly_mode(problem: LinearElasticProblem) -> str:
 
     mode = problem.assembly_mode
     static = _static_body_force(problem.body_force) is not None
+    if problem.thread_count > 1 and (
+        mode in {"reference", "vectorized"}
+        or (mode == "auto" and (not static or not native_kernel_available()))
+    ):
+        raise ValueError("多线程 T3 装配要求可用的 native 静态体力路径。")
     if mode == "reference":
         return mode
     if mode in {"vectorized", "native"} and not static:
@@ -418,6 +431,7 @@ def assemble_linear_elasticity(
             constitutive,
             body,
             problem.thickness,
+            thread_count=problem.thread_count,
         )
     for condition in problem.traction:
         for edge in mesh.boundary_edges(condition.boundary_set):

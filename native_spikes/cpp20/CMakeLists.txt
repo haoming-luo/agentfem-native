@@ -2,10 +2,12 @@
 cmake_minimum_required(VERSION 3.20)
 project(agentfem_native_cpp20_spike VERSION 0.1.0 LANGUAGES C CXX)
 option(AFN_ENABLE_SANITIZERS "Enable address and undefined-behavior sanitizers" OFF)
+find_package(Threads REQUIRED)
 
 add_library(agentfem_native_p1 SHARED src/p1_batch.cpp)
 target_compile_features(agentfem_native_p1 PUBLIC cxx_std_20)
 target_compile_definitions(agentfem_native_p1 PRIVATE AFN_BUILDING_LIBRARY)
+target_link_libraries(agentfem_native_p1 PRIVATE Threads::Threads)
 target_include_directories(
   agentfem_native_p1
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

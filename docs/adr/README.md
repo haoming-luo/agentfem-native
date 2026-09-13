@@ -33,3 +33,5 @@ owner review. Superseded decisions remain in history.
   BSR/T3/T4/dynamics/control spine while preserving Gate maturity boundaries
 - [ADR-0020](0020-mechanics-alpha-p0-closure.md): close native T4/CSR,
   constrained dynamics, interchange, and Agent execution before parallel breadth
+- [ADR-0021](0021-deterministic-cpu-parallel-assembly.md)：使用显式线程数、静态
+  分块和确定性载荷归并实现 T3/T4 CPU 并行装配

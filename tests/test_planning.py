@@ -56,6 +56,41 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual(plan.coo_entry_count, 36 * mesh.cell_count)
         self.assertEqual(plan.maturity, "implemented")
         self.assertTrue(plan.warnings)
+        self.assertEqual(plan.thread_count, 1)
+        self.assertEqual(plan.thread_workspace_bytes, 0)
+
+        parallel = plan_linear_elasticity(
+            LinearElasticProblem(
+                mesh,
+                LinearElasticMaterial(10.0, 0.2),
+                assembly_mode="native",
+                thread_count=4,
+            )
+        )
+        self.assertEqual(parallel.thread_count, 4)
+        self.assertEqual(parallel.thread_workspace_bytes, 4 * parallel.dof_count * 8)
+        self.assertEqual(
+            parallel.peak_bytes_upper_bound - plan.peak_bytes_upper_bound,
+            parallel.thread_workspace_bytes,
+        )
+        self.assertNotEqual(parallel.digest, plan.digest)
+        with self.assertRaisesRegex(ValueError, "大于零"):
+            LinearElasticProblem(mesh, LinearElasticMaterial(10.0, 0.2), thread_count=0)
+        with self.assertRaisesRegex(TypeError, "正整数"):
+            LinearElastic3DProblem(
+                unit_cube_tetrahedra(),
+                SolidElasticMaterial(10.0, 0.2),
+                thread_count=True,
+            )
+        with self.assertRaisesRegex(ValueError, "native"):
+            plan_linear_elasticity(
+                LinearElasticProblem(
+                    mesh,
+                    LinearElasticMaterial(10.0, 0.2),
+                    assembly_mode="reference",
+                    thread_count=2,
+                )
+            )
 
     def test_dense_oracle_plan_is_visibly_warned(self) -> None:
         problem = SteadyDiffusionProblem(
@@ -84,6 +119,11 @@ class PlanningTests(unittest.TestCase):
         providers = {item["name"]: item for item in capabilities["linear_algebra"]}
         self.assertTrue(providers["native_sparse"]["available"])
         self.assertIn("block_jacobi", providers["native_sparse"]["preconditioners"])
+        execution = {item["name"]: item for item in capabilities["execution"]}
+        parallel = execution["deterministic_cpu_parallel_assembly"]
+        self.assertTrue(parallel["available"])
+        self.assertEqual(parallel["elements"], ["T3", "T4"])
+        self.assertEqual(parallel["default_thread_count"], 1)
         json.dumps(capabilities, allow_nan=False, sort_keys=True)
 
     def test_t4_and_dynamics_plans_are_deterministic(self) -> None:
@@ -95,6 +135,7 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual(solid.dof_count, 24)
         self.assertEqual(solid.coo_entry_count, 6 * 144)
         self.assertEqual(solid.assembly_mode, "native")
+        self.assertEqual(solid.thread_count, 1)
         diagonal = CSRMatrix.from_coo((1, 1), [0], [0], [1.0])
         dynamics = plan_linear_dynamics(
             LinearSecondOrderSystem(diagonal, diagonal, [0.0], 0.1, 10, [0.0], [0.0])

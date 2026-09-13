@@ -1,7 +1,7 @@
-# T4 small-strain linear elasticity specification
+# T4 小应变线弹性规格
 
-Status: implemented with readable and C++20 ABI 1.2 volume-assembly paths;
-Gate 2 verification remains open.
+**状态：** 已实现可读路径、C++20 ABI 1.2 串行体积装配和 ABI 1.3 确定性并行
+候选；Gate 2 验证仍未关闭。
 
 ## Geometry, kinematics, and constitutive response
 
@@ -36,7 +36,7 @@ solver convergence evidence.
   failures;
 - native Windows, macOS, and Linux execution of the same suite.
 
-Readable and native T4 paths must agree after canonical COO reduction. Native
-volume assembly does not move traction integration or constitutive meaning out
-of the owned Python layer. Gate 2 is verified only after the full engineering,
-convergence, and native three-platform evidence is recorded.
+可读与 Native T4 路径经过规范 COO 归并后必须一致。ABI 1.3 并行路径的 COO
+顺序必须与串行逐位相同，载荷只允许固定归并导致的舍入级差异。Native 体积装配
+不会把面力积分或本构含义移出项目拥有的数学层。只有完整工程算例、收敛和原生
+三平台证据均被记录后，Gate 2 才能标记为已验证。

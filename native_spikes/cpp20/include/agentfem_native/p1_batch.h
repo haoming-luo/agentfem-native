@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define AFN_P1_ABI_VERSION 0x00010002u
+#define AFN_P1_ABI_VERSION 0x00010003u
 
 typedef enum AfnP1Status {
   AFN_P1_SUCCESS = 0,
@@ -26,6 +26,8 @@ typedef enum AfnP1Status {
   AFN_P1_INVALID_CONDUCTIVITY = 2,
   AFN_P1_INVALID_CELL = 3,
   AFN_P1_NONFINITE_INPUT = 4,
+  AFN_P1_INVALID_THREAD_COUNT = 5,
+  AFN_P1_RESOURCE_FAILURE = 6,
 } AfnP1Status;
 
 AFN_API uint32_t afn_p1_abi_version(void);
@@ -67,9 +69,36 @@ AFN_API int afn_t3_elasticity_assemble_cells(
     double* data,
     double* load);
 
+AFN_API int afn_t3_elasticity_assemble_cells_parallel(
+    size_t node_count,
+    size_t cell_count,
+    size_t thread_count,
+    const double* points_xy,
+    const int64_t* cells,
+    const double* constitutive_cells_3x3,
+    const double* body_force_xy,
+    double thickness,
+    int64_t* rows,
+    int64_t* columns,
+    double* data,
+    double* load);
+
 AFN_API int afn_t4_elasticity_assemble_cells(
     size_t node_count,
     size_t cell_count,
+    const double* points_xyz,
+    const int64_t* cells,
+    const double* constitutive_cells_6x6,
+    const double* body_force_xyz,
+    int64_t* rows,
+    int64_t* columns,
+    double* data,
+    double* load);
+
+AFN_API int afn_t4_elasticity_assemble_cells_parallel(
+    size_t node_count,
+    size_t cell_count,
+    size_t thread_count,
     const double* points_xyz,
     const int64_t* cells,
     const double* constitutive_cells_6x6,

@@ -191,6 +191,8 @@ def _analysis_evidence(plan: ExecutionPlan) -> dict[str, object]:
         "element_family": plan.cell_type,
         "dof_count": plan.dof_count,
         "assembly_mode": plan.assembly_mode,
+        "thread_count": plan.thread_count,
+        "thread_workspace_bytes": plan.thread_workspace_bytes,
         "provider": plan.provider,
         "claim_maturity": plan.maturity,
     }

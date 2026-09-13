@@ -9,6 +9,7 @@ from setuptools import Extension, setup
 
 if sys.platform == "win32":
     compile_arguments = ["/std:c++20", "/O2", "/W4", "/WX", "/EHsc"]
+    link_arguments: list[str] = []
 else:
     compile_arguments = [
         "-std=c++20",
@@ -18,7 +19,9 @@ else:
         "-Wpedantic",
         "-Werror",
         "-fvisibility=hidden",
+        "-pthread",
     ]
+    link_arguments = ["-pthread"]
 
 setup(
     ext_modules=[
@@ -34,6 +37,7 @@ setup(
                 ("AFN_BUILDING_LIBRARY", "1"),
             ],
             extra_compile_args=compile_arguments,
+            extra_link_args=link_arguments,
             language="c++",
             py_limited_api=True,
         )
