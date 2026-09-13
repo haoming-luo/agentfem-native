@@ -4,6 +4,10 @@
 `docs/charter/NEXT_DEVELOPMENT_PLAN.md`。该计划以关闭 P3、验证 Gate 2 和
 Gate 3 线性部分为主线，不改变本文件的 Gate 证据要求。
 
+快速 Scrum 阶段采用 `docs/verification/SCRUM_VERIFICATION.md` 的四层验证环。
+日常增量只完成风险匹配的最小数学闭环；收敛、性能扫描、第三方黑盒对照和完整
+Tier-1 平台矩阵集中在里程碑，不以重复大工程拖慢主线。
+
 本路线图的唯一首要产品方向是服务 AgentFEM 的未来使用。Native 的独立入口
 用于开发、验证与稳定集成，不代表建设第二个终端产品。新增能力必须先说明其
 AgentFEM 工程消费场景，再进入相应 Gate。

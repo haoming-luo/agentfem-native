@@ -1,35 +1,36 @@
-# Verification policy
+# 验证政策
 
-Evidence advances in this order:
+AgentFEM Native 的验证目标是以尽可能小的成本获得尽可能高的信息量。科学证据
+按以下顺序增长：
 
 ```text
-algebraic identity -> quadrature -> element matrix -> patch test
--> small structure -> mesh/time convergence -> public benchmark
--> cross-backend comparison -> MPI/restart -> engineering case
+代数恒等式 -> 积分规则 -> 单元矩阵 -> patch test
+-> 小型结构 -> 网格/时间收敛 -> 公共基准
+-> 跨后端对照 -> MPI/重启 -> 工程案例
 ```
 
-Every claim records its tolerance, precision, platform, dependency versions,
-and failure modes. FEniCSx may be one black-box comparator but never the only
-oracle. Agreement among programs does not replace analytical and convergence
-evidence.
+快速开发阶段不要求每个提交走完整证据链。每个增量只完成与本次声明相匹配的
+最小闭环；只有里程碑候选才能提升成熟度。
 
-Maturity labels mean:
+每项正式声明必须记录容差、精度、平台、依赖版本和失败模式。FEniCSx 可以作为
+独立黑盒对照之一，但不能成为唯一正确性来源。多个程序相互一致不能替代解析解、
+守恒关系和收敛证据。
 
-- `experimental`: interface and mathematics may change;
-- `implemented`: code path exists and basic tests run;
-- `verified`: specified identities and numerical evidence pass;
-- `validated`: accepted external benchmark or experimental evidence supports
-  the declared use domain;
-- `production`: validated capability also meets reliability, performance,
-  platform, documentation, and release-governance gates.
+成熟度含义：
 
-Cross-platform consistency requires equal scientific assertions. Small
-floating-point differences may use one justified tolerance; OS-specific
-tolerance inflation requires a written numerical diagnosis and ADR.
+- `experimental`：接口和数学定义仍可能变化；
+- `implemented`：代码路径存在并通过基本测试；
+- `verified`：规定的恒等式、解析/制造解、收敛和平台证据通过；
+- `validated`：在声明范围内得到认可的外部基准或实验依据支持；
+- `production`：在验证/确认之外，还通过可靠性、性能、平台、文档和发布治理。
 
-Performance claims additionally require a warm repeated measurement, median
-wall time, problem size, output count, peak-memory observation, hardware and
-software identity, compiler flags where relevant, and full numerical-output
-comparison against the oracle. A fast result with missing or unequal output is
-a failed benchmark. Microbenchmarks must be labelled as such and cannot imply
-solver- or application-level superiority.
+跨平台必须使用相同科学断言。小型浮点差异使用一套有依据的容差；不得仅为某个
+操作系统放宽容差，除非已有数值诊断和 ADR。
+
+性能声明必须包含热身后的重复测量、中位时间、问题规模、输出规模、内存峰值、
+硬件与软件身份、编译参数和完整数值输出对照。缺少输出或输出不等价的快速结果
+视为失败。微基准只能说明对应内核，不能外推为完整求解器或工程应用优势。
+
+日常执行采用
+[Scrum 轻量验证与对照方案](SCRUM_VERIFICATION.md)。远端资源和三平台频率遵循
+`docs/development/CI_GOVERNANCE.md`。

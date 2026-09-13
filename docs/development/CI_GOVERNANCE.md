@@ -11,6 +11,11 @@ to waste shared runner capacity.
 
 ## Three verification tiers
 
+Scientific test selection inside each tier follows
+`docs/verification/SCRUM_VERIFICATION.md`. The CI tiers decide where and when
+checks run; the Scrum policy decides the smallest evidence appropriate to the
+change.
+
 ### Tier L — local development
 
 - Run focused tests and lint after each small change.

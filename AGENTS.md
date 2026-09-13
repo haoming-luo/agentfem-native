@@ -16,6 +16,9 @@ changing scientific code.
 
 ## Scientific workflow
 
+- Follow `docs/verification/SCRUM_VERIFICATION.md` during rapid development:
+  use the smallest risk-matched loop for each increment and reserve convergence,
+  broad comparison, performance sweeps, and platform matrices for milestones.
 - Start from a written mathematical specification and capability maturity.
 - Keep the reference NumPy layer small, readable, and independent of future
   optimized kernels.
@@ -23,6 +26,9 @@ changing scientific code.
   and convergence evidence in that order.
 - A passing execution is not automatically `verified` or `validated`.
 - Do not widen tolerances merely to hide a platform or provider discrepancy.
+- Prefer 3–8 high-information tests per increment. Do not build a general test
+  framework when a small deterministic case, identity, and failure test are
+  sufficient.
 
 ## Architecture
 
