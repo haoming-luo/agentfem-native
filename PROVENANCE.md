@@ -400,5 +400,7 @@ license-incompatible code is rejected.
   CSR SpMV 与动力学记录；性能声明不跨平台外推。
 - 成熟度：G2-01 至 G2-10 形成本地科学验收候选，但 Contract 0.2、P3 CPU 并行
   和最终 Tier-1 验收仍未完成，Gate 2 继续为 `implemented`。
+- 远端证据：源提交 `d9c4ced` 的普通 Linux 快检运行 `34750325307` 通过；完整
+  Tier-1 任务按治理规则跳过，没有据此声明 Windows/macOS 新验收。
 - 外部代码：没有查看、复制、翻译、重排或 AI 改写 FEniCSx、Basix、UFL、FFCx、
   Akantu 或其他第三方有限元实现源码；没有新增依赖。

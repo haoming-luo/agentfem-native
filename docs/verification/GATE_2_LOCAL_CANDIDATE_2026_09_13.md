@@ -3,6 +3,7 @@
 **日期：** 2026-09-13  
 **平台：** macOS arm64  
 **版本：** AgentFEM Native `0.7.0a1`、C++ ABI 1.2  
+**源提交：** `d9c4ced`
 **结论：** T3/T4 本地科学验收候选通过；Gate 2 整体成熟度仍为 `implemented`
 
 ## 本轮新增或强化的证据
@@ -30,6 +31,10 @@
 - AddressSanitizer 与 UndefinedBehaviorSanitizer：编译与执行通过。
 - `cp311-abi3` macOS arm64 wheel 构建并安装到隔离 Python 3.12 环境；安装后的
   C++ ABI 1.2 可用，T3 计划—执行收据包含预期的七项 `analysis` 字段。
+- 普通远端 Linux 快检
+  [GitHub Actions 运行 34750325307](https://github.com/haoming-luo/agentfem-native/actions/runs/34750325307)
+  在源提交 `d9c4ced` 上通过安装、格式、完整测试、便携 CLI 契约和独立性检查；
+  其余 Tier-1 任务按节流策略跳过。
 
 ## 三档本地性能记录
 
