@@ -2,6 +2,10 @@
 
 ## Thesis
 
+AgentFEM Native 的根本定位，是面向 AgentFEM 建设国产替代、自主掌握的有限元
+求解内核。目标不是在名称和接口上替代某个项目，而是在数学定义、实现能力、
+性能路径、平台交付和验证证据上真正拥有自己的计算主权。
+
 The future finite-element bottleneck will not be writing one more weak form.
 Agents will generate models, materials, parameter studies, and optimization
 loops at a scale that makes opaque execution dangerous. The scarce capability
@@ -35,6 +39,9 @@ topology through results. The versioned Kernel Contract connects them.
 7. **Controlled commercial kernel.** The source-available noncommercial core
    can be inspected and researched, while commercial rights remain separately
    granted by the project owner.
+8. **自主可持续演进。** 核心有限元语义和生产执行路径由项目掌握；许可清晰的
+   通用库提供产业杠杆，但任何一个外部提供者都可以被替换，且不能成为数学意义
+   的唯一来源。
 
 ## Performance doctrine
 

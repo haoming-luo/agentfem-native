@@ -8,6 +8,11 @@ Gate 3 线性部分为主线，不改变本文件的 Gate 证据要求。
 用于开发、验证与稳定集成，不代表建设第二个终端产品。新增能力必须先说明其
 AgentFEM 工程消费场景，再进入相应 Gate。
 
+本路线图同时服务国产替代和自主掌握目标。每个 Gate 除功能正确外，还必须证明
+相应数学规格、参考实现、生产路径、平台构建、诊断和验证证据由项目掌握；仅把
+计算转交给不可替换的第三方有限元内核不构成完成。许可清晰的通用计算库可以
+通过提供者边界加速交付，但 Tier-1 串行主干必须在它们缺席时仍然成立。
+
 This roadmap is gate-based. A gate advances only when its claims have evidence;
 calendar pressure does not lower mathematical or independence requirements.
 Native Windows, macOS, and Linux are required from Gate 0 onward. WSL may be offered as an

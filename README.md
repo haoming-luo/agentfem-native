@@ -9,6 +9,12 @@ fork and not a second end-user product.
 成与 AgentFEM 平行的终端产品；双方通过版本化 Kernel Contract 连接，而不是
 共享易变的内部对象。
 
+AgentFEM Native 同时承担国产替代和自主掌握有限元求解内核的使命。项目自主
+拥有有限元语义、核心算法、C++ 计算路径、跨平台构建和验证证据，而不是给国外
+有限元内核再包一层接口。NumPy、SciPy、PETSc、MPI、BLAS 等通用且许可清晰的
+基础设施可以作为可替换能力使用，但不能控制 Native 的数学定义或成为串行核心
+唯一可运行的条件。
+
 The repository has **completed Gate 1** and now has implemented T3/T4 Gate 2
 vertical slices plus a linear Gate 3 candidate. The
 verified serial kernel solves two-dimensional steady scalar diffusion on

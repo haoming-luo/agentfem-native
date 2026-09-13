@@ -7,6 +7,16 @@ for AgentFEM. Its success means one AgentFEM engineering model can be lowered
 through a versioned contract and solved without FEniCSx performing mesh,
 element, DOF, quadrature, assembly, state evolution, or result generation.
 
+AgentFEM Native 的战略使命，是建设面向 AgentFEM 的国产替代、自主掌握的
+有限元求解内核。这里的“替代”不是复刻某个国外软件，而是使 AgentFEM 在不
+依赖第三方有限元内核承担关键数值语义的情况下，仍能完成可信、高性能、可持续
+演进的工程计算。
+
+“自主掌握”至少意味着项目拥有并能独立维护：数学规格、网格与单元语义、DOF
+与装配、材料与状态、求解程序、核心 C++ 热路径、稳定 ABI、跨平台构建、错误
+诊断、验证体系和结果证据。任何一项只有调用入口而没有可解释语义、替代路径和
+验证证据，都不能宣称已经自主掌握。
+
 ## 产品归属与主要使用者
 
 AgentFEM Native 的首要且长期产品目标，是服务 AgentFEM 未来的工程建模与
@@ -48,6 +58,9 @@ remain replaceable providers.
   correctness oracle.
 - General libraries such as NumPy, SciPy, PETSc, MPI, BLAS/LAPACK, and HDF5
   may be used behind approved, documented boundaries.
+- 自主掌握不等于拒绝开源生态。许可证和来源清楚的通用计算库可以作为可替换
+  提供者，但不得拥有 Native 的有限元离散语义，也不得成为可读参考层或 Tier-1
+  串行核心的强制依赖。
 - Native Windows, macOS, and Linux are equal product targets. No OS-specific fork of
   the mathematical kernel is permitted.
 - Correctness, provenance, and maintainability take priority over code volume

@@ -26,6 +26,10 @@ changing scientific code.
 
 ## Architecture
 
+- Treat AgentFEM Native as a domestically controlled, independently mastered
+  solver kernel for AgentFEM. Ownership must be demonstrated by specifications,
+  executable reference mathematics, maintained production paths, platform
+  builds, diagnostics, and verification evidence—not merely by wrapping an API.
 - AgentFEM is the primary and long-term product consumer. Prioritize future
   AgentFEM engineering workflows and agent-safe computation, not an unrelated
   standalone frontend or feature catalog.
@@ -46,6 +50,9 @@ changing scientific code.
   testing, or core behavior.
 - Keep optional PETSc, MPI, GPU, and vendor providers out of reference-layer
   imports. Report provider/platform capability explicitly.
+- Permissive general-purpose libraries are allowed leverage, but must remain
+  replaceable and may not own finite-element semantics or disable the Tier-1
+  serial baseline when absent.
 
 ## Development and CI economy
 
