@@ -249,6 +249,8 @@ G2-12 完成，T3/T4 基础线性静力范围提升为 `verified`。下一主线
 新增保守显式稳定预检，在状态推进前拒绝可证明不安全的时间步；受约束 T3
 离散模态显示中心差分与 Newmark 二阶时间细化，隐式检查点重启逐位一致。证据见
 [`GATE_3_LINEAR_DYNAMICS_INCREMENT.md`](docs/verification/GATE_3_LINEAR_DYNAMICS_INCREMENT.md)。
+源提交 `fd869b1` 的 Linux 快检 `35463268931` 已通过；本增量未修改原生 ABI，
+按 CI 治理复用 ABI 1.5 平台验收，不重复运行完整矩阵。
 波传播、长时色散、隐式有效矩阵复用和更广的受约束有限元平台证据仍是 Gate 3
 验证前的缺口。
 
