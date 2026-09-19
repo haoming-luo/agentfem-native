@@ -36,6 +36,18 @@ class CommandLineTests(unittest.TestCase):
             "unsupported_contract_version",
         )
 
+    def test_plan_only_returns_resource_plan_without_executing(self) -> None:
+        with TemporaryDirectory() as directory:
+            request_path = Path(directory) / "request.json"
+            request_path.write_text(json.dumps(request_record()), encoding="utf-8")
+            output = StringIO()
+            status = main([str(request_path), "--plan-only"], stdout=output)
+        result = json.loads(output.getvalue())
+        self.assertEqual(status, 0)
+        self.assertEqual(result["status"], "planned")
+        self.assertIn("peak_bytes_upper_bound", result["plan"])
+        self.assertNotIn("fields", result)
+
     def test_invalid_json_is_structured_and_result_write_is_atomic(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)

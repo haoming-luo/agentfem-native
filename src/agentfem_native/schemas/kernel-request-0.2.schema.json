@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentfem.org/schemas/native/kernel-request-0.2.schema.json",
+  "title": "AgentFEM Native Kernel Request 0.2",
+  "description": "AgentFEM 面向自主热传导与线性力学内核的可移植请求。",
+  "type": "object",
+  "required": ["contract", "contract_version", "request_id", "study", "mesh", "physics", "dirichlet"],
+  "properties": {
+    "contract": {"const": "agentfem.native-kernel-request"},
+    "contract_version": {"const": "0.2.0"},
+    "request_id": {"type": "string", "minLength": 1},
+    "study": {
+      "type": "object",
+      "required": ["analysis", "physics", "dimension"],
+      "properties": {
+        "analysis": {"const": "linear_static"},
+        "physics": {"enum": ["heat_transfer", "solid_mechanics"]},
+        "dimension": {"enum": [2, 3]}
+      },
+      "additionalProperties": true
+    },
+    "mesh": {
+      "type": "object",
+      "required": ["points", "cells"],
+      "properties": {
+        "points": {"type": "array", "items": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 3}, "minItems": 3},
+        "cells": {"type": "array", "items": {"type": "array", "items": {"type": "integer", "minimum": 0}, "minItems": 3, "maxItems": 4}, "minItems": 1},
+        "node_sets": {"$ref": "#/$defs/namedIndexArrays"},
+        "boundary_sets": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "array", "items": {"type": "integer", "minimum": 0}, "minItems": 2, "maxItems": 3}}},
+        "cell_sets": {"$ref": "#/$defs/namedIndexArrays"}
+      },
+      "additionalProperties": false
+    },
+    "physics": {"type": "object"},
+    "dirichlet": {"type": "array", "items": {"type": "object"}, "minItems": 1},
+    "neumann": {"type": "array", "items": {"$ref": "#/$defs/neumannCondition"}},
+    "traction": {"type": "array", "items": {"$ref": "#/$defs/tractionCondition"}},
+    "materials": {"type": "array", "items": {"type": "object"}},
+    "procedure": {
+      "type": "object",
+      "properties": {
+        "kind": {"enum": ["steady_diffusion", "linear_elasticity"]},
+        "linear_algebra": {"enum": ["native", "native_sparse", "numpy", "scipy", "auto"]},
+        "assembly": {"enum": ["auto", "reference", "vectorized", "native"]},
+        "thread_count": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "vtk": {
+          "type": "object",
+          "required": ["path"],
+          "properties": {
+            "path": {"type": "string", "minLength": 1},
+            "field_name": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"study": {"properties": {"physics": {"const": "heat_transfer"}}}}},
+      "then": {
+        "properties": {
+          "study": {"properties": {"dimension": {"const": 2}}},
+          "physics": {"$ref": "#/$defs/heatPhysics"},
+          "dirichlet": {"items": {"$ref": "#/$defs/heatDirichlet"}},
+          "materials": {"items": {"$ref": "#/$defs/heatMaterial"}}
+        }
+      },
+      "else": {
+        "properties": {
+          "physics": {"$ref": "#/$defs/mechanicsPhysics"},
+          "dirichlet": {"items": {"$ref": "#/$defs/mechanicsDirichlet"}},
+          "materials": {"items": {"$ref": "#/$defs/mechanicsMaterial"}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"study": {"properties": {"physics": {"const": "solid_mechanics"}, "dimension": {"const": 2}}}}},
+      "then": {
+        "properties": {
+          "physics": {"$ref": "#/$defs/mechanicsPhysics2D"},
+          "dirichlet": {"items": {"$ref": "#/$defs/mechanicsDirichlet2D"}},
+          "traction": {"items": {"$ref": "#/$defs/tractionCondition2D"}},
+          "materials": {"items": {"$ref": "#/$defs/mechanicsMaterial2D"}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"study": {"properties": {"physics": {"const": "solid_mechanics"}, "dimension": {"const": 3}}}}},
+      "then": {
+        "properties": {
+          "physics": {"$ref": "#/$defs/mechanicsPhysics3D"},
+          "dirichlet": {"items": {"$ref": "#/$defs/mechanicsDirichlet3D"}},
+          "traction": {"items": {"$ref": "#/$defs/tractionCondition3D"}},
+          "materials": {"items": {"$ref": "#/$defs/mechanicsMaterial3D"}}
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "namedIndexArrays": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "integer", "minimum": 0}}},
+    "conductivity": {
+      "oneOf": [
+        {"type": "number", "exclusiveMinimum": 0},
+        {"type": "array", "prefixItems": [{"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}], "items": false}, {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}], "items": false}], "items": false}
+      ]
+    },
+    "heatPhysics": {
+      "type": "object",
+      "required": ["conductivity"],
+      "properties": {"conductivity": {"$ref": "#/$defs/conductivity"}, "source": {"type": "number"}},
+      "additionalProperties": false
+    },
+    "heatDirichlet": {
+      "type": "object",
+      "required": ["node_set", "value"],
+      "properties": {"node_set": {"type": "string", "minLength": 1}, "value": {"type": "number"}},
+      "additionalProperties": false
+    },
+    "neumannCondition": {
+      "type": "object",
+      "required": ["boundary_set", "flux"],
+      "properties": {"boundary_set": {"type": "string", "minLength": 1}, "flux": {"type": "number"}},
+      "additionalProperties": false
+    },
+    "heatMaterial": {
+      "type": "object",
+      "required": ["name", "cell_set", "conductivity"],
+      "properties": {"name": {"type": "string", "minLength": 1}, "cell_set": {"type": "string", "minLength": 1}, "conductivity": {"$ref": "#/$defs/conductivity"}},
+      "additionalProperties": false
+    },
+    "elasticMaterial": {
+      "type": "object",
+      "required": ["young_modulus", "poisson_ratio"],
+      "properties": {
+        "young_modulus": {"type": "number", "exclusiveMinimum": 0},
+        "poisson_ratio": {"type": "number", "exclusiveMinimum": -1, "exclusiveMaximum": 0.5},
+        "model": {"enum": ["plane_stress", "plane_strain"]}
+      },
+      "additionalProperties": false
+    },
+    "mechanicsPhysics": {
+      "type": "object",
+      "required": ["material"],
+      "properties": {
+        "material": {"$ref": "#/$defs/elasticMaterial"},
+        "thickness": {"type": "number", "exclusiveMinimum": 0},
+        "body_force": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 3}
+      },
+      "additionalProperties": false
+    },
+    "mechanicsDirichlet": {
+      "type": "object",
+      "required": ["node_set", "value"],
+      "properties": {
+        "node_set": {"type": "string", "minLength": 1},
+        "component": {"type": ["string", "null"], "enum": ["x", "y", "z", null]},
+        "value": {"oneOf": [{"type": "number"}, {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 3}]}
+      },
+      "additionalProperties": false
+    },
+    "tractionCondition": {
+      "type": "object",
+      "required": ["boundary_set", "value"],
+      "properties": {"boundary_set": {"type": "string", "minLength": 1}, "value": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 3}},
+      "additionalProperties": false
+    },
+    "mechanicsMaterial": {
+      "type": "object",
+      "required": ["cell_set", "material"],
+      "properties": {"cell_set": {"type": "string", "minLength": 1}, "material": {"$ref": "#/$defs/elasticMaterial"}},
+      "additionalProperties": false
+    },
+    "elasticMaterial3D": {
+      "type": "object",
+      "required": ["young_modulus", "poisson_ratio"],
+      "properties": {
+        "young_modulus": {"type": "number", "exclusiveMinimum": 0},
+        "poisson_ratio": {"type": "number", "exclusiveMinimum": -1, "exclusiveMaximum": 0.5}
+      },
+      "additionalProperties": false
+    },
+    "mechanicsPhysics2D": {
+      "type": "object",
+      "required": ["material"],
+      "properties": {
+        "material": {"$ref": "#/$defs/elasticMaterial"},
+        "thickness": {"type": "number", "exclusiveMinimum": 0},
+        "body_force": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
+      },
+      "additionalProperties": false
+    },
+    "mechanicsPhysics3D": {
+      "type": "object",
+      "required": ["material"],
+      "properties": {
+        "material": {"$ref": "#/$defs/elasticMaterial3D"},
+        "body_force": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}
+      },
+      "additionalProperties": false
+    },
+    "mechanicsDirichlet2D": {
+      "type": "object",
+      "required": ["node_set", "value"],
+      "properties": {
+        "node_set": {"type": "string", "minLength": 1},
+        "component": {"type": ["string", "null"], "enum": ["x", "y", null]},
+        "value": {"oneOf": [{"type": "number"}, {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}]}
+      },
+      "additionalProperties": false
+    },
+    "mechanicsDirichlet3D": {
+      "type": "object",
+      "required": ["node_set", "value"],
+      "properties": {
+        "node_set": {"type": "string", "minLength": 1},
+        "component": {"type": ["string", "null"], "enum": ["x", "y", "z", null]},
+        "value": {"oneOf": [{"type": "number"}, {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}]}
+      },
+      "additionalProperties": false
+    },
+    "tractionCondition2D": {
+      "type": "object",
+      "required": ["boundary_set", "value"],
+      "properties": {"boundary_set": {"type": "string", "minLength": 1}, "value": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}},
+      "additionalProperties": false
+    },
+    "tractionCondition3D": {
+      "type": "object",
+      "required": ["boundary_set", "value"],
+      "properties": {"boundary_set": {"type": "string", "minLength": 1}, "value": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}},
+      "additionalProperties": false
+    },
+    "mechanicsMaterial2D": {
+      "type": "object",
+      "required": ["cell_set", "material"],
+      "properties": {"cell_set": {"type": "string", "minLength": 1}, "material": {"$ref": "#/$defs/elasticMaterial"}},
+      "additionalProperties": false
+    },
+    "mechanicsMaterial3D": {
+      "type": "object",
+      "required": ["cell_set", "material"],
+      "properties": {"cell_set": {"type": "string", "minLength": 1}, "material": {"$ref": "#/$defs/elasticMaterial3D"}},
+      "additionalProperties": false
+    }
+  }
+}

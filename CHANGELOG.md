@@ -2,6 +2,11 @@
 
 ## 0.7.0a1 — Mechanics Alpha P0 closure candidate
 
+- 新增面向 AgentFEM 的 Kernel Contract 0.2：兼容 0.1 热传导，接纳 T3/T4
+  线性静力、执行前资源预检、计划一致性执行、位移/应变/应力、力学 VTK 和
+  请求—计划—执行摘要证据；力学成熟度仍保持 `implemented`。
+- 新增 0.2 请求/结果 JSON Schema、T3 可运行示例与 CLI `--plan-only`；不引入
+  新依赖，也不把当前 AF-IR 或第三方有限元对象耦合进内核。
 - 新增 C++ ABI 1.3 确定性 T3/T4 CPU 并行装配：显式线程数、静态连续分块、
   独占 COO 写入和固定顺序载荷归并；旧串行 ABI 保持不变。
 - 线程数与线程私有载荷内存进入 Agent 执行计划、摘要、能力清单和结果证据；

@@ -492,3 +492,19 @@ license-incompatible code is rejected.
   三平台验收继续有效，本增量未重复执行未变化的完整矩阵。
 - 外部代码：未查看、复制、翻译、重排或 AI 改写 DOLFINx、Basix、UFL、FFCx、
   Akantu 或其他第三方有限元实现源码。
+
+## Kernel Contract 0.2 本地候选 — 2026-09-20
+
+- 任务来源：项目负责人要求遵循 AgentFEM 软件理念持续推进自主有限元内核。
+- 设计来源：复用项目自有 T3/T4 问题类、资源计划、执行收据与版本化 0.1 契约，
+  独立设计 0.2 的力学 JSON 表达、预检和证据绑定。
+- 产品边界：AgentFEM 通过中立契约规划和执行；Native 不依赖 AgentFEM 私有
+  对象、当前 AF-IR 形状、GUI 或智能体状态。动力学契约延后到 Gate 3。
+- 代码与证据：0.1 兼容、T3/T4 端到端、精确失败路径、力学 VTK、版本 Schema
+  与 CLI 预检进入测试；完整本地套件 194 项、53 个子用例通过。
+- 依赖：没有新增依赖；NumPy 继续作为可替换通用数组基础，有限元语义由项目
+  自主拥有。
+- 成熟度：G2-11 本地关闭；本源提交的 Tier-1 验收尚未运行，Gate 2 继续为
+  `implemented`。
+- 外部代码：未查看、复制、翻译、重排或 AI 改写 DOLFINx、Basix、UFL、FFCx、
+  Akantu 或其他第三方有限元实现源码。

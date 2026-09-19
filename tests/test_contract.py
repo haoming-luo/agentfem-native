@@ -15,7 +15,9 @@ from agentfem_native import (
     kernel_result_schema,
     lower_agentfem_ir,
     lower_agentfem_model,
+    plan_kernel_request,
     run_kernel_request,
+    unit_cube_tetrahedra,
     unit_square_two_triangles,
 )
 from agentfem_native.native import native_kernel_available
@@ -52,6 +54,46 @@ def request_record(*, outputs: dict[str, object] | None = None) -> dict[str, obj
     }
 
 
+def mechanics_request(dimension: int) -> dict[str, object]:
+    mesh = unit_square_two_triangles() if dimension == 2 else unit_cube_tetrahedra()
+    value = [0.0] * dimension
+    traction = [1.0] + [0.0] * (dimension - 1)
+    return {
+        "contract": CONTRACT_NAME,
+        "contract_version": CONTRACT_VERSION,
+        "request_id": f"elasticity-{dimension}d-001",
+        "study": {
+            "analysis": "linear_static",
+            "physics": "solid_mechanics",
+            "dimension": dimension,
+        },
+        "mesh": {
+            "points": mesh.points.tolist(),
+            "cells": mesh.cells.tolist(),
+            "node_sets": {
+                name: values.tolist() for name, values in mesh.node_sets.items()
+            },
+            "boundary_sets": {
+                name: values.tolist() for name, values in mesh.boundary_sets.items()
+            },
+            "cell_sets": {},
+        },
+        "physics": {
+            "material": {"young_modulus": 100.0, "poisson_ratio": 0.25},
+            "body_force": value,
+        },
+        "dirichlet": [{"node_set": "left", "component": None, "value": value}],
+        "traction": [{"boundary_set": "right", "value": traction}],
+        "materials": [],
+        "procedure": {
+            "kind": "linear_elasticity",
+            "linear_algebra": "numpy",
+            "assembly": "reference",
+        },
+        "outputs": {},
+    }
+
+
 class ContractTests(unittest.TestCase):
     def test_success_result_is_deterministic_json_safe_envelope(self) -> None:
         result = run_kernel_request(request_record())
@@ -66,6 +108,66 @@ class ContractTests(unittest.TestCase):
         values = result["fields"]["solution"]["values"]  # type: ignore[index]
         self.assertEqual(values, [0.0, 1.0, 1.0, 0.0])
         json.dumps(result, allow_nan=False, sort_keys=True)
+
+    def test_contract_0_1_heat_request_remains_backward_compatible(self) -> None:
+        request = request_record()
+        request["contract_version"] = "0.1.0"
+        result = run_kernel_request(request)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["contract_version"], "0.1.0")
+        self.assertNotIn("plan", result)
+        self.assertNotIn("evidence", result)
+        planned = plan_kernel_request(request)
+        self.assertEqual(planned["status"], "failed")
+        self.assertEqual(planned["error"]["path"], "$.contract_version")  # type: ignore[index]
+
+    def test_t3_preflight_and_execution_share_one_resource_plan(self) -> None:
+        request = mechanics_request(2)
+        planned = plan_kernel_request(request)
+        self.assertEqual(planned["status"], "planned")
+        self.assertEqual(planned["plan"]["problem_kind"], "linear_elasticity_2d")  # type: ignore[index]
+        self.assertEqual(planned["plan"]["maturity"], "implemented")  # type: ignore[index]
+
+        result = run_kernel_request(request)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["plan"]["digest"], planned["plan"]["digest"])  # type: ignore[index]
+        self.assertEqual(result["fields"]["displacement"]["components"], 2)  # type: ignore[index]
+        self.assertLess(result["quantities"]["balance_norm"], 1.0e-12)  # type: ignore[index]
+        self.assertEqual(
+            result["evidence"]["request_digest"],
+            planned["request_digest"],  # type: ignore[index]
+        )
+        self.assertEqual(
+            result["evidence"]["execution"]["claim_maturity"],
+            "implemented",  # type: ignore[index]
+        )
+        json.dumps(result, allow_nan=False, sort_keys=True)
+
+    def test_t4_contract_executes_and_reports_owned_three_dimensional_fields(
+        self,
+    ) -> None:
+        result = run_kernel_request(mechanics_request(3))
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["plan"]["problem_kind"], "linear_elasticity_3d")  # type: ignore[index]
+        self.assertEqual(result["fields"]["displacement"]["components"], 3)  # type: ignore[index]
+        self.assertEqual(result["fields"]["stress"]["components"], 6)  # type: ignore[index]
+        self.assertLess(result["quantities"]["balance_norm"], 1.0e-11)  # type: ignore[index]
+
+    def test_invalid_mechanics_component_fails_before_assembly_at_exact_path(
+        self,
+    ) -> None:
+        request = mechanics_request(2)
+        request["dirichlet"] = [{"node_set": "left", "component": "z", "value": 0.0}]
+        result = run_kernel_request(request)
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["error"]["code"], "invalid_request")  # type: ignore[index]
+        self.assertEqual(result["error"]["path"], "$.dirichlet[0].component")  # type: ignore[index]
+
+        solid_request = mechanics_request(3)
+        solid_request["physics"]["thickness"] = 1.0  # type: ignore[index]
+        solid_result = run_kernel_request(solid_request)
+        self.assertEqual(solid_result["status"], "failed")
+        self.assertEqual(solid_result["error"]["path"], "$.physics.thickness")  # type: ignore[index]
 
     def test_native_sparse_contract_reports_convergence_evidence(self) -> None:
         request = request_record()
@@ -93,6 +195,9 @@ class ContractTests(unittest.TestCase):
     def test_unknown_named_set_is_a_structured_model_failure(self) -> None:
         request = request_record()
         request["dirichlet"] = [{"node_set": "missing", "value": 0.0}]
+        planned = plan_kernel_request(request)
+        self.assertEqual(planned["status"], "failed")
+        self.assertEqual(planned["error"]["path"], "$.dirichlet[0].node_set")  # type: ignore[index]
         result = run_kernel_request(request)
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["error"]["code"], "invalid_model")  # type: ignore[index]
@@ -165,8 +270,27 @@ class ContractTests(unittest.TestCase):
             )
             self.assertEqual(
                 schema["properties"]["contract_version"]["const"],  # type: ignore[index]
-                "0.1.0",
+                CONTRACT_VERSION,
             )
+        self.assertEqual(
+            kernel_request_schema("0.1.0")["properties"]["contract_version"]["const"],  # type: ignore[index]
+            "0.1.0",
+        )
+        self.assertEqual(
+            kernel_result_schema("0.1.0")["properties"]["contract_version"]["const"],  # type: ignore[index]
+            "0.1.0",
+        )
+
+    def test_mechanics_vtk_artifact_is_portable_and_digest_bound(self) -> None:
+        request = mechanics_request(3)
+        request["outputs"] = {"vtk": {"path": "results/solid.vtk"}}
+        with TemporaryDirectory() as directory:
+            result = run_kernel_request(request, artifact_directory=directory)
+            self.assertEqual(result["status"], "success")
+            artifact = result["artifacts"][0]  # type: ignore[index]
+            self.assertEqual(artifact["path"], "results/solid.vtk")
+            self.assertEqual(len(artifact["sha256"]), 64)
+            self.assertTrue((Path(directory) / "results" / "solid.vtk").is_file())
 
     def test_agentfem_ir_portable_extension_lowers_without_agentfem_import(
         self,

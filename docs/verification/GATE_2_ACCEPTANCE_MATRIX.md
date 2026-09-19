@@ -1,6 +1,6 @@
 # Gate 2 本地验收矩阵
 
-**日期：** 2026-09-13  
+**日期：** 2026-09-20
 **整体成熟度：** `implemented`  
 **用途：** 把已有 T3/T4 证据压缩成有限、可关闭的清单；本表不是 Gate 2 已验证
 声明。
@@ -17,13 +17,12 @@
 | G2-08 | T4 工程响应正确 | 立方体 patch、单轴、纯剪和静水响应 | 本地通过 |
 | G2-09 | T4 求解收敛并容许合法畸变 | 三层网格制造解、畸变网格 patch、方向/平衡不变量 | 本地通过 |
 | G2-10 | T4 优化路径不改变语义 | Python 参考与 C++20 ABI 1.2 的矩阵、载荷及求解差分 | 本地通过 |
-| G2-11 | AgentFEM 能审查一次力学执行 | 计划摘要、维数、单元、路径、提供者、残差/平衡、成熟度 | 直接 API 通过；JSON 0.2 待接纳 |
-| G2-12 | 生产性能和三平台 Gate 证据完整 | P3 CPU 并行记录与 Gate 候选 Windows/Linux/macOS 验收 | Linux 快检通过；CPU 并行与 Tier-1 未关闭 |
+| G2-11 | AgentFEM 能审查一次力学执行 | 计划摘要、维数、单元、路径、提供者、残差/平衡、成熟度 | Contract 0.2 本地候选通过 |
+| G2-12 | 生产性能和三平台 Gate 证据完整 | P3 CPU 并行记录与 Gate 候选 Windows/Linux/macOS 验收 | ABI 1.3/1.4 已验收；Contract 0.2 本源提交 Tier-1 待运行 |
 
 ## 判定规则
 
-- G2-01 至 G2-10 及 G2-11 直接 API 证据通过后，只形成 Gate 2 本地科学验收
-  候选；版本化 JSON Contract 0.2 仍是独立产品接纳项；
+- G2-01 至 G2-11 已形成 Gate 2 本地科学与产品接纳候选；
 - G2-12 未关闭前，整体成熟度保持 `implemented`；
 - 任一收敛、残差、平衡或差分断言失败时记录最小反例，不扩大容差；
 - FEniCSx 等第三方仅在隔离的里程碑验证中提供少量黑盒交叉证据，不能替代本表
@@ -33,7 +32,10 @@
 
 - `tests/test_elasticity.py`：G2-01 至 G2-05；
 - `tests/test_solid.py`：G2-06 至 G2-10；
-- `tests/test_planning.py` 与 `tests/test_execution.py`：G2-11；
+- `tests/test_planning.py`、`tests/test_execution.py` 与 `tests/test_contract.py`：
+  G2-11；
+- `docs/verification/KERNEL_CONTRACT_0_2_LOCAL_CANDIDATE.md`：0.1 兼容、T3/T4
+  契约、预检、证据和失败边界；
 - `docs/verification/MECHANICS_ALPHA_0_2_REPORT.md`：已通过的 ABI 1.2 本地与平台
   证据；
 - `docs/verification/PERFORMANCE_P3_REPORT.md`：G2-12 当前性能边界。

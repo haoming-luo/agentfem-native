@@ -6,11 +6,13 @@ __version__ = "0.7.0a1"
 from .contract import (
     CONTRACT_NAME,
     CONTRACT_VERSION,
+    SUPPORTED_CONTRACT_VERSIONS,
     KernelRequestError,
     kernel_request_schema,
     kernel_result_schema,
     lower_agentfem_ir,
     lower_agentfem_model,
+    plan_kernel_request,
     run_kernel_request,
 )
 from .diffusion import (
@@ -134,6 +136,7 @@ __all__ = (
     "CONTRACT_VERSION",
     "INTERCHANGE_FORMAT",
     "REFERENCE_TRIANGLE_VERTICES",
+    "SUPPORTED_CONTRACT_VERSIONS",
     "AffineTriangleMap",
     "BSRMatrix",
     "CGReport",
@@ -216,6 +219,7 @@ __all__ = (
     "p1_boundary_traction_load",
     "p1_elastic_stiffness",
     "p1_strain_displacement",
+    "plan_kernel_request",
     "plan_linear_dynamics",
     "plan_linear_elasticity",
     "plan_linear_elasticity_3d",

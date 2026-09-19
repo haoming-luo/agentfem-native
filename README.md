@@ -85,16 +85,23 @@ python -m unittest discover -v
 python tools/check_independence.py
 ```
 
-Execute a portable Kernel Contract request:
+执行一个可移植的 Kernel Contract 请求：
 
 ```text
-agentfem-native examples/steady_diffusion_request.json \
+agentfem-native examples/linear_elasticity_t3_request.json \
   --artifact-directory work/example --result work/example-result.json
 ```
 
-On Windows PowerShell, enter the same command on one line. The command and
-the Python API return a versioned, JSON-safe result envelope; failures are
-structured and the command exits nonzero.
+AgentFEM 或智能体在正式求解前，可以先做不装配、不求解的资源预检：
+
+```text
+agentfem-native examples/linear_elasticity_t3_request.json --plan-only
+```
+
+Windows PowerShell 使用同一条单行命令。命令行与 Python API 都返回版本化、
+JSON 安全的结果；失败包含稳定错误码与字段路径。Contract 0.2 覆盖 T3/T4
+线性静力，并继续兼容 0.1 热传导请求；详见
+[Kernel Contract 0.2 规格](docs/specifications/KERNEL_CONTRACT_0_2.md)。
 
 See [ROADMAP.md](ROADMAP.md), [ARCHITECTURE.md](ARCHITECTURE.md), the
 [project charter](docs/charter/PROJECT_CHARTER.md), and the

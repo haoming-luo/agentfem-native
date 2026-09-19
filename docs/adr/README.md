@@ -41,3 +41,7 @@ owner review. Superseded decisions remain in history.
   贡献顺序确定性回填 CSR 数值
 - [ADR-0024](0024-prepared-mechanics-assembly.md)：显式拥有并验证可复用 CSR
   装配计划，让 T3/T4 和求解提供者消费已规范矩阵
+- [ADR-0025](0025-prepared-constrained-solve.md)：复用固定矩阵的约束图、约束后
+  CSR 和数值预条件器，形成多载荷求解生命周期
+- [ADR-0026](0026-mechanics-kernel-contract-0-2.md)：用向后兼容的 Kernel
+  Contract 0.2 把 T3/T4 预检、执行和证据闭环交给 AgentFEM

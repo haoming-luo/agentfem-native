@@ -1,0 +1,42 @@
+{
+  "contract": "agentfem.native-kernel-request",
+  "contract_version": "0.2.0",
+  "request_id": "t3-uniaxial-demo",
+  "study": {
+    "analysis": "linear_static",
+    "physics": "solid_mechanics",
+    "dimension": 2
+  },
+  "mesh": {
+    "points": [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+    "cells": [[0, 1, 2], [0, 2, 3]],
+    "node_sets": {"left": [0, 3], "right": [1, 2]},
+    "boundary_sets": {"right": [[1, 2]]},
+    "cell_sets": {}
+  },
+  "physics": {
+    "material": {
+      "young_modulus": 100.0,
+      "poisson_ratio": 0.25,
+      "model": "plane_stress"
+    },
+    "thickness": 1.0,
+    "body_force": [0.0, 0.0]
+  },
+  "dirichlet": [
+    {"node_set": "left", "component": null, "value": [0.0, 0.0]}
+  ],
+  "traction": [
+    {"boundary_set": "right", "value": [1.0, 0.0]}
+  ],
+  "materials": [],
+  "procedure": {
+    "kind": "linear_elasticity",
+    "linear_algebra": "native",
+    "assembly": "auto",
+    "thread_count": 1
+  },
+  "outputs": {
+    "vtk": {"path": "t3-uniaxial.vtk"}
+  }
+}

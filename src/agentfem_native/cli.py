@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Cross-platform JSON command-line boundary for AgentFEM Native."""
+"""AgentFEM Native 的跨平台 JSON 命令行边界。"""
 
 from __future__ import annotations
 
@@ -10,24 +10,34 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TextIO
 
-from .contract import run_kernel_request
+from .contract import (
+    CONTRACT_NAME,
+    CONTRACT_VERSION,
+    plan_kernel_request,
+    run_kernel_request,
+)
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="agentfem-native",
-        description="Execute an AgentFEM Native Kernel Contract request.",
+        description="执行或预检 AgentFEM Native Kernel Contract 请求。",
     )
-    parser.add_argument("request", type=Path, help="UTF-8 JSON request file")
+    parser.add_argument("request", type=Path, help="UTF-8 JSON 请求文件")
+    parser.add_argument(
+        "--plan-only",
+        action="store_true",
+        help="只返回能力与资源计划，不装配也不求解",
+    )
     parser.add_argument(
         "--artifact-directory",
         type=Path,
-        help="Root directory for requested result artifacts",
+        help="请求结果产物的根目录",
     )
     parser.add_argument(
         "--result",
         type=Path,
-        help="Write the JSON result to this file instead of standard output",
+        help="把 JSON 结果写入文件，而不是标准输出",
     )
     return parser
 
@@ -46,18 +56,21 @@ def _write_result(
 
 
 def main(argv: Sequence[str] | None = None, *, stdout: TextIO | None = None) -> int:
-    """Run the CLI and return an operating-system exit status."""
+    """运行 CLI，并返回跨平台进程退出码。"""
 
     arguments = _parser().parse_args(argv)
     stream = sys.stdout if stdout is None else stdout
     try:
         request = json.loads(arguments.request.read_text(encoding="utf-8"))
         if not isinstance(request, dict):
-            raise TypeError("The request root must be a JSON object.")
-        result = run_kernel_request(
-            request,
-            artifact_directory=arguments.artifact_directory,
-        )
+            raise TypeError("请求根节点必须是 JSON 对象。")
+        if arguments.plan_only:
+            result = plan_kernel_request(request)
+        else:
+            result = run_kernel_request(
+                request,
+                artifact_directory=arguments.artifact_directory,
+            )
     except (
         OSError,
         UnicodeError,
@@ -66,8 +79,8 @@ def main(argv: Sequence[str] | None = None, *, stdout: TextIO | None = None) -> 
         ValueError,
     ) as error:
         result = {
-            "contract": "agentfem.native-kernel-request",
-            "contract_version": "0.1.0",
+            "contract": CONTRACT_NAME,
+            "contract_version": CONTRACT_VERSION,
             "request_id": "unknown",
             "status": "failed",
             "backend": {"name": "native"},
@@ -78,7 +91,7 @@ def main(argv: Sequence[str] | None = None, *, stdout: TextIO | None = None) -> 
             },
         }
     _write_result(result, arguments.result, stream)
-    return 0 if result["status"] == "success" else 2
+    return 0 if result["status"] in {"success", "planned"} else 2
 
 
 if __name__ == "__main__":
