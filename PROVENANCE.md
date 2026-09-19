@@ -573,5 +573,6 @@ license-incompatible code is rejected.
 - P3 交叉增量：固定时间步 Newmark 在循环外准备有效矩阵的 Jacobi
   `PreparedPreconditioner`，后续所有步共享同一只读对象；五步结构测试证明
   质量求解一次加有效矩阵准备一次，不改变积分语义。没有引入全局缓存或新依赖。
+  源提交 `7fac770` 的 Linux 快检 `35463558192` 通过 200 项测试和全部快速门禁。
 - 成熟度边界：该增量保持 `implemented`；波传播、长时色散、隐式有效矩阵复用
   和三平台 Gate 3 验收仍未关闭。
