@@ -490,11 +490,36 @@ class LinearElasticitySolveTests(unittest.TestCase):
         prepared_result = solve_linear_elasticity(
             problem, provider="native", assembly_plan=plan
         )
-        np.testing.assert_array_equal(
-            prepared_result.displacements, cold_result.displacements
+        # 稀疏矩阵和载荷已经逐位相同；两次独立构造的块 Jacobi 逆块会经过平台
+        # BLAS/LAPACK，其迭代解只要求落在由 binary64 和结果尺度给出的舍入界内。
+        displacement_scale = max(
+            1.0,
+            float(np.max(np.abs(cold_result.displacements))),
+            float(np.max(np.abs(prepared_result.displacements))),
         )
-        np.testing.assert_array_equal(
-            prepared_result.cell_stress, cold_result.cell_stress
+        stress_scale = max(
+            1.0,
+            float(np.max(np.abs(cold_result.cell_stress))),
+            float(np.max(np.abs(prepared_result.cell_stress))),
+        )
+        np.testing.assert_allclose(
+            prepared_result.displacements,
+            cold_result.displacements,
+            rtol=0.0,
+            atol=256.0 * np.finfo(np.float64).eps * displacement_scale,
+        )
+        np.testing.assert_allclose(
+            prepared_result.cell_stress,
+            cold_result.cell_stress,
+            rtol=0.0,
+            atol=256.0 * np.finfo(np.float64).eps * stress_scale,
+        )
+        self.assertAlmostEqual(
+            prepared_result.strain_energy,
+            cold_result.strain_energy,
+            delta=256.0
+            * np.finfo(np.float64).eps
+            * max(1.0, abs(cold_result.strain_energy)),
         )
 
         reordered_mesh = TriangularMesh(

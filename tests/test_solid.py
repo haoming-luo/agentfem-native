@@ -412,11 +412,35 @@ class LinearElastic3DTests(unittest.TestCase):
         prepared_result = solve_linear_elasticity_3d(
             problem, provider="numpy", assembly_plan=plan
         )
-        np.testing.assert_array_equal(
-            prepared_result.displacements, cold_result.displacements
+        # 逐位要求由上面的 CSR/载荷承担；稠密求解输出按 binary64 舍入界比较。
+        displacement_scale = max(
+            1.0,
+            float(np.max(np.abs(cold_result.displacements))),
+            float(np.max(np.abs(prepared_result.displacements))),
         )
-        np.testing.assert_array_equal(
-            prepared_result.cell_stress, cold_result.cell_stress
+        stress_scale = max(
+            1.0,
+            float(np.max(np.abs(cold_result.cell_stress))),
+            float(np.max(np.abs(prepared_result.cell_stress))),
+        )
+        np.testing.assert_allclose(
+            prepared_result.displacements,
+            cold_result.displacements,
+            rtol=0.0,
+            atol=256.0 * np.finfo(np.float64).eps * displacement_scale,
+        )
+        np.testing.assert_allclose(
+            prepared_result.cell_stress,
+            cold_result.cell_stress,
+            rtol=0.0,
+            atol=256.0 * np.finfo(np.float64).eps * stress_scale,
+        )
+        self.assertAlmostEqual(
+            prepared_result.strain_energy,
+            cold_result.strain_energy,
+            delta=256.0
+            * np.finfo(np.float64).eps
+            * max(1.0, abs(cold_result.strain_energy)),
         )
 
 
