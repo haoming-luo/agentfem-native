@@ -39,6 +39,9 @@
 - 新增固定—自由 T3 纵向波模态频率二阶空间趋势，以及集中质量显式积分十周期
   的有界能量证据；源提交 `39eb09c` 的 Linux 快检 `35463412190` 通过。局部
   脉冲传播与宽频色散仍明确留在后续 Gate 3 增量。
+- Newmark 固定时间步的有效矩阵与 Jacobi 预条件器改为循环外一次准备、逐步
+  复用；`N` 步预条件器构造从 `N+1` 次降到 2 次，积分公式、容差、结果和重启
+  格式保持不变。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

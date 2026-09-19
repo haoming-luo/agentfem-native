@@ -320,6 +320,7 @@ def native_capabilities() -> dict[str, object]:
                 "name": "linear_dynamics_central_difference_newmark",
                 "maturity": "implemented",
                 "explicit_stability_preflight": "conservative_infinity_norm_bound",
+                "implicit_effective_matrix_reuse": True,
             },
         ],
         "execution": [

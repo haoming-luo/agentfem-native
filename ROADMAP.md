@@ -251,10 +251,13 @@ G2-12 完成，T3/T4 基础线性静力范围提升为 `verified`。下一主线
 [`GATE_3_LINEAR_DYNAMICS_INCREMENT.md`](docs/verification/GATE_3_LINEAR_DYNAMICS_INCREMENT.md)。
 固定—自由 T3 纵向波模态频率还呈现二阶空间趋势，集中质量显式积分 10 个周期
 的最大相对能量偏移为 1.55e-3 以下。
+Newmark 固定有效矩阵及其 Jacobi 预条件器已移到循环外准备，`N` 步的预条件器
+构造从 `N+1` 次降为 2 次，能力清单显式报告该生命周期；数值公式与检查点格式
+不变。
 最新源提交 `39eb09c` 的 Linux 快检 `35463412190` 已通过；本增量未修改原生 ABI，
 按 CI 治理复用 ABI 1.5 平台验收，不重复运行完整矩阵。
-局部脉冲传播/反射、宽频色散、隐式有效矩阵复用和更广的受约束有限元平台证据
-仍是 Gate 3 验证前的缺口。
+局部脉冲传播/反射、宽频色散、隐式初值/更强预条件器复用和更广的受约束有限元
+平台证据仍是 Gate 3 验证前的缺口。
 
 ## Gate 4 — nonlinear solids and material state
 

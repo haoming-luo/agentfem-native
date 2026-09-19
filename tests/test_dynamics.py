@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -241,6 +242,24 @@ class LinearDynamicsTests(unittest.TestCase):
         np.testing.assert_array_equal(resumed.displacement, complete.displacement[40:])
         np.testing.assert_array_equal(resumed.velocity, complete.velocity[40:])
         np.testing.assert_array_equal(resumed.acceleration, complete.acceleration[40:])
+
+    def test_newmark_reuses_one_effective_matrix_preconditioner(self) -> None:
+        from agentfem_native import dynamics as dynamics_module
+
+        original = dynamics_module.conjugate_gradient
+        prepared = []
+
+        def tracked_solve(*args, **kwargs):
+            prepared.append(kwargs.get("prepared_preconditioner"))
+            return original(*args, **kwargs)
+
+        with patch.object(dynamics_module, "conjugate_gradient", tracked_solve):
+            integrate_linear_dynamics(
+                _oscillator(0.02, 5), method="newmark_average_acceleration"
+            )
+        self.assertIsNone(prepared[0])
+        self.assertEqual(len(prepared), 6)
+        self.assertTrue(all(item is prepared[1] for item in prepared[1:]))
 
     def test_t3_discrete_mode_has_second_order_time_refinement(self) -> None:
         for method, lumped_mass in (

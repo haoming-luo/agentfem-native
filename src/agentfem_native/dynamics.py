@@ -15,7 +15,12 @@ from .elasticity import LinearElasticProblem
 from .geometry import AffineTriangleMap
 from .mesh import TriangularMesh
 from .runtime import ExecutionContext
-from .sparse import CSRAssemblyPlan, CSRMatrix, conjugate_gradient
+from .sparse import (
+    CSRAssemblyPlan,
+    CSRMatrix,
+    PreparedPreconditioner,
+    conjugate_gradient,
+)
 
 FloatArray: TypeAlias = NDArray[np.float64]
 Integrator = Literal["central_difference", "newmark_average_acceleration"]
@@ -233,12 +238,18 @@ def _linear_combination(
     )
 
 
-def _solve_spd(matrix: CSRMatrix, right_hand_side: FloatArray) -> FloatArray:
+def _solve_spd(
+    matrix: CSRMatrix,
+    right_hand_side: FloatArray,
+    *,
+    prepared_preconditioner: PreparedPreconditioner | None = None,
+) -> FloatArray:
     result = conjugate_gradient(
         matrix,
         right_hand_side,
         relative_tolerance=1.0e-13,
         absolute_tolerance=1.0e-14,
+        prepared_preconditioner=prepared_preconditioner,
     )
     if not result.report.converged:
         raise ValueError(
@@ -386,6 +397,7 @@ def integrate_linear_dynamics(
         beta = 0.25
         gamma = 0.5
         effective = _linear_combination(system.mass, system.stiffness, beta * dt * dt)
+        effective_preconditioner = PreparedPreconditioner.from_matrix(effective)
         for index in range(1, count):
             if context is not None:
                 context.check("linear_dynamics", index - 1, system.steps)
@@ -397,6 +409,7 @@ def integrate_linear_dynamics(
             next_acceleration = _solve_spd(
                 effective,
                 next_load - system.stiffness.matvec(displacement_predictor),
+                prepared_preconditioner=effective_preconditioner,
             )
             displacement = displacement_predictor + beta * dt * dt * next_acceleration
             velocity = velocity_predictor + gamma * dt * next_acceleration

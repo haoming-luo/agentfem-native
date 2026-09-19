@@ -125,6 +125,7 @@ class PlanningTests(unittest.TestCase):
             dynamics["explicit_stability_preflight"],
             "conservative_infinity_norm_bound",
         )
+        self.assertTrue(dynamics["implicit_effective_matrix_reuse"])
         providers = {item["name"]: item for item in capabilities["linear_algebra"]}
         self.assertTrue(providers["native_sparse"]["available"])
         self.assertIn("block_jacobi", providers["native_sparse"]["preconditioners"])

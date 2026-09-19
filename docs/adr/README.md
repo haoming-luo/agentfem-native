@@ -49,3 +49,5 @@ owner review. Superseded decisions remain in history.
   只生成数值贡献与载荷，避免重复 COO 行列索引
 - [ADR-0028](0028-explicit-dynamics-step-preflight.md)：用可审计的保守谱上界在
   执行前拒绝不安全的中心差分时间步
+- [ADR-0029](0029-newmark-effective-matrix-reuse.md)：固定时间步 Newmark 在循环
+  外准备并复用有效矩阵的数值预条件器
