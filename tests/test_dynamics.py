@@ -83,6 +83,34 @@ def _t3_eigenmode_system(
     return system, constrained, float(np.sqrt(eigenvalues[0]))
 
 
+def _t3_bar_lowest_frequency(nx: int) -> float:
+    """求自主 T3 固定—自由纵向杆的最低离散频率。"""
+
+    mesh = unit_square_triangles(nx, 1)
+    problem = LinearElasticProblem(
+        mesh,
+        LinearElasticMaterial(100.0, 0.25),
+        dirichlet=(
+            DisplacementCondition("left", "x", 0.0),
+            DisplacementCondition("boundary", "y", 0.0),
+        ),
+    )
+    system, constrained = build_t3_linear_dynamics(
+        problem,
+        2.0,
+        time_step=0.001,
+        steps=1,
+        lumped_mass=False,
+    )
+    active = np.setdiff1d(np.arange(system.stiffness.shape[0]), constrained)
+    stiffness = system.stiffness.to_dense()[np.ix_(active, active)]
+    mass = system.mass.to_dense()[np.ix_(active, active)]
+    cholesky = np.linalg.cholesky(mass)
+    left_scaled = np.linalg.solve(cholesky, stiffness)
+    transformed = np.linalg.solve(cholesky, left_scaled.T).T
+    return float(np.sqrt(np.linalg.eigvalsh(transformed)[0]))
+
+
 class T3MassTests(unittest.TestCase):
     def test_consistent_and_lumped_mass_preserve_total_mass(self) -> None:
         mesh = unit_square_triangles(2)
@@ -238,6 +266,26 @@ class LinearDynamicsTests(unittest.TestCase):
                         float(np.linalg.norm(result.displacement[-1] - exact))
                     )
                 self.assertLess(errors[1], errors[0] / 3.5)
+
+    def test_t3_longitudinal_wave_mode_has_second_order_spatial_trend(self) -> None:
+        exact = 0.5 * np.pi * np.sqrt((100.0 / (1.0 - 0.25**2)) / 2.0)
+        errors = [abs(_t3_bar_lowest_frequency(nx) - exact) for nx in (4, 8, 16)]
+        self.assertLess(errors[1], errors[0] / 3.8)
+        self.assertLess(errors[2], errors[1] / 3.8)
+        self.assertLess(errors[2] / exact, 3.0e-4)
+
+    def test_t3_explicit_mode_has_bounded_long_time_energy(self) -> None:
+        _probe, _, frequency = _t3_eigenmode_system(0.001, 1, lumped_mass=True)
+        period = 2.0 * np.pi / frequency
+        steps = 800
+        system, constrained, _ = _t3_eigenmode_system(
+            10.0 * period / steps, steps, lumped_mass=True
+        )
+        result = integrate_constrained_linear_dynamics(system, constrained)
+        relative_drift = np.max(
+            np.abs(result.total_energy - result.total_energy[0])
+        ) / float(result.total_energy[0])
+        self.assertLess(relative_drift, 2.0e-3)
 
     def test_explicit_method_rejects_consistent_mass(self) -> None:
         mass = CSRMatrix.from_coo(
