@@ -478,6 +478,12 @@ class CSRAssemblyPlan:
         return int(self.cell_dofs.nbytes + self.pattern.storage_nbytes)
 
     @property
+    def avoided_coo_index_nbytes(self) -> int:
+        """返回串行 native 仅数值路径明确省去的 COO 行列索引字节数。"""
+
+        return 2 * self.contribution_count * np.dtype(np.int64).itemsize
+
+    @property
     def structure_digest(self) -> str:
         return self.pattern.structure_digest
 

@@ -8,7 +8,7 @@ from typing import Final
 import numpy as np
 from numpy.typing import NDArray
 
-NATIVE_P1_ABI_VERSION: Final = 0x0001_0004
+NATIVE_P1_ABI_VERSION: Final = 0x0001_0005
 
 try:
     from . import _p1_native
@@ -192,6 +192,58 @@ def assemble_t3_volume(
     return rows, columns, data, load
 
 
+def assemble_t3_values(
+    points: NDArray[np.float64],
+    cells: NDArray[np.int64],
+    constitutive: NDArray[np.float64],
+    body_force: NDArray[np.float64],
+    thickness: float,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """只生成 T3 局部数值贡献与载荷，供已拥有稀疏图的计划消费。"""
+
+    if not native_kernel_available():
+        detail = f"：{_IMPORT_ERROR}" if _IMPORT_ERROR is not None else ""
+        raise NativeKernelUnavailableError(
+            f"AgentFEM Native C++20 内核不可用{detail}。"
+        )
+    point_values = np.ascontiguousarray(points, dtype=np.float64)
+    cell_values = np.ascontiguousarray(cells, dtype=np.int64)
+    constitutive_values = np.ascontiguousarray(constitutive, dtype=np.float64)
+    body_values = np.ascontiguousarray(body_force, dtype=np.float64)
+    if point_values.ndim != 2 or point_values.shape[1] != 2:
+        raise ValueError("T3 节点坐标必须具有 (node_count, 2) 形状。")
+    if cell_values.ndim != 2 or cell_values.shape[1] != 3:
+        raise ValueError("T3 单元必须具有 (cell_count, 3) 形状。")
+    if constitutive_values.shape != (cell_values.shape[0], 3, 3):
+        raise ValueError("T3 本构数据必须具有 (cell_count, 3, 3) 形状。")
+    if body_values.shape != (2,):
+        raise ValueError("T3 体力必须具有 (2,) 形状。")
+    data = np.empty(cell_values.shape[0] * 36, dtype=np.float64)
+    load = np.empty(point_values.shape[0] * 2, dtype=np.float64)
+    status = int(
+        _p1_native.assemble_t3_values_into(
+            point_values.shape[0],
+            cell_values.shape[0],
+            point_values,
+            cell_values,
+            constitutive_values,
+            body_values,
+            float(thickness),
+            data,
+            load,
+        )
+    )
+    messages = {
+        1: "T3 仅数值装配收到空缓冲区。",
+        2: "T3 本构矩阵必须有限、对称且正定。",
+        3: "T3 单元连通性或几何无效。",
+        4: "T3 装配输入必须有限且厚度为正。",
+    }
+    if status != 0:
+        raise ValueError(messages.get(status, f"T3 仅数值装配失败，状态码 {status}。"))
+    return data, load
+
+
 def assemble_t4_volume(
     points: NDArray[np.float64],
     cells: NDArray[np.int64],
@@ -270,6 +322,56 @@ def assemble_t4_volume(
             messages.get(status, f"Native T4 assembly failed with status {status}.")
         )
     return rows, columns, data, load
+
+
+def assemble_t4_values(
+    points: NDArray[np.float64],
+    cells: NDArray[np.int64],
+    constitutive: NDArray[np.float64],
+    body_force: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """只生成 T4 局部数值贡献与载荷，供已拥有稀疏图的计划消费。"""
+
+    if not native_kernel_available():
+        detail = f"：{_IMPORT_ERROR}" if _IMPORT_ERROR is not None else ""
+        raise NativeKernelUnavailableError(
+            f"AgentFEM Native C++20 内核不可用{detail}。"
+        )
+    point_values = np.ascontiguousarray(points, dtype=np.float64)
+    cell_values = np.ascontiguousarray(cells, dtype=np.int64)
+    constitutive_values = np.ascontiguousarray(constitutive, dtype=np.float64)
+    body_values = np.ascontiguousarray(body_force, dtype=np.float64)
+    if point_values.ndim != 2 or point_values.shape[1] != 3:
+        raise ValueError("T4 节点坐标必须具有 (node_count, 3) 形状。")
+    if cell_values.ndim != 2 or cell_values.shape[1] != 4:
+        raise ValueError("T4 单元必须具有 (cell_count, 4) 形状。")
+    if constitutive_values.shape != (cell_values.shape[0], 6, 6):
+        raise ValueError("T4 本构数据必须具有 (cell_count, 6, 6) 形状。")
+    if body_values.shape != (3,):
+        raise ValueError("T4 体力必须具有 (3,) 形状。")
+    data = np.empty(cell_values.shape[0] * 144, dtype=np.float64)
+    load = np.empty(point_values.shape[0] * 3, dtype=np.float64)
+    status = int(
+        _p1_native.assemble_t4_values_into(
+            point_values.shape[0],
+            cell_values.shape[0],
+            point_values,
+            cell_values,
+            constitutive_values,
+            body_values,
+            data,
+            load,
+        )
+    )
+    messages = {
+        1: "T4 仅数值装配收到空缓冲区。",
+        2: "T4 本构矩阵必须有限、对称且正定。",
+        3: "T4 单元连通性或几何无效。",
+        4: "T4 装配输入必须有限。",
+    }
+    if status != 0:
+        raise ValueError(messages.get(status, f"T4 仅数值装配失败，状态码 {status}。"))
+    return data, load
 
 
 def csr_spmv(

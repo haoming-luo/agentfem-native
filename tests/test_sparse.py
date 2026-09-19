@@ -155,6 +155,7 @@ class CSRAssemblyPlanTests(unittest.TestCase):
         self.assertIs(prepared.indptr, plan.pattern.indptr)
         self.assertEqual(plan.contribution_count, 8)
         self.assertEqual(plan.nnz, 7)
+        self.assertEqual(plan.avoided_coo_index_nbytes, 8 * 16)
         self.assertGreater(plan.storage_nbytes, plan.pattern.storage_nbytes)
 
     def test_plan_rejects_changed_layout_and_wrong_contribution_shape(self) -> None:

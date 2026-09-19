@@ -228,6 +228,61 @@ PyObject* assemble_t3_into(PyObject*, PyObject* arguments) {
   return PyLong_FromLong(status);
 }
 
+PyObject* assemble_t3_values_into(PyObject*, PyObject* arguments) {
+  Py_ssize_t node_count = 0;
+  Py_ssize_t cell_count = 0;
+  PyObject* points_object = nullptr;
+  PyObject* cells_object = nullptr;
+  PyObject* constitutive_object = nullptr;
+  PyObject* body_force_object = nullptr;
+  double thickness = 0.0;
+  PyObject* data_object = nullptr;
+  PyObject* load_object = nullptr;
+  if (!PyArg_ParseTuple(arguments, "nnOOOOdOO", &node_count, &cell_count,
+                        &points_object, &cells_object, &constitutive_object,
+                        &body_force_object, &thickness, &data_object,
+                        &load_object)) {
+    return nullptr;
+  }
+  Py_ssize_t points_bytes = 0;
+  Py_ssize_t cells_bytes = 0;
+  Py_ssize_t constitutive_bytes = 0;
+  Py_ssize_t entries_bytes = 0;
+  Py_ssize_t load_bytes = 0;
+  if (!checked_bytes(node_count, 2 * 8, &points_bytes) ||
+      !checked_bytes(cell_count, 3 * 8, &cells_bytes) ||
+      !checked_bytes(cell_count, 9 * 8, &constitutive_bytes) ||
+      !checked_bytes(cell_count, 36 * 8, &entries_bytes) ||
+      !checked_bytes(node_count, 2 * 8, &load_bytes)) {
+    return nullptr;
+  }
+  BufferView points;
+  BufferView cells;
+  BufferView constitutive;
+  BufferView body_force;
+  BufferView data;
+  BufferView load;
+  if (!points.acquire(points_object, points_bytes, false, true, "points") ||
+      !cells.acquire(cells_object, cells_bytes, false, false, "cells") ||
+      !constitutive.acquire(constitutive_object, constitutive_bytes, false, true,
+                            "constitutive") ||
+      !body_force.acquire(body_force_object, 2 * 8, false, true, "body_force") ||
+      !data.acquire(data_object, entries_bytes, true, true, "data") ||
+      !load.acquire(load_object, load_bytes, true, true, "load")) {
+    return nullptr;
+  }
+  int status = AFN_P1_NULL_POINTER;
+  Py_BEGIN_ALLOW_THREADS
+  status = afn_t3_elasticity_assemble_cells(
+      static_cast<std::size_t>(node_count),
+      static_cast<std::size_t>(cell_count), points.data<double>(),
+      cells.data<std::int64_t>(), constitutive.data<double>(),
+      body_force.data<double>(), thickness, nullptr, nullptr, data.data<double>(),
+      load.data<double>());
+  Py_END_ALLOW_THREADS
+  return PyLong_FromLong(status);
+}
+
 PyObject* assemble_t3_parallel_into(PyObject*, PyObject* arguments) {
   Py_ssize_t node_count = 0;
   Py_ssize_t cell_count = 0;
@@ -348,6 +403,59 @@ PyObject* assemble_t4_into(PyObject*, PyObject* arguments) {
       cells.data<std::int64_t>(), constitutive.data<double>(),
       body_force.data<double>(), rows.data<std::int64_t>(),
       columns.data<std::int64_t>(), data.data<double>(), load.data<double>());
+  Py_END_ALLOW_THREADS
+  return PyLong_FromLong(status);
+}
+
+PyObject* assemble_t4_values_into(PyObject*, PyObject* arguments) {
+  Py_ssize_t node_count = 0;
+  Py_ssize_t cell_count = 0;
+  PyObject* points_object = nullptr;
+  PyObject* cells_object = nullptr;
+  PyObject* constitutive_object = nullptr;
+  PyObject* body_force_object = nullptr;
+  PyObject* data_object = nullptr;
+  PyObject* load_object = nullptr;
+  if (!PyArg_ParseTuple(arguments, "nnOOOOOO", &node_count, &cell_count,
+                        &points_object, &cells_object, &constitutive_object,
+                        &body_force_object, &data_object, &load_object)) {
+    return nullptr;
+  }
+  Py_ssize_t points_bytes = 0;
+  Py_ssize_t cells_bytes = 0;
+  Py_ssize_t constitutive_bytes = 0;
+  Py_ssize_t entries_bytes = 0;
+  Py_ssize_t load_bytes = 0;
+  if (!checked_bytes(node_count, 3 * 8, &points_bytes) ||
+      !checked_bytes(cell_count, 4 * 8, &cells_bytes) ||
+      !checked_bytes(cell_count, 36 * 8, &constitutive_bytes) ||
+      !checked_bytes(cell_count, 144 * 8, &entries_bytes) ||
+      !checked_bytes(node_count, 3 * 8, &load_bytes)) {
+    return nullptr;
+  }
+  BufferView points;
+  BufferView cells;
+  BufferView constitutive;
+  BufferView body_force;
+  BufferView data;
+  BufferView load;
+  if (!points.acquire(points_object, points_bytes, false, true, "points") ||
+      !cells.acquire(cells_object, cells_bytes, false, false, "cells") ||
+      !constitutive.acquire(constitutive_object, constitutive_bytes, false, true,
+                            "constitutive") ||
+      !body_force.acquire(body_force_object, 3 * 8, false, true, "body_force") ||
+      !data.acquire(data_object, entries_bytes, true, true, "data") ||
+      !load.acquire(load_object, load_bytes, true, true, "load")) {
+    return nullptr;
+  }
+  int status = AFN_P1_NULL_POINTER;
+  Py_BEGIN_ALLOW_THREADS
+  status = afn_t4_elasticity_assemble_cells(
+      static_cast<std::size_t>(node_count),
+      static_cast<std::size_t>(cell_count), points.data<double>(),
+      cells.data<std::int64_t>(), constitutive.data<double>(),
+      body_force.data<double>(), nullptr, nullptr, data.data<double>(),
+      load.data<double>());
   Py_END_ALLOW_THREADS
   return PyLong_FromLong(status);
 }
@@ -507,10 +615,14 @@ PyMethodDef methods[] = {
      "使用 C++20 P1 内核填充调用方拥有的连续输出缓冲区。"},
     {"assemble_t3_into", assemble_t3_into, METH_VARARGS,
      "使用 C++20 内核填充 T3 弹性 COO 与载荷缓冲区。"},
+    {"assemble_t3_values_into", assemble_t3_values_into, METH_VARARGS,
+     "使用 C++20 内核只填充 T3 数值贡献与载荷缓冲区。"},
     {"assemble_t3_parallel_into", assemble_t3_parallel_into, METH_VARARGS,
      "使用确定性 C++20 CPU 并行内核填充 T3 COO 与载荷缓冲区。"},
     {"assemble_t4_into", assemble_t4_into, METH_VARARGS,
      "使用 C++20 内核填充 T4 弹性 COO 与载荷缓冲区。"},
+    {"assemble_t4_values_into", assemble_t4_values_into, METH_VARARGS,
+     "使用 C++20 内核只填充 T4 数值贡献与载荷缓冲区。"},
     {"assemble_t4_parallel_into", assemble_t4_parallel_into, METH_VARARGS,
      "使用确定性 C++20 CPU 并行内核填充 T4 COO 与载荷缓冲区。"},
     {"csr_spmv_into", csr_spmv_into, METH_VARARGS,

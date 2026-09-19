@@ -10,7 +10,9 @@ from agentfem_native.mesh import unit_square_triangles, unit_square_two_triangle
 from agentfem_native.native import (
     NATIVE_P1_ABI_VERSION,
     assemble_p1_volume,
+    assemble_t3_values,
     assemble_t3_volume,
+    assemble_t4_values,
     assemble_t4_volume,
     csr_fill_from_contributions,
     csr_spmv,
@@ -25,9 +27,9 @@ class NativeKernelTests(unittest.TestCase):
         identity = native_kernel_identity()
         self.assertEqual(identity["name"], "cpp20")
         self.assertTrue(identity["available"])
-        self.assertEqual(identity["abi_version"], "1.4")
-        self.assertEqual(identity["required_abi_version"], "1.4")
-        self.assertEqual(NATIVE_P1_ABI_VERSION, 0x0001_0004)
+        self.assertEqual(identity["abi_version"], "1.5")
+        self.assertEqual(identity["required_abi_version"], "1.5")
+        self.assertEqual(NATIVE_P1_ABI_VERSION, 0x0001_0005)
 
     def test_global_and_per_cell_conductivity_emit_owned_arrays(self) -> None:
         mesh = unit_square_two_triangles()
@@ -84,6 +86,15 @@ class NativeKernelTests(unittest.TestCase):
         self.assertEqual(rows.shape, (72,))
         self.assertEqual(columns.shape, (72,))
         np.testing.assert_allclose(load.reshape(4, 2).sum(axis=0), (1.0, -0.5))
+        values_only, values_load = assemble_t3_values(
+            mesh.points,
+            mesh.cells,
+            np.broadcast_to(constitutive, (mesh.cell_count, 3, 3)),
+            np.array((2.0, -1.0)),
+            0.5,
+        )
+        np.testing.assert_array_equal(values_only, data)
+        np.testing.assert_array_equal(values_load, load)
 
     def test_t3_parallel_keeps_coo_order_and_matches_serial_load(self) -> None:
         mesh = unit_square_triangles(8)
@@ -134,6 +145,14 @@ class NativeKernelTests(unittest.TestCase):
         np.testing.assert_array_equal(rows, np.repeat(np.arange(12), 12))
         np.testing.assert_array_equal(columns, np.tile(np.arange(12), 12))
         np.testing.assert_allclose(load.reshape(4, 3).sum(axis=0), (1.0, -0.5, 0.25))
+        values_only, values_load = assemble_t4_values(
+            points,
+            cells,
+            material.constitutive_matrix[None, :, :],
+            np.array((6.0, -3.0, 1.5)),
+        )
+        np.testing.assert_array_equal(values_only, data)
+        np.testing.assert_array_equal(values_load, load)
 
     def test_t4_parallel_matches_serial_on_multiple_cells(self) -> None:
         from agentfem_native.solid import SolidElasticMaterial

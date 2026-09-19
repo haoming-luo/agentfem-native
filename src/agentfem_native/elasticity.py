@@ -14,7 +14,7 @@ from .assembly import COOMatrix
 from .dofs import VectorDofMap
 from .geometry import AffineTriangleMap
 from .mesh import TriangularMesh
-from .native import assemble_t3_volume, native_kernel_available
+from .native import assemble_t3_values, assemble_t3_volume, native_kernel_available
 from .providers import LinearAlgebraProvider, NativeSparseProvider, resolve_provider
 from .quadrature import triangle_rule
 from .reference import p1_basis
@@ -433,13 +433,22 @@ def assemble_linear_elasticity(
             problem.thickness,
             thread_count=problem.thread_count,
         )
+    _add_t3_tractions(problem, load, dofs)
+    return COOMatrix((dofs.size, dofs.size), rows, columns, data), load, dofs
+
+
+def _add_t3_tractions(
+    problem: LinearElasticProblem, load: FloatArray, dofs: VectorDofMap
+) -> None:
+    """按既有边界积分语义把 T3 面力累加到调用方载荷。"""
+
+    mesh = problem.mesh
     for condition in problem.traction:
         for edge in mesh.boundary_edges(condition.boundary_set):
             local_load = p1_boundary_traction_load(
                 mesh.points[edge], condition.value, thickness=problem.thickness
             )
             load[dofs.node_dofs(edge).ravel()] += local_load
-    return COOMatrix((dofs.size, dofs.size), rows, columns, data), load, dofs
 
 
 def prepare_linear_elasticity_assembly(
@@ -465,6 +474,19 @@ def assemble_linear_elasticity_prepared(
         raise TypeError("T3 预备装配要求 CSRAssemblyPlan。")
     dofs = VectorDofMap(problem.mesh.node_count, 2)
     plan.validate_layout(dofs.size, dofs.cell_dofs(problem.mesh.cells))
+    selected = select_elasticity_assembly_mode(problem)
+    if selected == "native" and problem.thread_count == 1:
+        body = _static_body_force(problem.body_force)
+        assert body is not None
+        data, load = assemble_t3_values(
+            problem.mesh.points,
+            problem.mesh.cells,
+            _cell_constitutive(problem),
+            body,
+            problem.thickness,
+        )
+        _add_t3_tractions(problem, load, dofs)
+        return plan.fill(data), load, dofs
     coo, load, assembled_dofs = assemble_linear_elasticity(problem)
     return plan.fill(coo.data), load, assembled_dofs
 

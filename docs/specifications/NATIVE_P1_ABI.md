@@ -1,11 +1,11 @@
-# Native P1/T3/T4 与稀疏 C ABI 1.4
+# Native P1/T3/T4 与稀疏 C ABI 1.5
 
-**状态：** ABI 1.4 已实现并通过 Tier-1 三平台验收。Rust 对照实验仅实现 ABI
-1.0 扩散子集。
+**状态：** ABI 1.4 已通过 Tier-1 三平台验收；ABI 1.5 仅数值预备装配进入
+验收候选。Rust 对照实验仅实现 ABI 1.0 扩散子集。
 
 ## 版本与所有权
 
-`afn_p1_abi_version()` 返回 `0x00010004`，编码为主版本 1、次版本 4。主版本不
+`afn_p1_abi_version()` 返回 `0x00010005`，编码为主版本 1、次版本 5。主版本不
 兼容时不得调用。调用方在整个调用期间拥有所有输入和输出缓冲区；内核不保留
 指针、不分配调用方输出、不调用回调，也不能让 C++ 异常越过 C ABI。
 
@@ -21,7 +21,7 @@
 - `afn_csr_spmv`：规范 CSR 矩阵向量乘。
 - `afn_csr_fill_from_contributions`：按原贡献顺序回填规范 CSR 数值。
 
-ABI 1.4 不改变 ABI 1.3 既有函数的签名、布局、顺序或数值语义。
+ABI 1.5 不改变 ABI 1.4 既有函数的签名、非空缓冲区布局、顺序或数值语义。
 
 ### 扩散布局
 
@@ -67,6 +67,22 @@ ABI 1.4 的新增函数只消费 Native 自有 `CSRPattern` 已建立的映射�
 `fill` 在编译内核可用时调用 C++20，否则确定性回退。两条路径必须逐位一致。
 
 本次版本不包含并行归并、原子写、图着色或直接元素到 CSR 装配。
+
+## ABI 1.5 串行预备装配的仅数值模式
+
+`afn_t3_elasticity_assemble_cells` 与 `afn_t4_elasticity_assemble_cells` 在
+`rows == nullptr && columns == nullptr` 时不写 COO 索引，只按原来的
+单元—局部行—局部列次序写 `data` 和 `load`。如果两个索引指针只有一个为空，
+返回状态 1；旧调用方继续传入两个有效输出缓冲区时，行为完全不变。
+
+Python Stable ABI 以独立的 `assemble_t3_values_into` 和
+`assemble_t4_values_into` 方法暴露该模式。它只服务已经拥有 `CSRAssemblyPlan`
+的串行 native 路径；普通装配仍返回完整 COO，多线程装配仍使用 ABI 1.3 的
+确定性独占 COO 区间。
+
+仅数值模式明确避免两份长度为 `contribution_count` 的 `int64` 行列数组，即每个
+贡献 16 字节。它仍保留完整 `data` 贡献数组和计划映射，不构成最终直接 CSR
+装配，也不改变贡献归并顺序。
 
 ## ABI 1.3 确定性 CPU 并行入口
 
@@ -137,3 +153,6 @@ sanitizer、Python 3.13 Stable ABI 复用和独立 Rust 对照验收。
 ABI 1.4 已在源提交 `d172cf6` 的 GitHub Actions 运行 `34757610403` 中通过
 Windows x86_64、Linux x86_64、macOS x86_64/arm64 wheel、三平台 C/C++ 合约、
 sanitizer、Python 3.13 Stable ABI 复用、独立 Rust 对照和工件清单验收。
+
+ABI 1.5 在完整 Tier-1 三平台验收通过前保持候选状态；不能复用 ABI 1.4 记录
+冒充本次新指针模式的平台证据。

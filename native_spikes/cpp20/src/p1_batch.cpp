@@ -344,10 +344,11 @@ extern "C" AFN_API int afn_t3_elasticity_assemble_cells(
     std::int64_t* columns,
     double* data,
     double* load) {
+  const bool values_only = rows == nullptr && columns == nullptr;
   if (node_count == 0 || cell_count == 0 || points_xy == nullptr ||
       cells == nullptr || constitutive_cells_3x3 == nullptr ||
-      body_force_xy == nullptr || rows == nullptr || columns == nullptr ||
-      data == nullptr || load == nullptr) {
+      body_force_xy == nullptr || data == nullptr || load == nullptr ||
+      (!values_only && (rows == nullptr || columns == nullptr))) {
     return AFN_P1_NULL_POINTER;
   }
   if (node_count > std::numeric_limits<std::size_t>::max() / 2 ||
@@ -419,8 +420,10 @@ extern "C" AFN_API int afn_t3_elasticity_assemble_cells(
           const std::int64_t global_column =
               2 * cell[column_node] + static_cast<std::int64_t>(local_column % 2);
           const std::size_t entry = 36 * cell_index + 6 * local_row + local_column;
-          rows[entry] = global_row;
-          columns[entry] = global_column;
+          if (!values_only) {
+            rows[entry] = global_row;
+            columns[entry] = global_column;
+          }
           const auto right = strain_column(gradients, local_column);
           double value = 0.0;
           for (std::size_t i = 0; i < 3; ++i) {
@@ -491,10 +494,11 @@ extern "C" AFN_API int afn_t4_elasticity_assemble_cells(
     std::int64_t* columns,
     double* data,
     double* load) {
+  const bool values_only = rows == nullptr && columns == nullptr;
   if (node_count == 0 || cell_count == 0 || points_xyz == nullptr ||
       cells == nullptr || constitutive_cells_6x6 == nullptr ||
-      body_force_xyz == nullptr || rows == nullptr || columns == nullptr ||
-      data == nullptr || load == nullptr) {
+      body_force_xyz == nullptr || data == nullptr || load == nullptr ||
+      (!values_only && (rows == nullptr || columns == nullptr))) {
     return AFN_P1_NULL_POINTER;
   }
   if (node_count > std::numeric_limits<std::size_t>::max() / 3 ||
@@ -604,8 +608,10 @@ extern "C" AFN_API int afn_t4_elasticity_assemble_cells(
               static_cast<std::int64_t>(local_column % 3);
           const std::size_t entry =
               144 * cell_index + 12 * local_row + local_column;
-          rows[entry] = global_row;
-          columns[entry] = global_column;
+          if (!values_only) {
+            rows[entry] = global_row;
+            columns[entry] = global_column;
+          }
           const auto right = solid_strain_column(gradients, local_column);
           double value = 0.0;
           for (std::size_t i = 0; i < 6; ++i) {

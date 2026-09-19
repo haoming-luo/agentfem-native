@@ -16,7 +16,7 @@ bool close(const double left, const double right, const double tolerance = 1e-15
 }  // namespace
 
 int main() {
-  static_assert(AFN_P1_ABI_VERSION == 0x00010004u);
+  static_assert(AFN_P1_ABI_VERSION == 0x00010005u);
   assert(afn_p1_abi_version() == AFN_P1_ABI_VERSION);
   const std::array<double, 8> points{{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}};
   const std::array<std::int64_t, 6> cells{{0, 1, 2, 0, 2, 3}};
@@ -106,6 +106,18 @@ int main() {
   assert(elasticity_rows[0] == 0 && elasticity_columns[35] == 5);
   assert(close(elasticity_load[0], 1.0 / 3.0));
   assert(close(elasticity_load[1], -1.0 / 6.0));
+  std::array<double, 72> elasticity_values_only{};
+  std::array<double, 8> elasticity_values_load{};
+  assert(afn_t3_elasticity_assemble_cells(
+             4, 2, points.data(), cells.data(), constitutive.data(), body.data(),
+             0.5, nullptr, nullptr, elasticity_values_only.data(),
+             elasticity_values_load.data()) == AFN_P1_SUCCESS);
+  assert(elasticity_values_only == elasticity_data);
+  assert(elasticity_values_load == elasticity_load);
+  assert(afn_t3_elasticity_assemble_cells(
+             4, 2, points.data(), cells.data(), constitutive.data(), body.data(),
+             0.5, nullptr, elasticity_columns.data(), elasticity_values_only.data(),
+             elasticity_values_load.data()) == AFN_P1_NULL_POINTER);
   std::array<std::int64_t, 72> parallel_rows{};
   std::array<std::int64_t, 72> parallel_columns{};
   std::array<double, 72> parallel_data{};
@@ -149,6 +161,15 @@ int main() {
              solid_constitutive.data(), solid_body.data(), solid_rows.data(),
              solid_columns.data(), solid_data.data(), solid_load.data()) ==
          AFN_P1_SUCCESS);
+  std::array<double, 144> solid_values_only{};
+  std::array<double, 12> solid_values_load{};
+  assert(afn_t4_elasticity_assemble_cells(
+             4, 1, solid_points.data(), solid_cell.data(),
+             solid_constitutive.data(), solid_body.data(), nullptr, nullptr,
+             solid_values_only.data(), solid_values_load.data()) ==
+         AFN_P1_SUCCESS);
+  assert(solid_values_only == solid_data);
+  assert(solid_values_load == solid_load);
   std::array<std::int64_t, 144> solid_parallel_rows{};
   std::array<std::int64_t, 144> solid_parallel_columns{};
   std::array<double, 144> solid_parallel_data{};

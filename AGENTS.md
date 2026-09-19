@@ -89,7 +89,8 @@ changing scientific code.
 
 ## Scope discipline
 
-Work gate by gate. Gates 0 and 1 are complete. The next milestone is closing
-Performance P3 and verifying the Gate 2 T3/T4 mesh-to-result chain. Do not move
+Work gate by gate. Gates 0 and 1 are complete; Gate 2 is verified for its
+bounded T3/T4 basic linear-static scope. The next milestones are closing
+Performance P3 and verifying the linear-dynamics portion of Gate 3. Do not move
 global nonlinear mechanics, MPI, or GPU work into the production path before
-Gate 2 passes; isolated experiments retain their explicit maturity labels.
+their own prerequisites pass; isolated experiments retain explicit maturity labels.

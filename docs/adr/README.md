@@ -45,3 +45,5 @@ owner review. Superseded decisions remain in history.
   CSR 和数值预条件器，形成多载荷求解生命周期
 - [ADR-0026](0026-mechanics-kernel-contract-0-2.md)：用向后兼容的 Kernel
   Contract 0.2 把 T3/T4 预检、执行和证据闭环交给 AgentFEM
+- [ADR-0027](0027-index-free-prepared-assembly.md)：ABI 1.5 让串行预备 T3/T4
+  只生成数值贡献与载荷，避免重复 COO 行列索引

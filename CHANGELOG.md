@@ -28,6 +28,9 @@
   Jacobi/块 Jacobi 数值预条件器；`native_sparse` 提供者版本提升为 0.4。
 - CG 收敛前复算真实残差，并把用户容差与 binary64 可达后向误差底线合并，
   避免递推残差漂移造成虚假收敛或不可达到的无意义迭代。
+- C++ Stable ABI 提升到 1.5：串行预备 T3/T4 可只输出局部数值贡献与载荷，
+  不再重复生成已由 `CSRAssemblyPlan` 拥有的 COO 行列索引；普通 COO 与并行
+  入口保持兼容，三平台 ABI 验收待关闭。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

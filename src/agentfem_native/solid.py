@@ -12,7 +12,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from .assembly import COOMatrix
 from .dofs import VectorDofMap
-from .native import assemble_t4_volume, native_kernel_available
+from .native import assemble_t4_values, assemble_t4_volume, native_kernel_available
 from .providers import LinearAlgebraProvider, NativeSparseProvider, resolve_provider
 from .sparse import CGReport, CSRAssemblyPlan, CSRMatrix
 from .volume_mesh import TetrahedralMesh
@@ -300,11 +300,20 @@ def assemble_linear_elasticity_3d(
             columns[start : start + 144] = np.tile(local_dofs, 12)
             data[start : start + 144] = local_stiffness.ravel()
             load[local_dofs] += local_load
+    _add_t4_tractions(problem, load, dofs)
+    return COOMatrix((dofs.size, dofs.size), rows, columns, data), load, dofs
+
+
+def _add_t4_tractions(
+    problem: LinearElastic3DProblem, load: FloatArray, dofs: VectorDofMap
+) -> None:
+    """按既有边界积分语义把 T4 面力累加到调用方载荷。"""
+
+    mesh = problem.mesh
     for condition in problem.traction:
         for face in mesh.boundary_faces(condition.boundary_set):
             local_load = t4_boundary_traction_load(mesh.points[face], condition.value)
             load[dofs.node_dofs(face).ravel()] += local_load
-    return COOMatrix((dofs.size, dofs.size), rows, columns, data), load, dofs
 
 
 def prepare_linear_elasticity_3d_assembly(
@@ -332,6 +341,19 @@ def assemble_linear_elasticity_3d_prepared(
         raise TypeError("T4 预备装配要求 CSRAssemblyPlan。")
     dofs = VectorDofMap(problem.mesh.node_count, 3)
     plan.validate_layout(dofs.size, dofs.cell_dofs(problem.mesh.cells))
+    selected = select_solid_assembly_mode(problem, assembly)
+    if selected == "native" and problem.thread_count == 1:
+        body = _vector_values(problem.body_force, np.zeros((1, 3)), name="Body force")[
+            0
+        ]
+        data, load = assemble_t4_values(
+            problem.mesh.points,
+            problem.mesh.cells,
+            _constitutive_by_cell(problem),
+            body,
+        )
+        _add_t4_tractions(problem, load, dofs)
+        return plan.fill(data), load, dofs
     coo, load, assembled_dofs = assemble_linear_elasticity_3d(
         problem, assembly=assembly
     )

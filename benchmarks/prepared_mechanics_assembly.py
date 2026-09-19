@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""测量 T3/T4 从元素装配到规范 CSR 的冷路径与预备图路径。"""
+"""测量 T3/T4 完整 COO 与无重复索引的预备 CSR 装配路径。"""
 
 from __future__ import annotations
 
@@ -81,7 +81,7 @@ def main() -> int:
                     LinearElasticMaterial(210.0e9, 0.3),
                     body_force=(0.3, -0.2),
                     assembly_mode="native",
-                    thread_count=4,
+                    thread_count=1,
                 )
                 plan = prepare_linear_elasticity_assembly(problem)
                 cold = lambda problem=problem: _cold_t3(problem)
@@ -96,7 +96,7 @@ def main() -> int:
                     mesh,
                     SolidElasticMaterial(210.0e9, 0.3),
                     body_force=(0.3, -0.2, 0.1),
-                    thread_count=4,
+                    thread_count=1,
                 )
                 plan = prepare_linear_elasticity_3d_assembly(problem)
                 cold = lambda problem=problem: _cold_t4(problem)
@@ -119,6 +119,13 @@ def main() -> int:
                     "coo_entry_count": plan.contribution_count,
                     "csr_nnz": plan.nnz,
                     "plan_storage_bytes": plan.storage_nbytes,
+                    "avoided_coo_index_bytes_per_assembly": (
+                        plan.avoided_coo_index_nbytes
+                    ),
+                    "legacy_coo_payload_bytes": plan.contribution_count * 24,
+                    "prepared_contribution_payload_bytes": (
+                        plan.contribution_count * 8
+                    ),
                     "cold_assembly_to_csr_median_seconds": cold_seconds,
                     "prepared_assembly_to_csr_median_seconds": prepared_seconds,
                     "prepared_speedup": cold_seconds / prepared_seconds,
@@ -134,7 +141,7 @@ def main() -> int:
             )
 
     record = {
-        "schema": "agentfem-native.prepared-mechanics-assembly/0.1",
+        "schema": "agentfem-native.prepared-mechanics-assembly/0.2",
         "environment": {
             "agentfem_native": __version__,
             "python": platform.python_version(),
@@ -146,8 +153,9 @@ def main() -> int:
         "repetitions": arguments.repetitions,
         "cases": cases,
         "claim_boundary": (
-            "测量元素装配到规范 CSR 的冷路径与复用图路径；两者仍生成 COO 索引缓冲，"
-            "不包含约束、预条件器或线性求解。"
+            "测量串行 native 元素装配到规范 CSR：冷路径生成完整 COO，预备路径"
+            "复用图且只生成数值贡献与载荷。明确内存差只含两份已消除的 int64 "
+            "索引，不是 RSS；不包含约束、预条件器或线性求解。"
         ),
     }
     arguments.output.parent.mkdir(parents=True, exist_ok=True)

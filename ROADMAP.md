@@ -180,12 +180,15 @@ Gate and maturity boundary.
   记录中，稳态完整约束求解约为冷路径的 2.5×–4.4×，计入一次准备成本后约为
   2.0×–2.8×；解和应变能逐项一致。源提交 `00b7085` 的 Linux 快检
   `34776794443` 已通过；性能仍不外推到其他平台。
-- 剩余：直接元素到 CSR 的内存缩减、SIMD、强预条件器，以及把预备生命周期
+- ABI 1.5 本地候选已完成：串行 native 预备 T3/T4 只生成数值贡献与载荷，
+  每个贡献明确省去 16 字节重复 COO 索引；最大本机记录分别省去 T3 4.72 MB、
+  T4 7.08 MB，最终 CSR 逐位一致。完整 Tier-1 ABI 验收仍待运行。
+- 剩余：最终元素贡献直接写 CSR、多线程预备归并、SIMD、强预条件器，以及把预备生命周期
   纳入版本化力学 Kernel Contract。
 - Ginkgo、PETSc/hypre 或其他宽松许可提供者只允许进入窄接口，并先完成许可、
   平台、确定性和性能证据；它们不拥有有限元语义。
-- 下一主线是力学 Kernel Contract 0.2 与 Gate 2 正式验收，不能再用扩大孤立
-  稀疏功能替代产品闭环。
+- Gate 2 与 Kernel Contract 0.2 已闭环；P3 下一步必须继续服务固定拓扑重复
+  装配/求解主干，不能用扩大孤立稀疏功能替代 AgentFEM 产品流程。
 
 ## AgentFEM integration track — deferred, non-blocking
 
@@ -220,11 +223,10 @@ complete Windows/Linux/macOS Tier-1 acceptance in run `35461748299`. This does
 not claim external validation or production maturity.
 
 2026-09-13 本地科学验收候选已把分散证据收敛为十二项矩阵，并强化 T3/T4 实际
-求解收敛、合法畸变 patch、尺度化残差/平衡和 Agent 可读分析摘要。当前科学
-矩阵 G2-01 至 G2-10 本地通过；力学 JSON Contract 0.2 和最终 Tier-1 Gate
-候选仍未关闭。P3 CPU 并行与 ABI 1.4 可复用图数值回填已完成本地与三平台
-验收；预备装配以及固定矩阵的约束/预条件器复用已形成完整本地候选。2026-09-20
-力学 Kernel Contract 0.2 已完成本地 T3/T4 预检—执行—证据闭环，G2-11 关闭。
+求解收敛、合法畸变 patch、尺度化残差/平衡和 Agent 可读分析摘要。P3 CPU
+并行与 ABI 1.4 可复用图数值回填已完成本地与三平台验收；预备装配以及固定
+矩阵的约束/预条件器复用已形成完整本地候选。2026-09-20 力学 Kernel Contract
+0.2 完成本地 T3/T4 预检—执行—证据闭环，G2-11 关闭。
 源提交 `654fe02` 的 Linux 快检 `35461701061` 与完整 Tier-1 运行
 `35461748299` 已通过：Windows/Linux/macOS 安装态科学测试、三平台 C++20、
 Stable ABI、sanitizer、Rust 对照、产物清单和汇总门禁全部关闭。故 G2-01 至

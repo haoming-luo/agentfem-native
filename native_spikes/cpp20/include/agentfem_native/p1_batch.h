@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define AFN_P1_ABI_VERSION 0x00010004u
+#define AFN_P1_ABI_VERSION 0x00010005u
 
 typedef enum AfnP1Status {
   AFN_P1_SUCCESS = 0,
@@ -56,6 +56,7 @@ AFN_API int afn_p1_diffusion_assemble_cells(
     double* data,
     double* load);
 
+/* ABI 1.5：rows 与 columns 同时为空时，只写 data 与 load。 */
 AFN_API int afn_t3_elasticity_assemble_cells(
     size_t node_count,
     size_t cell_count,
@@ -83,6 +84,7 @@ AFN_API int afn_t3_elasticity_assemble_cells_parallel(
     double* data,
     double* load);
 
+/* ABI 1.5：rows 与 columns 同时为空时，只写 data 与 load。 */
 AFN_API int afn_t4_elasticity_assemble_cells(
     size_t node_count,
     size_t cell_count,

@@ -330,6 +330,8 @@ def native_capabilities() -> dict[str, object]:
                 "prepared_assembly": {
                     "elements": ["T3", "T4"],
                     "maturity": "implemented",
+                    "serial_native_output": "values_and_load_only",
+                    "avoided_index_bytes_per_contribution": 16,
                 },
                 "prepared_solve": {
                     "scope": "fixed_matrix_multiple_rhs",

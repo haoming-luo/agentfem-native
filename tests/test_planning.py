@@ -129,6 +129,16 @@ class PlanningTests(unittest.TestCase):
             ["T3", "T4"],
         )
         self.assertEqual(
+            providers["native_sparse"]["prepared_assembly"]["serial_native_output"],
+            "values_and_load_only",
+        )
+        self.assertEqual(
+            providers["native_sparse"]["prepared_assembly"][
+                "avoided_index_bytes_per_contribution"
+            ],
+            16,
+        )
+        self.assertEqual(
             providers["native_sparse"]["prepared_solve"],
             {
                 "scope": "fixed_matrix_multiple_rhs",

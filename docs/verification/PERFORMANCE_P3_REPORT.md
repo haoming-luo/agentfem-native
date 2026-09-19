@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-14
 
-**Maturity:** implemented and locally verified; hosted-platform evidence pending
+**Maturity:** implemented；ABI 1.4 平台证据通过，ABI 1.5 本地候选待验收
 
 ## Delivered scope
 
@@ -18,8 +18,9 @@
 Scalar CSR is complete for this reference foundation. BSR/block-Jacobi and
 C++20 CSR SpMV were subsequently implemented. The ABI 1.3 deterministic T3/T4
 CPU-parallel candidate and its honest local scaling boundary are recorded in
-[`CPU_PARALLEL_P3_REPORT.md`](CPU_PARALLEL_P3_REPORT.md). Direct element-to-CSR
-memory reduction, SIMD, and stronger preconditioners remain P3 work. ABI 1.3 passed hosted Tier-1
+[`CPU_PARALLEL_P3_REPORT.md`](CPU_PARALLEL_P3_REPORT.md). ABI 1.5 已让串行预备
+T3/T4 省去重复 COO 行列索引；最终元素贡献直接写 CSR、多线程预备归并、SIMD
+和更强预条件器仍是 P3 工作。ABI 1.3 passed hosted Tier-1
 acceptance in run `34752687326`; P3 as a whole is still active.
 
 The subsequent reusable sparse-pattern reference candidate is recorded in
@@ -29,7 +30,9 @@ fill subsequently passed ABI 1.4 Tier-1 acceptance. T3/T4 prepared assembly and
 fixed-matrix repeated constrained solve are now implemented locally; their
 latest evidence is recorded in
 [`PREPARED_CONSTRAINED_SOLVE_REPORT.md`](PREPARED_CONSTRAINED_SOLVE_REPORT.md).
-Direct element-to-CSR memory reduction remains open.
+首个明确内存缩减候选见
+[`INDEX_FREE_PREPARED_ASSEMBLY_P3_REPORT.md`](INDEX_FREE_PREPARED_ASSEMBLY_P3_REPORT.md)。
+它消除了两份 COO 索引，但仍保留贡献数组和映射，因此完整直接 CSR 仍未关闭。
 
 ## Local numerical evidence
 
