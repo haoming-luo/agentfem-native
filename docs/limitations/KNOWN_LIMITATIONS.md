@@ -4,8 +4,9 @@
   experimental 0.x interfaces. Current AF-IR requires an explicit executable
   extension because its mesh summary is not reconstructable. Public AF-IR
   promotion is deferred and does not block Native kernel milestones.
-- Affine 2D triangles and affine 3D tetrahedra exist. Steady scalar P1 diffusion
-  is verified; T3/T4 elasticity is implemented but has not completed Gate 2.
+- 仿射二维三角形和仿射三维四面体已经进入主线。稳态标量 P1 扩散与 Gate 2
+  验收矩阵限定的 T3/T4 基础线性静力范围均为 `verified`；这不扩展到高阶单元、
+  几何非线性或材料非线性。
 - The bounded vectorized path currently supports static scalar/tensor
   conductivity and static scalar sources, including static cell-material
   overrides. Spatial callables deliberately use the reference path.
@@ -15,10 +16,9 @@
   open. SciPy provides optional sparse storage and a direct solve. Boundary
   integration and callable fields remain in Python.
 - Quadrature supports exact polynomial degrees 1 and 2 only.
-- No cross-platform performance superiority, MPI, GPU, or nonlinear global
-  procedure is claimed. T4/3D, linear time integration, restart, and nonlinear
-  material points are implemented at explicitly limited maturity; they do not
-  imply Gate 2, Gate 3, or Gate 4 completion. Local benchmarks are separate.
+- 不声明跨平台性能优势、MPI、GPU 或全局非线性过程。线性时间积分、重启和非线性
+  材料点仍处于明确受限的成熟度，不能据此声称 Gate 3 或 Gate 4 完成；本地性能
+  记录与 Gate 2 科学验证是不同证据。
 - Dynamic constraints currently admit zero fixed values only. Linear dynamics
   has no damping, general prescribed motion, wave benchmark, or adaptive time
   stepping. The internal interchange format has a 64 MiB limit and is not a

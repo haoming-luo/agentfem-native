@@ -142,7 +142,7 @@ class PlannedExecutionTests(unittest.TestCase):
                 "thread_count": 1,
                 "thread_workspace_bytes": 0,
                 "provider": "native_sparse",
-                "claim_maturity": "implemented",
+                "claim_maturity": "verified",
             },
         )
 
@@ -166,6 +166,7 @@ class PlannedExecutionTests(unittest.TestCase):
             receipt_3d.evidence["analysis"]["element_family"],
             "tetrahedron_p1_vector3",
         )
+        self.assertEqual(receipt_3d.evidence["analysis"]["claim_maturity"], "verified")
 
         diagonal = CSRMatrix.from_coo((2, 2), [0, 1], [0, 1], [1.0, 1.0])
         dynamic = LinearSecondOrderSystem(

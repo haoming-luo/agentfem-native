@@ -794,10 +794,10 @@ def run_kernel_request(
         capabilities = [
             "steady_diffusion_p1_triangle:verified",
             "native_sparse_cg:implemented",
-            "linear_elasticity_t3_plane_stress_strain:implemented",
+            "linear_elasticity_t3_plane_stress_strain:verified",
         ]
         if parsed.version == CONTRACT_VERSION:
-            capabilities.append("linear_elasticity_t4_3d:implemented")
+            capabilities.append("linear_elasticity_t4_3d:verified")
         response: dict[str, object] = {
             "contract": CONTRACT_NAME,
             "contract_version": parsed.version,

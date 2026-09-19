@@ -126,12 +126,16 @@ class ContractTests(unittest.TestCase):
         planned = plan_kernel_request(request)
         self.assertEqual(planned["status"], "planned")
         self.assertEqual(planned["plan"]["problem_kind"], "linear_elasticity_2d")  # type: ignore[index]
-        self.assertEqual(planned["plan"]["maturity"], "implemented")  # type: ignore[index]
+        self.assertEqual(planned["plan"]["maturity"], "verified")  # type: ignore[index]
 
         result = run_kernel_request(request)
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["plan"]["digest"], planned["plan"]["digest"])  # type: ignore[index]
         self.assertEqual(result["fields"]["displacement"]["components"], 2)  # type: ignore[index]
+        self.assertIn(
+            "linear_elasticity_t3_plane_stress_strain:verified",
+            result["capabilities"],
+        )
         self.assertLess(result["quantities"]["balance_norm"], 1.0e-12)  # type: ignore[index]
         self.assertEqual(
             result["evidence"]["request_digest"],
@@ -139,7 +143,7 @@ class ContractTests(unittest.TestCase):
         )
         self.assertEqual(
             result["evidence"]["execution"]["claim_maturity"],
-            "implemented",  # type: ignore[index]
+            "verified",  # type: ignore[index]
         )
         json.dumps(result, allow_nan=False, sort_keys=True)
 
@@ -151,6 +155,7 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(result["plan"]["problem_kind"], "linear_elasticity_3d")  # type: ignore[index]
         self.assertEqual(result["fields"]["displacement"]["components"], 3)  # type: ignore[index]
         self.assertEqual(result["fields"]["stress"]["components"], 6)  # type: ignore[index]
+        self.assertIn("linear_elasticity_t4_3d:verified", result["capabilities"])
         self.assertLess(result["quantities"]["balance_norm"], 1.0e-11)  # type: ignore[index]
 
     def test_invalid_mechanics_component_fails_before_assembly_at_exact_path(

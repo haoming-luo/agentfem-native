@@ -508,3 +508,19 @@ license-incompatible code is rejected.
   `implemented`。
 - 外部代码：未查看、复制、翻译、重排或 AI 改写 DOLFINx、Basix、UFL、FFCx、
   Akantu 或其他第三方有限元实现源码。
+
+## Gate 2 三平台验收与成熟度晋级 — 2026-09-20
+
+- 证据源：提交 `654fe02` 本地通过 194 项测试、53 个子用例、Ruff、格式与独立性
+  扫描；普通 Linux 快检 `35461701061` 通过。
+- 平台证据：完整 Tier-1 运行 `35461748299` 通过 Windows x86_64、Linux x86_64、
+  macOS x86_64/arm64 wheel，Python 3.13 Stable ABI 复装科学套件，三平台 C++20
+  合同、sanitizer、Rust/C++/NumPy 对照、产物清单和最终汇总门禁。
+- 数值处置：Intel macOS 揭示两个独立求解的应力恢复存在 binary64 尾差；CSR
+  矩阵和载荷保持逐位相同，测试以 `‖DB‖∞` 传播已接受位移误差界，没有按平台
+  扩大经验容差。修正后同一科学断言在全部 Tier-1 平台通过。
+- 成熟度：G2-01 至 G2-12 关闭，T3/T4 基础线性静力提升为 `verified`。该结论不
+  覆盖外部实验 `validated`、整体内核 `production`、Gate 3、全局非线性、MPI
+  或 GPU。
+- CI 风险：GitHub 提示 `ubuntu-latest` 将于 2026-10-19 起迁移到 Ubuntu 26；
+  此提示不影响本次验收，但需在迁移前执行一次独立的 runner 预检。

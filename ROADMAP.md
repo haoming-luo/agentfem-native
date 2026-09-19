@@ -213,11 +213,11 @@ suite. Readable and C++20 ABI 1.2 T4/3D paths now own tetrahedral topology,
 volume assembly, loads, constraints,
 reactions, energy, recovery, uniaxial/patch/orientation/provider evidence, and a
 second-order manufactured trend. ABI 1.2 has passed hosted Tier-1 acceptance.
-Gate 2 remains `implemented`, not verified: the wider engineering/convergence
-and production CPU-parallel evidence are now present, and Kernel Contract 0.2
-has formed a local T3/T4 product candidate. The current Contract 0.2 source
-revision still requires one complete Tier-1 platform acceptance before the gate
-claim can be reconsidered.
+Gate 2 is `verified` for the bounded T3/T4 basic linear-static scope. The
+engineering/convergence corpus, production CPU-parallel evidence, and Kernel
+Contract 0.2 product boundary are present; source revision `654fe02` passed the
+complete Windows/Linux/macOS Tier-1 acceptance in run `35461748299`. This does
+not claim external validation or production maturity.
 
 2026-09-13 本地科学验收候选已把分散证据收敛为十二项矩阵，并强化 T3/T4 实际
 求解收敛、合法畸变 patch、尺度化残差/平衡和 Agent 可读分析摘要。当前科学
@@ -225,8 +225,11 @@ claim can be reconsidered.
 候选仍未关闭。P3 CPU 并行与 ABI 1.4 可复用图数值回填已完成本地与三平台
 验收；预备装配以及固定矩阵的约束/预条件器复用已形成完整本地候选。2026-09-20
 力学 Kernel Contract 0.2 已完成本地 T3/T4 预检—执行—证据闭环，G2-11 关闭。
-当前源提交的最终 Gate 2 Tier-1 验收仍未运行，因此 Gate 2 继续保持
-`implemented`，不因一次本地成功而提前提升。
+源提交 `654fe02` 的 Linux 快检 `35461701061` 与完整 Tier-1 运行
+`35461748299` 已通过：Windows/Linux/macOS 安装态科学测试、三平台 C++20、
+Stable ABI、sanitizer、Rust 对照、产物清单和汇总门禁全部关闭。故 G2-01 至
+G2-12 完成，T3/T4 基础线性静力范围提升为 `verified`。下一主线转向 Gate 3
+线性动力验证和 P3 剩余内存/向量化工作；非线性、MPI、GPU 仍不进入生产路径。
 
 ## Gate 3 — time and nonlinear lifecycle
 

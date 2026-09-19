@@ -54,8 +54,8 @@ class PlanningTests(unittest.TestCase):
         plan = plan_linear_elasticity(problem)
         self.assertEqual(plan.dof_count, 2 * mesh.node_count)
         self.assertEqual(plan.coo_entry_count, 36 * mesh.cell_count)
-        self.assertEqual(plan.maturity, "implemented")
-        self.assertTrue(plan.warnings)
+        self.assertEqual(plan.maturity, "verified")
+        self.assertFalse(plan.warnings)
         self.assertEqual(plan.thread_count, 1)
         self.assertEqual(plan.thread_workspace_bytes, 0)
 
@@ -99,7 +99,7 @@ class PlanningTests(unittest.TestCase):
             dirichlet=(DirichletCondition("left", 0.0),),
         )
         self.assertIn(
-            "Dense provider",
+            "稠密提供者",
             plan_steady_diffusion(problem, provider="numpy").warnings[0],
         )
 
@@ -110,9 +110,9 @@ class PlanningTests(unittest.TestCase):
         }
         self.assertEqual(scientific["steady_diffusion_p1_triangle"], "verified")
         self.assertEqual(
-            scientific["linear_elasticity_t3_plane_stress_strain"], "implemented"
+            scientific["linear_elasticity_t3_plane_stress_strain"], "verified"
         )
-        self.assertEqual(scientific["linear_elasticity_t4_3d"], "implemented")
+        self.assertEqual(scientific["linear_elasticity_t4_3d"], "verified")
         self.assertEqual(
             scientific["linear_dynamics_central_difference_newmark"], "implemented"
         )

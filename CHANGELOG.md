@@ -4,7 +4,8 @@
 
 - 新增面向 AgentFEM 的 Kernel Contract 0.2：兼容 0.1 热传导，接纳 T3/T4
   线性静力、执行前资源预检、计划一致性执行、位移/应变/应力、力学 VTK 和
-  请求—计划—执行摘要证据；力学成熟度仍保持 `implemented`。
+  请求—计划—执行摘要证据。源提交 `654fe02` 已在 Tier-1 运行 `35461748299`
+  通过完整 Windows/Linux/macOS 验收，T3/T4 基础线性静力提升为 `verified`。
 - 新增 0.2 请求/结果 JSON Schema、T3 可运行示例与 CLI `--plan-only`；不引入
   新依赖，也不把当前 AF-IR 或第三方有限元对象耦合进内核。
 - 新增 C++ ABI 1.3 确定性 T3/T4 CPU 并行装配：显式线程数、静态连续分块、
@@ -36,8 +37,8 @@
   balance ledgers, and a constrained T3 mesh-to-transient test.
 - Added deterministic internal mesh/field interchange and an Agent-native
   plan/execute/explain receipt surface with budgets and honest maturity labels.
-- No public package, Gate 2/3 verification, threading/SIMD, MPI, or GPU claim is
-  made by this candidate.
+- 不声明 Gate 3、整体 P3、MPI、GPU、全局非线性或生产级成熟度；Gate 2 的
+  `verified` 仅覆盖验收矩阵中的 T3/T4 基础线性静力范围。
 - Split CI into cancellable Linux fast checks and explicit Tier-1 acceptance,
   reduced acceptance duplication, shortened artifact retention, and recorded
   the time-boxed September 2026 public-repository policy without changing the

@@ -173,7 +173,7 @@ def plan_steady_diffusion(
     )
     warnings = ()
     if _provider_name(provider) == "numpy_dense":
-        warnings = ("Dense provider is intended only for bounded oracle problems.",)
+        warnings = ("稠密提供者仅用于规模受限的对照问题。",)
     return _plan(
         problem_kind="steady_diffusion",
         maturity="verified",
@@ -192,18 +192,16 @@ def plan_steady_diffusion(
 def plan_linear_elasticity(
     problem: LinearElasticProblem, *, provider: str | object | None = None
 ) -> ExecutionPlan:
-    """Estimate the implemented T3 reference slice without executing it."""
+    """在不执行装配和求解的前提下规划已验证的 T3 线性静力范围。"""
 
-    warnings = (
-        "T3 linear elasticity is implemented but Gate 2 verification is incomplete.",
-    )
+    warnings: tuple[str, ...] = ()
     if _provider_name(provider) == "numpy_dense":
-        warnings += ("Dense provider is intended only for bounded oracle problems.",)
+        warnings += ("稠密提供者仅用于规模受限的对照问题。",)
     assembly = select_elasticity_assembly_mode(problem)
     thread_count = problem.thread_count if assembly == "native" else 1
     return _plan(
         problem_kind="linear_elasticity_2d",
-        maturity="implemented",
+        maturity="verified",
         cell_type="triangle_p1_vector2",
         node_count=problem.mesh.node_count,
         cell_count=problem.mesh.cell_count,
@@ -223,18 +221,16 @@ def plan_linear_elasticity_3d(
     provider: str | object | None = None,
     assembly: SolidAssemblyMode = "auto",
 ) -> ExecutionPlan:
-    """Estimate the T4 three-dimensional vertical slice without execution."""
+    """在不执行装配和求解的前提下规划已验证的 T4 线性静力范围。"""
 
-    warnings = (
-        "T4 linear elasticity is implemented but Gate 2 verification is incomplete.",
-    )
+    warnings: tuple[str, ...] = ()
     if _provider_name(provider) == "numpy_dense":
-        warnings += ("Dense provider is intended only for bounded oracle problems.",)
+        warnings += ("稠密提供者仅用于规模受限的对照问题。",)
     selected = select_solid_assembly_mode(problem, assembly)
     thread_count = problem.thread_count if selected == "native" else 1
     return _plan(
         problem_kind="linear_elasticity_3d",
-        maturity="implemented",
+        maturity="verified",
         cell_type="tetrahedron_p1_vector3",
         node_count=problem.mesh.node_count,
         cell_count=problem.mesh.cell_count,
@@ -272,9 +268,7 @@ def plan_linear_dynamics(system: LinearSecondOrderSystem) -> ExecutionPlan:
         "thread_count": 1,
         "thread_workspace_bytes": 0,
         "structure_digest": _dynamic_structure_digest(system),
-        "warnings": (
-            "Linear dynamics is implemented but Gate 3 verification is incomplete.",
-        ),
+        "warnings": ("线性动力过程已实现，但 Gate 3 验证尚未完成。",),
     }
     digest = sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -299,11 +293,11 @@ def native_capabilities() -> dict[str, object]:
             },
             {
                 "name": "linear_elasticity_t3_plane_stress_strain",
-                "maturity": "implemented",
+                "maturity": "verified",
             },
             {
                 "name": "linear_elasticity_t4_3d",
-                "maturity": "implemented",
+                "maturity": "verified",
             },
             {
                 "name": "linear_dynamics_central_difference_newmark",

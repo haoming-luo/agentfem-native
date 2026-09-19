@@ -1,8 +1,12 @@
-# Kernel Contract 0.2 本地候选报告
+# Kernel Contract 0.2 Gate 2 验收报告
 
 **日期：** 2026-09-20
 
-**成熟度：** 契约本地候选通过；Gate 2 仍为 `implemented`
+**成熟度：** T3/T4 基础线性静力范围为 `verified`
+
+**证据源提交：** `654fe02`
+
+**完整 Tier-1：** [GitHub Actions 运行 `35461748299`](https://github.com/haoming-luo/agentfem-native/actions/runs/35461748299)
 
 **产品对象：** AgentFEM 的未来线性静力计算入口
 
@@ -23,7 +27,8 @@ T3 平面应力/应变、T4 三维线弹性、常体力、位移约束、边/面
 - `run_kernel_request` 使用规划阶段同一个 `ExecutionPlan`，执行器会复核计划与
   问题是否仍一致；
 - 规范请求、计划和执行证据分别拥有 SHA-256，便于 AgentFEM 追踪一次计算；
-- 结果显式返回 `implemented`，成功运行不会被解释为科学验证；
+- T3/T4 结果显式返回 `verified`；该标签来自 Gate 2 全证据链，不由单次成功执行
+  自动产生；
 - 重要新增诊断与说明以中文为主，稳定 JSON 字段和错误码保持英文。
 
 ## 本地证据
@@ -38,12 +43,15 @@ T3 平面应力/应变、T4 三维线弹性、常体力、位移约束、边/面
 - 完整本地套件：194 项测试、53 个子用例通过；Ruff、格式和独立性扫描通过；
 - 依赖：只复用 Python 标准库、NumPy 和已有自主 C++20 内核，没有新增依赖。
 
-## 验收边界
+## 平台验收与边界
 
-本报告只关闭 G2-11 的本地 JSON 产品接纳项。新增 Python 契约、Schema、示例与
-安装包内容仍需在本源提交上通过 Windows x86_64、Linux x86_64、macOS
-x86_64/arm64 Tier-1 验收，才能关闭 G2-12 并评估 Gate 2 是否提升为
-`verified`。既有 ABI 1.4 三平台记录不能替代本次安装包与契约变更的验收。
+源提交 `654fe02` 已在运行 `35461748299` 通过 Windows x86_64、Linux x86_64、
+macOS x86_64/arm64 安装包、Python 3.13 Stable ABI 复装科学套件、三平台 C++20
+合同、sanitizer、Rust/C++/NumPy 对照、产物清单和最终汇总门禁。因此 G2-11 与
+G2-12 均关闭，Gate 2 基础线性静力范围提升为 `verified`。
+
+该结论不覆盖 Gate 3 动力学、全局非线性、接触、MPI、GPU、实验确认或生产级
+可靠性。P3 中更低内存的单元直达 CSR、SIMD 和更强预条件器仍按独立性能路线推进。
 
 ## 独立性
 
