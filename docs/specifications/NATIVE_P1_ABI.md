@@ -1,7 +1,7 @@
 # Native P1/T3/T4 与稀疏 C ABI 1.5
 
-**状态：** ABI 1.4 已通过 Tier-1 三平台验收；ABI 1.5 仅数值预备装配进入
-验收候选。Rust 对照实验仅实现 ABI 1.0 扩散子集。
+**状态：** ABI 1.5 已通过 Tier-1 三平台验收。Rust 对照实验仅实现 ABI 1.0
+扩散子集。
 
 ## 版本与所有权
 
@@ -154,5 +154,8 @@ ABI 1.4 已在源提交 `d172cf6` 的 GitHub Actions 运行 `34757610403` 中通
 Windows x86_64、Linux x86_64、macOS x86_64/arm64 wheel、三平台 C/C++ 合约、
 sanitizer、Python 3.13 Stable ABI 复用、独立 Rust 对照和工件清单验收。
 
-ABI 1.5 在完整 Tier-1 三平台验收通过前保持候选状态；不能复用 ABI 1.4 记录
-冒充本次新指针模式的平台证据。
+ABI 1.5 已在源提交 `28b2ce7` 的 GitHub Actions 运行 `35462761452` 中通过
+Windows x86_64、Linux x86_64、macOS x86_64/arm64 wheel、三平台 C/C++ 契约、
+sanitizer、Python 3.13 Stable ABI 复用、独立 Rust 对照和工件清单验收。这个
+记录只接纳 ABI 与实现的平台边界，不把 P3 整体或本机性能结果提升为跨平台性能
+结论。

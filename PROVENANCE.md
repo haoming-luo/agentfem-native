@@ -543,4 +543,10 @@ license-incompatible code is rejected.
 - 性能与内存：七次中位记录中，T3 阶段倍率为 30.9×–43.7×、T4 为
   11.0×–16.0×；最大档明确省去索引分别为 4.72 MB 和 7.08 MB。倍率包含图复用，
   内存仅为数组载荷，不外推为端到端、RSS 或跨平台声明。
-- 平台边界：ABI 1.5 完整 Tier-1 尚未运行，不能复用 ABI 1.4 证据。
+- 远端证据：源提交 `28b2ce7` 的 Linux 快检 `35462720452` 通过；显式 Tier-1
+  运行 `35462761452` 随后通过 Windows x86_64、Linux x86_64、macOS
+  x86_64/arm64 安装态 wheels、三平台 C/C++ 契约、sanitizer、Python 3.13
+  Stable ABI 复用、Rust/C++/NumPy 对照、工件清单和最终汇总，ABI 1.5 平台
+  边界关闭。
+- CI 风险：运行继续提示 `ubuntu-latest` 将于 2026-10-19 起迁移到 Ubuntu 26；
+  该提示不影响本次通过结论，迁移前仍须按既定计划单独预检。

@@ -30,7 +30,8 @@
   避免递推残差漂移造成虚假收敛或不可达到的无意义迭代。
 - C++ Stable ABI 提升到 1.5：串行预备 T3/T4 可只输出局部数值贡献与载荷，
   不再重复生成已由 `CSRAssemblyPlan` 拥有的 COO 行列索引；普通 COO 与并行
-  入口保持兼容，三平台 ABI 验收待关闭。
+  入口保持兼容。源提交 `28b2ce7` 已在运行 `35462761452` 中通过完整
+  Windows/Linux/macOS Tier-1 验收。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

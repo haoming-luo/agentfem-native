@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-14
 
-**Maturity:** implemented；ABI 1.4 平台证据通过，ABI 1.5 本地候选待验收
+**Maturity:** implemented；ABI 1.5 平台实现证据通过，P3 整体仍在推进
 
 ## Delivered scope
 
@@ -19,9 +19,10 @@ Scalar CSR is complete for this reference foundation. BSR/block-Jacobi and
 C++20 CSR SpMV were subsequently implemented. The ABI 1.3 deterministic T3/T4
 CPU-parallel candidate and its honest local scaling boundary are recorded in
 [`CPU_PARALLEL_P3_REPORT.md`](CPU_PARALLEL_P3_REPORT.md). ABI 1.5 已让串行预备
-T3/T4 省去重复 COO 行列索引；最终元素贡献直接写 CSR、多线程预备归并、SIMD
-和更强预条件器仍是 P3 工作。ABI 1.3 passed hosted Tier-1
-acceptance in run `34752687326`; P3 as a whole is still active.
+T3/T4 省去重复 COO 行列索引，并在运行 `35462761452` 通过 Tier-1；最终元素
+贡献直接写 CSR、多线程预备归并、SIMD 和更强预条件器仍是 P3 工作。ABI 1.3
+passed hosted Tier-1 acceptance in run `34752687326`; P3 as a whole is still
+active.
 
 The subsequent reusable sparse-pattern reference candidate is recorded in
 [`SPARSE_PATTERN_P3_REPORT.md`](SPARSE_PATTERN_P3_REPORT.md). It separates

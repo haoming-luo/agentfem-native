@@ -1,8 +1,12 @@
-# P3 ABI 1.5 无重复 COO 索引预备装配候选报告
+# P3 ABI 1.5 无重复 COO 索引预备装配验收报告
 
 **日期：** 2026-09-20
 
-**成熟度：** `implemented` 本地候选；Tier-1 三平台 ABI 验收待运行
+**成熟度：** `implemented`；ABI 1.5 三平台实现边界已验收，P3 整体仍未关闭
+
+- **源提交：** `28b2ce7`
+- **Linux 快检：** [GitHub Actions `35462720452`](https://github.com/haoming-luo/agentfem-native/actions/runs/35462720452)
+- **完整 Tier-1：** [GitHub Actions `35462761452`](https://github.com/haoming-luo/agentfem-native/actions/runs/35462761452)
 
 ## 产品结论
 
@@ -23,6 +27,9 @@ AgentFEM 的计划所有权边界均保持不变。
 - AddressSanitizer/UndefinedBehaviorSanitizer 与 C11 头文件编译通过；
 - macOS arm64 `cp311-abi3` wheel 严格构建并在隔离环境安装，安装态 ABI 1.5
   T3 预备装配冒烟通过。
+- Windows x86_64、Linux x86_64、macOS x86_64/arm64 安装态 wheels、三平台
+  C/C++ 契约、sanitizer、Python 3.13 Stable ABI 复用、Rust/C++/NumPy 对照、
+  工件清单与验收汇总在运行 `35462761452` 中全部通过。
 
 ## macOS arm64 本机记录
 
@@ -47,5 +54,5 @@ AgentFEM 的计划所有权边界均保持不变。
 - 多线程预备装配仍生成完整 COO，避免未经规格化的共享 CSR 归并；
 - 贡献数组、映射、材料数据、CSR 结果、载荷和求解器工作区仍存在；
 - 最终元素直接 CSR、SIMD 和更强预条件器仍是 P3 后续项；
-- ABI 1.5 必须通过 Windows x86_64、Linux x86_64、macOS x86_64/arm64 完整
-  Tier-1 后才能关闭平台边界。
+- ABI 1.5 平台边界已经关闭；性能只在 macOS arm64 测量，因此没有跨平台速度
+  或 RSS 结论。

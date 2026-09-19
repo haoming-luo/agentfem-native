@@ -49,7 +49,8 @@ Windows、macOS 和 Linux 都是一等发布目标；三者共享同一公开契
 构建和独立性检查，不维护不同物理分支。本地开发负责 macOS，GitHub CI 负责
 Windows、Linux 以及最终 Tier-1 权威验收。Gate 2 证据源提交 `654fe02` 已在
 GitHub Actions 运行 `35461748299` 通过完整 Windows/Linux/macOS 验收；ABI 1.5
-无重复索引增量仍待自己的 Tier-1 验收。CI wheel 只是短期安装测试工件，不是公开发布包；项目仍快速迭代，
+源提交 `28b2ce7` 也已在运行 `35462761452` 通过完整三平台验收。CI wheel 只是
+短期安装测试工件，不是公开发布包；项目仍快速迭代，
 尚未发布到 PyPI 或 GitHub Releases。
 
 The GitHub repository is temporarily public through September 2026 to avoid
