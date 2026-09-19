@@ -2,8 +2,8 @@
 
 - **日期：** 2026-09-20
 - **成熟度：** `implemented` 本地增量；不提升 Gate 3 整体成熟度
-- **最新源提交：** `7fac770`
-- **Linux 快检：** [GitHub Actions `35463558192`](https://github.com/haoming-luo/agentfem-native/actions/runs/35463558192)
+- **最新源提交：** `c1b3c9f`
+- **Linux 快检：** [GitHub Actions `35463705055`](https://github.com/haoming-luo/agentfem-native/actions/runs/35463705055)
 
 ## 产品结论
 
@@ -80,8 +80,8 @@ dt_safe = 2 / sqrt(lambda_bound)
 - 一致质量继续被中心差分拒绝，防止把隐式质量系统误送入显式路径；
 - 超过保守上限的时间步以中文诊断返回请求值、上限和比值；
 - 受约束 T3 仍保持固定自由度为零并恢复完整反力历史。
-- 200 项安装态数学/提供者测试、格式、可移植契约示例和独立性扫描在 Linux
-  快检 `35463558192` 中通过；本增量未改变 C ABI，不重复执行刚通过的 Tier-1
+- 201 项安装态数学/提供者测试、格式、可移植契约示例和独立性扫描在 Linux
+  快检 `35463705055` 中通过；本增量未改变 C ABI，不重复执行刚通过的 Tier-1
   平台矩阵。
 
 ## Newmark 固定有效矩阵复用
