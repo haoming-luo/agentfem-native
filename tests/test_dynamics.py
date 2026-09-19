@@ -112,6 +112,64 @@ def _t3_bar_lowest_frequency(nx: int) -> float:
     return float(np.sqrt(np.linalg.eigvalsh(transformed)[0]))
 
 
+def _t3_pulse_evidence(nx: int) -> tuple[float, float]:
+    """在边界反射前用两个传感点估计 T3 局部脉冲传播速度。"""
+
+    mesh = unit_square_triangles(nx, 1)
+    problem = LinearElasticProblem(
+        mesh,
+        LinearElasticMaterial(100.0, 0.25),
+        dirichlet=(
+            DisplacementCondition("left", "x", 0.0),
+            DisplacementCondition("boundary", "y", 0.0),
+        ),
+    )
+    initial = np.zeros((mesh.node_count, 2), dtype=np.float64)
+    x_coordinates = mesh.points[:, 0]
+    initial[:, 0] = np.exp(-0.5 * ((x_coordinates - 0.2) / 0.04) ** 2)
+    initial[mesh.nodes("left"), 0] = 0.0
+    probe, _ = build_t3_linear_dynamics(
+        problem,
+        2.0,
+        time_step=1.0e-4,
+        steps=1,
+        initial_displacement=initial,
+        lumped_mass=True,
+    )
+    safe_time_step = central_difference_safe_time_step(probe)
+    end_time = 0.085
+    steps = int(np.ceil(end_time / (0.2 * safe_time_step)))
+    system, constrained = build_t3_linear_dynamics(
+        problem,
+        2.0,
+        time_step=end_time / steps,
+        steps=steps,
+        initial_displacement=initial,
+        lumped_mass=True,
+    )
+    result = integrate_constrained_linear_dynamics(system, constrained)
+    exact_speed = np.sqrt((100.0 / (1.0 - 0.25**2)) / 2.0)
+    arrivals = []
+    for sensor_x in (0.5, 0.75):
+        node = int(
+            np.flatnonzero(
+                np.isclose(x_coordinates, sensor_x) & np.isclose(mesh.points[:, 1], 0.0)
+            )[0]
+        )
+        expected = (sensor_x - 0.2) / exact_speed
+        window = np.flatnonzero(
+            (result.times > 0.65 * expected) & (result.times < 1.35 * expected)
+        )
+        signal = np.abs(result.displacement[:, 2 * node])
+        arrivals.append(float(result.times[window[np.argmax(signal[window])]]))
+    measured_speed = 0.25 / (arrivals[1] - arrivals[0])
+    relative_energy_drift = float(
+        np.max(np.abs(result.total_energy - result.total_energy[0]))
+        / result.total_energy[0]
+    )
+    return measured_speed, relative_energy_drift
+
+
 class T3MassTests(unittest.TestCase):
     def test_consistent_and_lumped_mass_preserve_total_mass(self) -> None:
         mesh = unit_square_triangles(2)
@@ -305,6 +363,18 @@ class LinearDynamicsTests(unittest.TestCase):
             np.abs(result.total_energy - result.total_energy[0])
         ) / float(result.total_energy[0])
         self.assertLess(relative_drift, 2.0e-3)
+
+    def test_t3_local_pulse_speed_converges_before_reflection(self) -> None:
+        exact_speed = np.sqrt((100.0 / (1.0 - 0.25**2)) / 2.0)
+        coarse_speed, coarse_energy_drift = _t3_pulse_evidence(32)
+        fine_speed, fine_energy_drift = _t3_pulse_evidence(64)
+        coarse_error = abs(coarse_speed - exact_speed) / exact_speed
+        fine_error = abs(fine_speed - exact_speed) / exact_speed
+        self.assertLess(coarse_error, 0.04)
+        self.assertLess(fine_error, 0.02)
+        self.assertLess(fine_error, 0.65 * coarse_error)
+        self.assertLess(coarse_energy_drift, 0.005)
+        self.assertLess(fine_energy_drift, 0.002)
 
     def test_explicit_method_rejects_consistent_mass(self) -> None:
         mass = CSRMatrix.from_coo(
