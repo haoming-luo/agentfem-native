@@ -497,22 +497,31 @@ class LinearElasticitySolveTests(unittest.TestCase):
             float(np.max(np.abs(cold_result.displacements))),
             float(np.max(np.abs(prepared_result.displacements))),
         )
-        stress_scale = max(
-            1.0,
-            float(np.max(np.abs(cold_result.cell_stress))),
-            float(np.max(np.abs(prepared_result.cell_stress))),
+        displacement_atol = 256.0 * np.finfo(np.float64).eps * displacement_scale
+        # 应力不是独立求解量，而是由 sigma = D B u 恢复。故应力允许误差必须由
+        # 已接受的位移误差经恢复算子传播，不能按应力结果尺度任意放宽。
+        recovery_norm = max(
+            float(
+                np.linalg.norm(
+                    problem.material.constitutive_matrix
+                    @ p1_strain_displacement(mesh.points[cell]),
+                    ord=np.inf,
+                )
+            )
+            for cell in mesh.cells
         )
+        stress_atol = recovery_norm * displacement_atol
         np.testing.assert_allclose(
             prepared_result.displacements,
             cold_result.displacements,
             rtol=0.0,
-            atol=256.0 * np.finfo(np.float64).eps * displacement_scale,
+            atol=displacement_atol,
         )
         np.testing.assert_allclose(
             prepared_result.cell_stress,
             cold_result.cell_stress,
             rtol=0.0,
-            atol=256.0 * np.finfo(np.float64).eps * stress_scale,
+            atol=stress_atol,
         )
         self.assertAlmostEqual(
             prepared_result.strain_energy,

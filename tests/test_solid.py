@@ -418,22 +418,31 @@ class LinearElastic3DTests(unittest.TestCase):
             float(np.max(np.abs(cold_result.displacements))),
             float(np.max(np.abs(prepared_result.displacements))),
         )
-        stress_scale = max(
-            1.0,
-            float(np.max(np.abs(cold_result.cell_stress))),
-            float(np.max(np.abs(prepared_result.cell_stress))),
+        displacement_atol = 256.0 * np.finfo(np.float64).eps * displacement_scale
+        # 三维应力同样通过 sigma = D B u 恢复；以恢复算子无穷范数传播
+        # 位移误差，保持平台无关的数学边界，而不是为某个平台扩大经验容差。
+        recovery_norm = max(
+            float(
+                np.linalg.norm(
+                    problem.material.constitutive_matrix
+                    @ t4_strain_displacement(mesh.points[cell]),
+                    ord=np.inf,
+                )
+            )
+            for cell in mesh.cells
         )
+        stress_atol = recovery_norm * displacement_atol
         np.testing.assert_allclose(
             prepared_result.displacements,
             cold_result.displacements,
             rtol=0.0,
-            atol=256.0 * np.finfo(np.float64).eps * displacement_scale,
+            atol=displacement_atol,
         )
         np.testing.assert_allclose(
             prepared_result.cell_stress,
             cold_result.cell_stress,
             rtol=0.0,
-            atol=256.0 * np.finfo(np.float64).eps * stress_scale,
+            atol=stress_atol,
         )
         self.assertAlmostEqual(
             prepared_result.strain_energy,
