@@ -1,39 +1,51 @@
-# Linear second-order dynamics specification
+# 线性二阶动力学规格
 
-Status: Gate 3 linear lifecycle implementation target.
+**状态：** Gate 3 线性生命周期已实现；科学验证仍在收敛
 
-## Governing system
+## 控制方程与所有权
 
-The admitted system is `M a(t) + K u(t) = f(t)` with finite symmetric positive-
-definite mass and stiffness on the active DOFs. The state is time, displacement,
-velocity, and acceleration. Every state transition creates new owned arrays;
-checkpoint data never aliases live integration storage.
+允许的系统为 `M a(t) + K u(t) = f(t)`。自由自由度上的质量与刚度必须有限、
+对称且正定；状态包含时间、位移、速度和加速度。每次状态转换都创建调用方拥有
+的新数组，检查点不得与正在积分的存储别名。
 
-T3 consistent mass is `rho t A/12 * [[2,1,1],[1,2,1],[1,1,2]]` independently
-for each displacement component. Row-sum lumping gives `rho t A/3` per nodal
-component.
+T3 一致质量为 `rho t A/12 * [[2,1,1],[1,2,1],[1,1,2]]`，两个位移分量相互
+独立；行和集中质量在每个节点分量上为 `rho t A/3`。
 
-## Procedures
+## 时间积分程序
 
-The explicit procedure is velocity-Verlet, algebraically equivalent to a
-centered second-order displacement update. It requires an explicitly diagonal,
-strictly positive mass. The implicit procedure is Newmark average acceleration
-with `beta=1/4`, `gamma=1/2`, solving
-`(M + beta dt^2 K) a[n+1] = f[n+1] - K u_predict`.
+显式程序使用速度 Verlet，与二阶中心位移更新代数等价。它要求质量矩阵是显式
+正对角矩阵。隐式程序使用 Newmark 平均加速度，`beta=1/4`、`gamma=1/2`，每步
+求解：
 
-Both procedures record displacement, velocity, acceleration, kinetic energy,
-strain energy, total mechanical energy, trapezoidal external work, and the
-balance `E(t)-E(0)-W_ext(t)` at every accepted state. Zero fixed DOFs are
-eliminated through principal sparse submatrices; the full state is recovered
-and reactions are evaluated as `M a + K u - f`. Invalid or non-finite inputs,
-non-positive mass, solver nonconvergence, and inconsistent restart state fail
-explicitly.
+```text
+(M + beta dt^2 K) a[n+1] = f[n+1] - K u_predict
+```
 
-## Checkpoint and evidence
+两种程序在每个接受状态记录位移、速度、加速度、动能、应变能、总机械能、梯形
+外力功，以及 `E(t)-E(0)-W_ext(t)` 平衡。零值固定自由度通过稀疏主子矩阵消元；
+随后恢复完整状态，并以 `M a + K u - f` 计算反力。无效或非有限输入、非正质量、
+线性求解不收敛和不一致重启都必须明确失败。
 
-A checkpoint contains method, time, step, state arrays, and a deterministic
-SHA-256 digest over canonical numeric bytes and metadata. Restart must reproduce
-an uninterrupted trajectory. Minimum evidence is an undamped SDOF oscillator,
-time-convergence trend, bounded energy behavior, explicit/implicit comparison,
-exact restart equivalence, a constrained finite-element transient, reaction
-recovery, and an external-work balance case.
+## 显式稳定步长
+
+对正对角质量，以
+
+```text
+lambda_bound = max_i sum_j |K_ij| / M_ii
+dt_safe = 2 / sqrt(lambda_bound)
+```
+
+给出充分、保守的中心差分稳定上限。`lambda_bound` 是 `M^-1 K` 的诱导无穷范数
+上界，不是精确最大特征值。执行前必须拒绝 `dt > dt_safe`，并以中文诊断报告
+请求时间步、保守上限和比值。`lambda_bound == 0` 表示没有有限刚度步长约束。
+约束系统在自由自由度消元后计算该上限；Newmark 不受此显式限制。
+
+## 检查点与证据
+
+检查点包含积分方法、时间、步号、状态数组，以及这些元数据和规范数值字节的
+确定性 SHA-256。显式和隐式重启都必须逐位复现不中断轨迹。
+
+最小证据包括：无阻尼单自由度振子、二阶时间收敛、能量有界、显式/隐式对照、
+精确重启、受约束 T3 离散模态、反力恢复、外力功平衡，以及不安全显式时间步的
+失败语义。波传播、长时色散、隐式大规模求解复用和三平台验收仍是 Gate 3 后续
+边界。

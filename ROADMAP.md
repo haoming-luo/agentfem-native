@@ -235,22 +235,22 @@ Stable ABI、sanitizer、Rust 对照、产物清单和汇总门禁全部关闭�
 G2-12 完成，T3/T4 基础线性静力范围提升为 `verified`。下一主线转向 Gate 3
 线性动力验证和 P3 剩余内存/向量化工作；非线性、MPI、GPU 仍不进入生产路径。
 
-## Gate 3 — time and nonlinear lifecycle
+## Gate 3 — 时间与非线性生命周期
 
-Scope: consistent and lumped mass, central difference, implicit increments,
-Newton residual/tangent, begin/commit/rollback, adaptive cutback,
-checkpoint/restart, and energy/external-work ledgers.
+范围：一致/集中质量、中心差分、隐式增量、Newton 残差/切线、开始/提交/回滚、
+自适应减步、检查点/重启，以及能量与外力功账本。
 
-Evidence: SDOF dynamics, wave propagation, time convergence, energy behavior,
-forced cutback, and restart equivalence across supported platforms.
+证据：单自由度动力学、波传播、时间收敛、能量行为、强制减步，以及受支持平台
+上的重启等价。
 
-Current state: the linear foundation is implemented locally: T3 consistent and
-lumped mass, centered explicit integration, Newmark average acceleration,
-energy histories, accepted-state progress/cancellation/budgets, and digest-bound
-restart, zero fixed-DOF elimination, reactions, external-work/energy ledgers,
-and a constrained T3 transient. SDOF order/energy and exact restart evidence
-pass. Wave propagation, implicit checkpoint coverage, time-refinement evidence,
-and wider constrained-FEM platform evidence remain before Gate 3 verification.
+当前状态：线性基础已在本地实现 T3 一致/集中质量、中心差分、Newmark 平均
+加速度、能量历史、接受状态进度/取消/预算、摘要绑定重启、零固定自由度消元、
+反力、外力功/能量账本和受约束 T3 瞬态。单自由度阶数/能量与精确重启证据通过。
+新增保守显式稳定预检，在状态推进前拒绝可证明不安全的时间步；受约束 T3
+离散模态显示中心差分与 Newmark 二阶时间细化，隐式检查点重启逐位一致。证据见
+[`GATE_3_LINEAR_DYNAMICS_INCREMENT.md`](docs/verification/GATE_3_LINEAR_DYNAMICS_INCREMENT.md)。
+波传播、长时色散、隐式有效矩阵复用和更广的受约束有限元平台证据仍是 Gate 3
+验证前的缺口。
 
 ## Gate 4 — nonlinear solids and material state
 

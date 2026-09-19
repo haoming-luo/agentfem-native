@@ -245,13 +245,30 @@ def plan_linear_elasticity_3d(
 
 
 def plan_linear_dynamics(system: LinearSecondOrderSystem) -> ExecutionPlan:
-    """Estimate an owned linear second-order procedure without executing it."""
+    """不执行时间积分，估计自主线性二阶动力过程。"""
+
+    from .dynamics import central_difference_safe_time_step
 
     dofs = system.stiffness.shape[0]
     entries = system.stiffness.nnz + system.mass.nnz
     csr_upper = entries
     csr_bytes = 16 * entries + 16 * (dofs + 1)
     history_bytes = 8 * (system.steps + 1) * (3 * dofs + 4)
+    warnings = ["线性动力过程已实现，但 Gate 3 验证尚未完成。"]
+    try:
+        safe_time_step = central_difference_safe_time_step(system)
+    except ValueError:
+        warnings.append("质量矩阵不是正对角形式；中心差分不可用，可选择 Newmark。")
+    else:
+        if np.isfinite(safe_time_step):
+            ratio = system.time_step / safe_time_step
+            warnings.append(
+                "中心差分时间步预检："
+                f"请求 {system.time_step:.17g}，保守上限 {safe_time_step:.17g}，"
+                f"比值 {ratio:.6g}。"
+            )
+        else:
+            warnings.append("中心差分预检未发现有限刚度步长约束。")
     payload: dict[str, object] = {
         "problem_kind": "linear_dynamics",
         "maturity": "implemented",
@@ -268,7 +285,7 @@ def plan_linear_dynamics(system: LinearSecondOrderSystem) -> ExecutionPlan:
         "thread_count": 1,
         "thread_workspace_bytes": 0,
         "structure_digest": _dynamic_structure_digest(system),
-        "warnings": ("线性动力过程已实现，但 Gate 3 验证尚未完成。",),
+        "warnings": tuple(warnings),
     }
     digest = sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -302,6 +319,7 @@ def native_capabilities() -> dict[str, object]:
             {
                 "name": "linear_dynamics_central_difference_newmark",
                 "maturity": "implemented",
+                "explicit_stability_preflight": "conservative_infinity_norm_bound",
             },
         ],
         "execution": [

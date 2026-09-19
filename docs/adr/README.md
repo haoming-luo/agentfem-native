@@ -47,3 +47,5 @@ owner review. Superseded decisions remain in history.
   Contract 0.2 把 T3/T4 预检、执行和证据闭环交给 AgentFEM
 - [ADR-0027](0027-index-free-prepared-assembly.md)：ABI 1.5 让串行预备 T3/T4
   只生成数值贡献与载荷，避免重复 COO 行列索引
+- [ADR-0028](0028-explicit-dynamics-step-preflight.md)：用可审计的保守谱上界在
+  执行前拒绝不安全的中心差分时间步

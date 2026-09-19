@@ -116,6 +116,15 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual(
             scientific["linear_dynamics_central_difference_newmark"], "implemented"
         )
+        dynamics = next(
+            item
+            for item in capabilities["scientific"]
+            if item["name"] == "linear_dynamics_central_difference_newmark"
+        )
+        self.assertEqual(
+            dynamics["explicit_stability_preflight"],
+            "conservative_infinity_norm_bound",
+        )
         providers = {item["name"]: item for item in capabilities["linear_algebra"]}
         self.assertTrue(providers["native_sparse"]["available"])
         self.assertIn("block_jacobi", providers["native_sparse"]["preconditioners"])
@@ -173,6 +182,8 @@ class PlanningTests(unittest.TestCase):
             dynamics.peak_bytes_upper_bound, dynamics.csr_bytes_upper_bound
         )
         self.assertEqual(len(dynamics.digest), 64)
+        self.assertIn("保守上限 2", dynamics.warnings[1])
+        self.assertIn("比值 0.05", dynamics.warnings[1])
 
 
 if __name__ == "__main__":

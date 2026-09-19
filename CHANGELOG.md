@@ -32,6 +32,9 @@
   不再重复生成已由 `CSRAssemblyPlan` 拥有的 COO 行列索引；普通 COO 与并行
   入口保持兼容。源提交 `28b2ce7` 已在运行 `35462761452` 中通过完整
   Windows/Linux/macOS Tier-1 验收。
+- 新增中心差分保守稳定步长预检：计划层报告请求值、上限和比值，执行层在状态
+  推进前拒绝超限时间步；新增受约束 T3 显式/隐式二阶时间细化与 Newmark 逐位
+  重启证据，不据此提前提升 Gate 3。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

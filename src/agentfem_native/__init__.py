@@ -30,6 +30,7 @@ from .dynamics import (
     LinearSecondOrderSystem,
     assemble_t3_mass,
     build_t3_linear_dynamics,
+    central_difference_safe_time_step,
     integrate_constrained_linear_dynamics,
     integrate_linear_dynamics,
 )
@@ -198,6 +199,7 @@ __all__ = (
     "assemble_linear_elasticity_prepared",
     "assemble_t3_mass",
     "build_t3_linear_dynamics",
+    "central_difference_safe_time_step",
     "conjugate_gradient",
     "enforce_plan_budget",
     "execute_plan",

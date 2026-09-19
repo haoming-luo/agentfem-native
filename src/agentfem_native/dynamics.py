@@ -274,6 +274,28 @@ def _principal_submatrix(matrix: CSRMatrix, active: NDArray[np.int64]) -> CSRMat
     )
 
 
+def central_difference_safe_time_step(system: LinearSecondOrderSystem) -> float:
+    """返回中心差分的保守稳定步长上限，不执行特征值求解。"""
+
+    size = system.stiffness.shape[0]
+    diagonal = system.mass.diagonal()
+    if system.mass.nnz != size or np.any(diagonal <= 0.0):
+        raise ValueError("中心差分要求正的对角质量矩阵（diagonal mass）。")
+    row_bounds = np.empty(size, dtype=np.float64)
+    for row in range(size):
+        start = int(system.stiffness.indptr[row])
+        stop = int(system.stiffness.indptr[row + 1])
+        row_bounds[row] = (
+            np.sum(np.abs(system.stiffness.data[start:stop])) / diagonal[row]
+        )
+    spectral_bound = float(np.max(row_bounds, initial=0.0))
+    if not np.isfinite(spectral_bound):
+        raise ValueError("中心差分稳定上界计算得到非有限值。")
+    if spectral_bound == 0.0:
+        return float("inf")
+    return 2.0 / np.sqrt(spectral_bound)
+
+
 def integrate_linear_dynamics(
     system: LinearSecondOrderSystem,
     *,
@@ -286,6 +308,15 @@ def integrate_linear_dynamics(
     if method not in {"central_difference", "newmark_average_acceleration"}:
         raise ValueError(f"Unknown linear dynamics method {method!r}.")
     size = system.stiffness.shape[0]
+    dt = system.time_step
+    if method == "central_difference":
+        safe_time_step = central_difference_safe_time_step(system)
+        if dt > safe_time_step:
+            ratio = dt / safe_time_step
+            raise ValueError(
+                "中心差分时间步超过保守稳定上限："
+                f"请求 {dt:.17g}，上限 {safe_time_step:.17g}，比值 {ratio:.6g}。"
+            )
     if restart is not None:
         if restart.method != method:
             raise ValueError("Checkpoint integrator does not match requested method.")
@@ -321,13 +352,8 @@ def integrate_linear_dynamics(
         system.mass, system.stiffness, displacement, velocity
     )
     previous_load = _load_at(system.load, start_time, size)
-    dt = system.time_step
     if method == "central_difference":
         diagonal = system.mass.diagonal()
-        if system.mass.nnz != size or np.any(diagonal <= 0.0):
-            raise ValueError(
-                "Central difference requires a positive diagonal mass matrix."
-            )
         inverse_mass = 1.0 / diagonal
         for index in range(1, count):
             if context is not None:

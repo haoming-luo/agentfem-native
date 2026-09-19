@@ -10,6 +10,7 @@ from agentfem_native.dynamics import (
     LinearSecondOrderSystem,
     assemble_t3_mass,
     build_t3_linear_dynamics,
+    central_difference_safe_time_step,
     integrate_constrained_linear_dynamics,
     integrate_linear_dynamics,
 )
@@ -39,6 +40,47 @@ def _oscillator(time_step: float, steps: int) -> LinearSecondOrderSystem:
         initial_displacement=np.ones(1),
         initial_velocity=np.zeros(1),
     )
+
+
+def _t3_eigenmode_system(
+    time_step: float, steps: int, *, lumped_mass: bool
+) -> tuple[LinearSecondOrderSystem, np.ndarray, float]:
+    """构造受约束 T3 的最低离散模态，作为时间积分的独立小型对照。"""
+
+    mesh = unit_square_triangles(2)
+    problem = LinearElasticProblem(
+        mesh,
+        LinearElasticMaterial(100.0, 0.25),
+        dirichlet=(DisplacementCondition("left", None, (0.0, 0.0)),),
+    )
+    prototype, constrained = build_t3_linear_dynamics(
+        problem,
+        2.0,
+        time_step=time_step,
+        steps=steps,
+        lumped_mass=lumped_mass,
+    )
+    active = np.setdiff1d(np.arange(prototype.stiffness.shape[0]), constrained)
+    stiffness = prototype.stiffness.to_dense()[np.ix_(active, active)]
+    mass = prototype.mass.to_dense()[np.ix_(active, active)]
+    cholesky = np.linalg.cholesky(mass)
+    left_scaled = np.linalg.solve(cholesky, stiffness)
+    transformed = np.linalg.solve(cholesky, left_scaled.T).T
+    eigenvalues, eigenvectors = np.linalg.eigh(transformed)
+    mode = np.linalg.solve(cholesky.T, eigenvectors[:, 0])
+    mode /= np.max(np.abs(mode))
+    initial = np.zeros(prototype.stiffness.shape[0], dtype=np.float64)
+    initial[active] = mode
+    system, rebuilt_constrained = build_t3_linear_dynamics(
+        problem,
+        2.0,
+        time_step=time_step,
+        steps=steps,
+        initial_displacement=initial,
+        lumped_mass=lumped_mass,
+    )
+    np.testing.assert_array_equal(rebuilt_constrained, constrained)
+    return system, constrained, float(np.sqrt(eigenvalues[0]))
 
 
 class T3MassTests(unittest.TestCase):
@@ -93,6 +135,27 @@ class T3MassTests(unittest.TestCase):
 
 
 class LinearDynamicsTests(unittest.TestCase):
+    def test_explicit_safe_step_is_reported_and_unsafe_step_fails(self) -> None:
+        self.assertEqual(central_difference_safe_time_step(_oscillator(0.1, 1)), 1.0)
+        load_calls: list[float] = []
+
+        def tracked_load(time: float) -> np.ndarray:
+            load_calls.append(time)
+            return np.zeros(1)
+
+        unsafe = LinearSecondOrderSystem(
+            stiffness=_diagonal((4.0,)),
+            mass=_diagonal((1.0,)),
+            load=tracked_load,
+            time_step=1.01,
+            steps=1,
+            initial_displacement=np.ones(1),
+            initial_velocity=np.zeros(1),
+        )
+        with self.assertRaisesRegex(ValueError, "超过保守稳定上限"):
+            integrate_linear_dynamics(unsafe)
+        self.assertEqual(load_calls, [])
+
     def test_central_difference_has_second_order_error_trend(self) -> None:
         coarse = integrate_linear_dynamics(_oscillator(0.1, 10))
         fine = integrate_linear_dynamics(_oscillator(0.05, 20))
@@ -139,6 +202,42 @@ class LinearDynamicsTests(unittest.TestCase):
         np.testing.assert_array_equal(resumed.displacement, complete.displacement[40:])
         np.testing.assert_array_equal(resumed.velocity, complete.velocity[40:])
         np.testing.assert_array_equal(resumed.acceleration, complete.acceleration[40:])
+
+    def test_newmark_checkpoint_reproduces_uninterrupted_trajectory(self) -> None:
+        method = "newmark_average_acceleration"
+        complete = integrate_linear_dynamics(_oscillator(0.02, 100), method=method)
+        first = integrate_linear_dynamics(_oscillator(0.02, 40), method=method)
+        resumed = integrate_linear_dynamics(
+            _oscillator(0.02, 60), method=method, restart=first.checkpoint()
+        )
+        np.testing.assert_array_equal(resumed.displacement, complete.displacement[40:])
+        np.testing.assert_array_equal(resumed.velocity, complete.velocity[40:])
+        np.testing.assert_array_equal(resumed.acceleration, complete.acceleration[40:])
+
+    def test_t3_discrete_mode_has_second_order_time_refinement(self) -> None:
+        for method, lumped_mass in (
+            ("central_difference", True),
+            ("newmark_average_acceleration", False),
+        ):
+            with self.subTest(method=method):
+                _probe, _, frequency = _t3_eigenmode_system(
+                    0.001, 1, lumped_mass=lumped_mass
+                )
+                duration = 0.5 * np.pi / frequency
+                errors = []
+                for steps in (20, 40):
+                    system, constrained, rebuilt_frequency = _t3_eigenmode_system(
+                        duration / steps, steps, lumped_mass=lumped_mass
+                    )
+                    self.assertAlmostEqual(rebuilt_frequency, frequency)
+                    result = integrate_constrained_linear_dynamics(
+                        system, constrained, method=method
+                    )
+                    exact = np.zeros_like(system.initial_displacement)
+                    errors.append(
+                        float(np.linalg.norm(result.displacement[-1] - exact))
+                    )
+                self.assertLess(errors[1], errors[0] / 3.5)
 
     def test_explicit_method_rejects_consistent_mass(self) -> None:
         mass = CSRMatrix.from_coo(
