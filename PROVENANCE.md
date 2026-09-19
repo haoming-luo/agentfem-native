@@ -522,5 +522,7 @@ license-incompatible code is rejected.
 - 成熟度：G2-01 至 G2-12 关闭，T3/T4 基础线性静力提升为 `verified`。该结论不
   覆盖外部实验 `validated`、整体内核 `production`、Gate 3、全局非线性、MPI
   或 GPU。
+- 晋级提交：只改变成熟度元数据、中文说明和证据文档的提交 `6b54a49` 通过 Linux
+  快检 `35462064592`；数值与平台实现未变，按 CI 治理不重复完整 Tier-1。
 - CI 风险：GitHub 提示 `ubuntu-latest` 将于 2026-10-19 起迁移到 Ubuntu 26；
   此提示不影响本次验收，但需在迁移前执行一次独立的 runner 预检。
