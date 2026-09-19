@@ -37,7 +37,8 @@
   重启证据。源提交 `fd869b1` 的 Linux 快检 `35463268931` 通过；不据此提前
   提升 Gate 3。
 - 新增固定—自由 T3 纵向波模态频率二阶空间趋势，以及集中质量显式积分十周期
-  的有界能量证据；局部脉冲传播与宽频色散仍明确留在后续 Gate 3 增量。
+  的有界能量证据；源提交 `39eb09c` 的 Linux 快检 `35463412190` 通过。局部
+  脉冲传播与宽频色散仍明确留在后续 Gate 3 增量。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

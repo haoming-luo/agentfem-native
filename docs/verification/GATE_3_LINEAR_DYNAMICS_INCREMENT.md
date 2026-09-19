@@ -2,8 +2,8 @@
 
 - **日期：** 2026-09-20
 - **成熟度：** `implemented` 本地增量；不提升 Gate 3 整体成熟度
-- **源提交：** `fd869b1`
-- **Linux 快检：** [GitHub Actions `35463268931`](https://github.com/haoming-luo/agentfem-native/actions/runs/35463268931)
+- **最新源提交：** `39eb09c`
+- **Linux 快检：** [GitHub Actions `35463412190`](https://github.com/haoming-luo/agentfem-native/actions/runs/35463412190)
 
 ## 产品结论
 
@@ -66,8 +66,8 @@ dt_safe = 2 / sqrt(lambda_bound)
 - 一致质量继续被中心差分拒绝，防止把隐式质量系统误送入显式路径；
 - 超过保守上限的时间步以中文诊断返回请求值、上限和比值；
 - 受约束 T3 仍保持固定自由度为零并恢复完整反力历史。
-- 197 项安装态数学/提供者测试、格式、可移植契约示例和独立性扫描在 Linux
-  快检 `35463268931` 中通过；本增量未改变 C ABI，不重复执行刚通过的 Tier-1
+- 199 项安装态数学/提供者测试、格式、可移植契约示例和独立性扫描在 Linux
+  快检 `35463412190` 中通过；本增量未改变 C ABI，不重复执行刚通过的 Tier-1
   平台矩阵。
 
 ## 后续边界
