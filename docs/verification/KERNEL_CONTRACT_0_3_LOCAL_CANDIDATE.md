@@ -12,6 +12,8 @@
 
 **完整 Tier-1：** [运行 `35482705887`](https://github.com/haoming-luo/agentfem-native/actions/runs/35482705887)
 
+**成熟度晋级：** 提交 `628349c`；[Linux 复核 `35483046496`](https://github.com/haoming-luo/agentfem-native/actions/runs/35483046496)
+
 ## 产品结论
 
 AgentFEM 现在可以通过一个版本化、JSON 安全且不依赖当前 AF-IR 内部形状的边界，

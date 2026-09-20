@@ -10,6 +10,8 @@
 
 **完整 Tier-1：** [GitHub Actions 运行 `35482705887`](https://github.com/haoming-luo/agentfem-native/actions/runs/35482705887)
 
+**成熟度晋级提交：** `628349c`；[Linux 复核 `35483046496`](https://github.com/haoming-luo/agentfem-native/actions/runs/35483046496)
+
 ## 验收范围
 
 本矩阵只验收 AgentFEM Native 当前自主掌握的无阻尼线性二阶系统：

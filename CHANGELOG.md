@@ -56,7 +56,8 @@
   审查和摘要绑定检查点续算；0.1 热传导和 0.2 静力兼容测试保持通过。
 - 源提交 `a630793` 的 Linux 快检 `35482650495` 与完整 Tier-1 `35482705887`
   通过 Windows/Linux/macOS 安装态验收，G3L-01 至 G3L-12 关闭；验收矩阵限定
-  的无阻尼 T3 线性动力范围提升为 `verified`。
+  的无阻尼 T3 线性动力范围在提交 `628349c` 提升为 `verified`，其 Linux 复核
+  `35483046496` 通过。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.
