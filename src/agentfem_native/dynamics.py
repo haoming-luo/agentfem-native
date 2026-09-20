@@ -28,6 +28,19 @@ TimeLoad = ArrayLike | Callable[[float], ArrayLike]
 TimeScale = float | Callable[[float], float]
 
 
+class UnsafeTimeStepError(ValueError):
+    """中心差分请求超过保守稳定上限。"""
+
+    def __init__(self, requested: float, safe: float) -> None:
+        self.requested = requested
+        self.safe = safe
+        self.ratio = requested / safe
+        super().__init__(
+            "中心差分时间步超过保守稳定上限："
+            f"请求 {requested:.17g}，上限 {safe:.17g}，比值 {self.ratio:.6g}。"
+        )
+
+
 def assemble_t3_mass(
     mesh: TriangularMesh,
     density: float,
@@ -323,11 +336,7 @@ def integrate_linear_dynamics(
     if method == "central_difference":
         safe_time_step = central_difference_safe_time_step(system)
         if dt > safe_time_step:
-            ratio = dt / safe_time_step
-            raise ValueError(
-                "中心差分时间步超过保守稳定上限："
-                f"请求 {dt:.17g}，上限 {safe_time_step:.17g}，比值 {ratio:.6g}。"
-            )
+            raise UnsafeTimeStepError(dt, safe_time_step)
     if restart is not None:
         if restart.method != method:
             raise ValueError("Checkpoint integrator does not match requested method.")
@@ -495,8 +504,10 @@ def integrate_constrained_linear_dynamics(
     if restart is not None:
         if restart.displacement.shape != (size,):
             raise ValueError("Checkpoint size does not match constrained dynamics.")
-        if np.any(restart.displacement[constrained] != 0.0) or np.any(
-            restart.velocity[constrained] != 0.0
+        if (
+            np.any(restart.displacement[constrained] != 0.0)
+            or np.any(restart.velocity[constrained] != 0.0)
+            or np.any(restart.acceleration[constrained] != 0.0)
         ):
             raise ValueError("Checkpoint violates zero fixed dynamic DOFs.")
         reduced_restart = DynamicCheckpoint(

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentfem.org/schemas/native/kernel-result-0.3.schema.json",
+  "title": "AgentFEM Native Kernel Result 0.3",
+  "description": "带资源计划、动力检查点、成熟度和摘要证据的 Native 计算结果。",
+  "type": "object",
+  "required": ["contract", "contract_version", "request_id", "status", "backend"],
+  "properties": {
+    "contract": {"const": "agentfem.native-kernel-request"},
+    "contract_version": {"const": "0.3.0"},
+    "request_id": {"type": "string"},
+    "status": {"enum": ["success", "failed", "planned"]},
+    "backend": {"type": "object", "required": ["name"], "properties": {"name": {"const": "native"}, "version": {"type": "string"}}, "additionalProperties": false},
+    "request_digest": {"$ref": "#/$defs/digest"},
+    "capabilities": {"type": "array", "items": {"type": "string"}},
+    "quantities": {"type": "object", "additionalProperties": {"oneOf": [{"type": "number"}, {"type": "array", "items": {"type": "number"}}]}},
+    "fields": {"type": "object"},
+    "checkpoint": {"$ref": "#/$defs/checkpoint"},
+    "artifacts": {"type": "array", "items": {"type": "object", "required": ["name", "path", "sha256"], "properties": {"name": {"type": "string"}, "path": {"type": "string"}, "sha256": {"$ref": "#/$defs/digest"}}, "additionalProperties": false}},
+    "runtime": {"type": "object"},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "plan": {"type": "object"},
+    "evidence": {"type": "object", "required": ["request_digest", "execution_digest", "execution"], "properties": {"request_digest": {"$ref": "#/$defs/digest"}, "execution_digest": {"$ref": "#/$defs/digest"}, "execution": {"type": "object"}}, "additionalProperties": false},
+    "error": {"type": "object", "required": ["code", "message", "path"], "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string"}, "path": {"type": "string"}, "retryable": {"type": "boolean"}, "remediations": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "success"}}, "required": ["status"]}, "then": {"required": ["capabilities", "quantities", "fields", "artifacts", "runtime", "warnings", "plan", "evidence"]}},
+    {"if": {"properties": {"status": {"const": "planned"}}, "required": ["status"]}, "then": {"required": ["request_digest", "plan", "warnings"]}},
+    {"if": {"properties": {"status": {"const": "failed"}}, "required": ["status"]}, "then": {"required": ["error"]}}
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "checkpoint": {"type": "object", "required": ["method", "step", "time", "displacement", "velocity", "acceleration", "digest"], "properties": {"method": {"enum": ["central_difference", "newmark_average_acceleration"]}, "step": {"type": "integer", "minimum": 0}, "time": {"type": "number"}, "displacement": {"type": "array", "items": {"type": "number"}}, "velocity": {"type": "array", "items": {"type": "number"}}, "acceleration": {"type": "array", "items": {"type": "number"}}, "digest": {"$ref": "#/$defs/digest"}}, "additionalProperties": false}
+  }
+}

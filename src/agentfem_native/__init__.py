@@ -28,6 +28,7 @@ from .dynamics import (
     DynamicCheckpoint,
     LinearDynamicsResult,
     LinearSecondOrderSystem,
+    UnsafeTimeStepError,
     assemble_t3_mass,
     build_t3_linear_dynamics,
     central_difference_safe_time_step,
@@ -50,7 +51,12 @@ from .elasticity import (
     prepare_linear_elasticity_assembly,
     solve_linear_elasticity,
 )
-from .execution import ExecutionReceipt, execute_plan, explain_execution
+from .execution import (
+    ExecutionReceipt,
+    execute_plan,
+    execute_t3_linear_dynamics_plan,
+    explain_execution,
+)
 from .geometry import AffineTriangleMap
 from .interchange import (
     INTERCHANGE_FORMAT,
@@ -75,6 +81,7 @@ from .planning import (
     plan_linear_elasticity,
     plan_linear_elasticity_3d,
     plan_steady_diffusion,
+    plan_t3_linear_dynamics,
 )
 from .providers import (
     LinearSolveError,
@@ -192,6 +199,7 @@ __all__ = (
     "TractionCondition",
     "TriangleQuadrature",
     "TriangularMesh",
+    "UnsafeTimeStepError",
     "VectorDofMap",
     "assemble_linear_elasticity",
     "assemble_linear_elasticity_3d",
@@ -203,6 +211,7 @@ __all__ = (
     "conjugate_gradient",
     "enforce_plan_budget",
     "execute_plan",
+    "execute_t3_linear_dynamics_plan",
     "explain_execution",
     "inside_reference_triangle",
     "integrate_constrained_linear_dynamics",
@@ -226,6 +235,7 @@ __all__ = (
     "plan_linear_elasticity",
     "plan_linear_elasticity_3d",
     "plan_steady_diffusion",
+    "plan_t3_linear_dynamics",
     "prepare_linear_elasticity_3d_assembly",
     "prepare_linear_elasticity_assembly",
     "read_native_bundle",

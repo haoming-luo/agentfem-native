@@ -263,8 +263,9 @@ Newmark 固定有效矩阵及其 Jacobi 预条件器已移到循环外准备，`
 按 CI 治理复用 ABI 1.5 平台验收，不重复运行完整矩阵。
 有限验收清单见
 [`GATE_3_LINEAR_ACCEPTANCE_MATRIX.md`](docs/verification/GATE_3_LINEAR_ACCEPTANCE_MATRIX.md)：
-G3L-01 至 G3L-10 已有本地证据，版本化动力学 Kernel Contract（G3L-11）和最新
-候选的三平台安装态验收（G3L-12）尚未关闭。非零/时变位移约束与阻尼明确不在
+G3L-01 至 G3L-10 已有本地证据；Kernel Contract 0.3 已形成 G3L-11 本地候选，
+支持无装配预检、预算/取消、结果证据和确定性重启。最新候选的三平台安装态验收
+（G3L-12）尚未关闭。非零/时变位移约束与阻尼明确不在
 本次无阻尼、零位移固定约束的线性验收范围；隐式初值与更强预条件器属于 P3
 优化，不冒充科学成熟度门禁。
 

@@ -13,9 +13,12 @@ import numpy as np
 from . import __version__
 from .diffusion import DiffusionResult, SteadyDiffusionProblem, solve_steady_diffusion
 from .dynamics import (
+    DynamicCheckpoint,
     Integrator,
     LinearDynamicsResult,
     LinearSecondOrderSystem,
+    TimeScale,
+    build_t3_linear_dynamics,
     integrate_constrained_linear_dynamics,
     integrate_linear_dynamics,
 )
@@ -31,6 +34,7 @@ from .planning import (
     plan_linear_elasticity,
     plan_linear_elasticity_3d,
     plan_steady_diffusion,
+    plan_t3_linear_dynamics,
 )
 from .runtime import ExecutionContext, NativeExecutionError, enforce_plan_budget
 from .solid import (
@@ -184,6 +188,7 @@ def _analysis_evidence(plan: ExecutionPlan) -> dict[str, object]:
         "linear_elasticity_2d": 2,
         "linear_elasticity_3d": 3,
         "linear_dynamics": None,
+        "linear_dynamics_t3": 2,
     }
     return {
         "problem_kind": plan.problem_kind,
@@ -222,6 +227,7 @@ def execute_plan(
     context: ExecutionContext | None = None,
     method: Integrator = "central_difference",
     constrained_dofs: object | None = None,
+    restart: DynamicCheckpoint | None = None,
 ) -> ExecutionReceipt:
     """Validate a resource plan, execute it, and return result evidence.
 
@@ -267,16 +273,74 @@ def execute_plan(
             context.check("linear_elasticity_3d", 1, 1, enforce_step_budget=False)
     elif isinstance(request, LinearSecondOrderSystem):
         if constrained_dofs is None:
-            result = integrate_linear_dynamics(request, method=method, context=context)
+            result = integrate_linear_dynamics(
+                request, method=method, restart=restart, context=context
+            )
         else:
             result = integrate_constrained_linear_dynamics(
                 request,
                 constrained_dofs,
                 method=method,
+                restart=restart,
                 context=context,
             )
     else:
         raise TypeError(f"Unsupported execution request {type(request).__name__!r}.")
+    return _receipt(plan, result)
+
+
+def execute_t3_linear_dynamics_plan(
+    plan: ExecutionPlan,
+    problem: LinearElasticProblem,
+    density: float,
+    *,
+    time_step: float,
+    steps: int,
+    initial_displacement: object | None = None,
+    initial_velocity: object | None = None,
+    load_scale: TimeScale = 1.0,
+    lumped_mass: bool = True,
+    method: Integrator = "central_difference",
+    restart: DynamicCheckpoint | None = None,
+    context: ExecutionContext | None = None,
+) -> ExecutionReceipt:
+    """验证无装配计划后，构建并执行限定的 T3 线性动力过程。"""
+
+    expected = plan_t3_linear_dynamics(
+        problem,
+        density,
+        time_step=time_step,
+        steps=steps,
+        lumped_mass=lumped_mass,
+    )
+    if expected != plan:
+        raise NativeExecutionError(
+            "动力请求不再匹配已接受的资源计划。",
+            code="execution.plan_mismatch",
+            path="plan.digest",
+            retryable=True,
+            remediations=("replan_request",),
+        )
+    if context is not None:
+        enforce_plan_budget(plan, context.budget)
+        context.check("linear_dynamics", 0, steps)
+    system, constrained = build_t3_linear_dynamics(
+        problem,
+        density,
+        time_step=time_step,
+        steps=steps,
+        initial_displacement=initial_displacement,
+        initial_velocity=initial_velocity,
+        load_scale=load_scale,
+        lumped_mass=lumped_mass,
+    )
+    result = integrate_constrained_linear_dynamics(
+        system,
+        constrained,
+        method=method,
+        restart=restart,
+        context=context,
+    )
     return _receipt(plan, result)
 
 

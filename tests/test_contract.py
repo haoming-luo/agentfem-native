@@ -6,10 +6,13 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from agentfem_native import (
     CONTRACT_NAME,
     CONTRACT_VERSION,
+    CancellationToken,
+    ExecutionContext,
     KernelRequestError,
     kernel_request_schema,
     kernel_result_schema,
@@ -94,7 +97,144 @@ def mechanics_request(dimension: int) -> dict[str, object]:
     }
 
 
+def dynamics_request(*, steps: int = 6) -> dict[str, object]:
+    mesh = unit_square_two_triangles()
+    initial_displacement = [[0.01 * float(point[0]), 0.0] for point in mesh.points]
+    return {
+        "contract": CONTRACT_NAME,
+        "contract_version": CONTRACT_VERSION,
+        "request_id": "dynamics-2d-001",
+        "study": {
+            "analysis": "linear_transient",
+            "physics": "solid_mechanics",
+            "dimension": 2,
+        },
+        "mesh": {
+            "points": mesh.points.tolist(),
+            "cells": mesh.cells.tolist(),
+            "node_sets": {
+                name: values.tolist() for name, values in mesh.node_sets.items()
+            },
+            "boundary_sets": {
+                name: values.tolist() for name, values in mesh.boundary_sets.items()
+            },
+            "cell_sets": {},
+        },
+        "physics": {
+            "material": {"young_modulus": 10.0, "poisson_ratio": 0.25},
+            "density": 1.0,
+            "body_force": [0.0, 0.0],
+        },
+        "dirichlet": [{"node_set": "left", "value": [0.0, 0.0]}],
+        "traction": [],
+        "materials": [],
+        "procedure": {
+            "kind": "linear_dynamics",
+            "linear_algebra": "native_sparse",
+            "assembly": "reference",
+            "integrator": "newmark_average_acceleration",
+            "time_step": 0.01,
+            "steps": steps,
+            "mass": "consistent",
+            "load_scale": {"times": [0.0, 1.0], "values": [0.0, 0.0]},
+        },
+        "initial_state": {
+            "displacement": initial_displacement,
+            "velocity": [[0.0, 0.0] for _ in mesh.points],
+        },
+        "outputs": {},
+    }
+
+
 class ContractTests(unittest.TestCase):
+    def test_0_3_dynamics_plan_execute_and_checkpoint_are_json_safe(self) -> None:
+        request = dynamics_request()
+        with patch(
+            "agentfem_native.execution.build_t3_linear_dynamics",
+            side_effect=AssertionError("动力预检不得装配矩阵"),
+        ):
+            planned = plan_kernel_request(request)
+        self.assertEqual(planned["status"], "planned")
+        self.assertEqual(planned["plan"]["problem_kind"], "linear_dynamics_t3")  # type: ignore[index]
+        self.assertEqual(planned["plan"]["maturity"], "implemented")  # type: ignore[index]
+
+        result = run_kernel_request(request)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["plan"]["digest"], planned["plan"]["digest"])  # type: ignore[index]
+        self.assertEqual(len(result["quantities"]["times"]), 7)  # type: ignore[index]
+        self.assertEqual(result["checkpoint"]["step"], 6)  # type: ignore[index]
+        self.assertEqual(len(result["checkpoint"]["digest"]), 64)  # type: ignore[index]
+        self.assertEqual(
+            result["evidence"]["execution"]["analysis"]["spatial_dimension"],  # type: ignore[index]
+            2,
+        )
+        json.dumps(result, allow_nan=False, sort_keys=True)
+
+    def test_0_3_dynamics_checkpoint_restarts_exactly(self) -> None:
+        uninterrupted = run_kernel_request(dynamics_request(steps=6))
+        first = run_kernel_request(dynamics_request(steps=3))
+        restarted_request = dynamics_request(steps=3)
+        restarted_request.pop("initial_state")
+        restarted_request["restart"] = first["checkpoint"]
+        restarted_request["procedure"]["load_scale"] = {  # type: ignore[index]
+            "times": [0.0, 1.0],
+            "values": [0.0, 0.0],
+        }
+        restarted = run_kernel_request(restarted_request)
+        self.assertEqual(restarted["status"], "success")
+        self.assertEqual(
+            restarted["fields"]["displacement"]["values"][-1],  # type: ignore[index]
+            uninterrupted["fields"]["displacement"]["values"][-1],  # type: ignore[index]
+        )
+        self.assertEqual(restarted["checkpoint"]["step"], 6)  # type: ignore[index]
+
+    def test_0_3_dynamics_budget_and_cancellation_are_structured(self) -> None:
+        request = dynamics_request(steps=3)
+        request["execution"] = {"budget": {"maximum_steps": 2}}
+        planned = plan_kernel_request(request)
+        self.assertEqual(planned["status"], "failed")
+        self.assertEqual(planned["error"]["code"], "budget.steps_exceeded")  # type: ignore[index]
+        self.assertEqual(planned["error"]["path"], "procedure.steps")  # type: ignore[index]
+
+        request.pop("execution")
+        cancellation = CancellationToken()
+        cancellation.cancel()
+        cancelled = run_kernel_request(
+            request, context=ExecutionContext(cancellation=cancellation)
+        )
+        self.assertEqual(cancelled["status"], "failed")
+        self.assertEqual(cancelled["error"]["code"], "execution.cancelled")  # type: ignore[index]
+        self.assertTrue(cancelled["error"]["retryable"])  # type: ignore[index]
+
+    def test_0_3_dynamics_rejects_unsafe_contract_combinations(self) -> None:
+        request = dynamics_request()
+        request["procedure"]["integrator"] = "central_difference"  # type: ignore[index]
+        result = run_kernel_request(request)
+        self.assertEqual(result["error"]["code"], "unsupported_mass")  # type: ignore[index]
+        self.assertEqual(result["error"]["path"], "$.procedure.mass")  # type: ignore[index]
+
+        request["procedure"]["mass"] = "lumped"  # type: ignore[index]
+        request["procedure"]["time_step"] = 100.0  # type: ignore[index]
+        request["procedure"]["load_scale"] = {  # type: ignore[index]
+            "times": [0.0, 1000.0],
+            "values": [0.0, 0.0],
+        }
+        result = run_kernel_request(request)
+        self.assertEqual(result["error"]["code"], "unsafe_time_step")  # type: ignore[index]
+        self.assertEqual(result["error"]["path"], "$.procedure.time_step")  # type: ignore[index]
+
+        request = dynamics_request()
+        request["procedure"]["load_scale"] = {  # type: ignore[index]
+            "times": [0.02, 1.0],
+            "values": [0.0, 0.0],
+        }
+        result = plan_kernel_request(request)
+        self.assertEqual(result["error"]["code"], "load_curve_range")  # type: ignore[index]
+        self.assertEqual(
+            result["error"]["path"],
+            "$.procedure.load_scale.times",  # type: ignore[index]
+        )
+
     def test_success_result_is_deterministic_json_safe_envelope(self) -> None:
         result = run_kernel_request(request_record())
         self.assertEqual(result["status"], "success")
@@ -120,6 +260,25 @@ class ContractTests(unittest.TestCase):
         planned = plan_kernel_request(request)
         self.assertEqual(planned["status"], "failed")
         self.assertEqual(planned["error"]["path"], "$.contract_version")  # type: ignore[index]
+
+    def test_contract_0_2_static_mechanics_remains_backward_compatible(self) -> None:
+        request = mechanics_request(2)
+        request["contract_version"] = "0.2.0"
+        planned = plan_kernel_request(request)
+        result = run_kernel_request(request)
+        self.assertEqual(planned["status"], "planned")
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["contract_version"], "0.2.0")
+        self.assertEqual(result["plan"]["digest"], planned["plan"]["digest"])  # type: ignore[index]
+        cancellation = CancellationToken()
+        cancellation.cancel()
+        failed = run_kernel_request(
+            request, context=ExecutionContext(cancellation=cancellation)
+        )
+        self.assertEqual(
+            set(failed["error"]),  # type: ignore[arg-type]
+            {"code", "message", "path"},
+        )
 
     def test_t3_preflight_and_execution_share_one_resource_plan(self) -> None:
         request = mechanics_request(2)
@@ -284,6 +443,14 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(
             kernel_result_schema("0.1.0")["properties"]["contract_version"]["const"],  # type: ignore[index]
             "0.1.0",
+        )
+        self.assertEqual(
+            kernel_request_schema("0.2.0")["properties"]["contract_version"]["const"],  # type: ignore[index]
+            "0.2.0",
+        )
+        self.assertEqual(
+            kernel_result_schema("0.2.0")["properties"]["contract_version"]["const"],  # type: ignore[index]
+            "0.2.0",
         )
 
     def test_mechanics_vtk_artifact_is_portable_and_digest_bound(self) -> None:

@@ -51,3 +51,5 @@ owner review. Superseded decisions remain in history.
   执行前拒绝不安全的中心差分时间步
 - [ADR-0029](0029-newmark-effective-matrix-reuse.md)：固定时间步 Newmark 在循环
   外准备并复用有效矩阵的数值预条件器
+- [ADR-0030](0030-linear-dynamics-kernel-contract-0-3.md)：用向后兼容的 Kernel
+  Contract 0.3 接入限定 T3 线性动力学、资源预算和确定性重启

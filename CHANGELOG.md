@@ -51,6 +51,9 @@
 - 冻结 Gate 3 限定线性动力学的 12 项验收矩阵：G3L-01 至 G3L-10 已有本地
   证据，版本化动力学 Kernel Contract 与最新候选三平台验收是仅余门禁；阻尼、
   非零/时变位移约束和非线性不混入当前声明。
+- 新增向后兼容的 Kernel Contract 0.3 本地候选：AgentFEM 可对限定 T3 线性
+  动力进行无装配资源预检、预算/取消控制、显式或 Newmark 执行、能量/反力
+  审查和摘要绑定检查点续算；0.1 热传导和 0.2 静力兼容测试保持通过。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

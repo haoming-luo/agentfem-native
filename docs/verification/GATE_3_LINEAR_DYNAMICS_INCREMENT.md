@@ -121,7 +121,9 @@ dt_safe = 2 / sqrt(lambda_bound)
 
 有限验收范围现已写入
 [`GATE_3_LINEAR_ACCEPTANCE_MATRIX.md`](GATE_3_LINEAR_ACCEPTANCE_MATRIX.md)。
-G3L-01 至 G3L-10 已有本地证据；下一增量优先关闭面向 AgentFEM 的版本化动力学
-Kernel Contract（G3L-11），随后才为冻结候选运行一次完整三平台验收（G3L-12）。
+G3L-01 至 G3L-10 已有本地证据；面向 AgentFEM 的 Kernel Contract 0.3 已形成
+G3L-11 本地候选，覆盖无装配预检、预算/取消、结果证据和检查点续算，并兼容
+0.1/0.2。源提交和 Linux 快检冻结后，只为该候选运行一次完整三平台验收
+（G3L-12）。
 隐式初值复用和 IC(0) 保留为 P3 优化，不阻塞本表限定的科学正确性；全局非线性、
 MPI 和 GPU 不进入这个阶段。

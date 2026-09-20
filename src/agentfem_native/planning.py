@@ -13,7 +13,7 @@ import numpy as np
 
 from . import __version__
 from .assembly import select_assembly_mode
-from .elasticity import select_elasticity_assembly_mode
+from .elasticity import LinearElasticProblem, select_elasticity_assembly_mode
 from .native import native_kernel_identity
 from .providers import ScipySparseProvider
 from .solid import SolidAssemblyMode, select_solid_assembly_mode
@@ -21,7 +21,6 @@ from .solid import SolidAssemblyMode, select_solid_assembly_mode
 if TYPE_CHECKING:
     from .diffusion import SteadyDiffusionProblem
     from .dynamics import LinearSecondOrderSystem
-    from .elasticity import LinearElasticProblem
     from .mesh import TriangularMesh
     from .solid import LinearElastic3DProblem
     from .volume_mesh import TetrahedralMesh
@@ -253,7 +252,7 @@ def plan_linear_dynamics(system: LinearSecondOrderSystem) -> ExecutionPlan:
     entries = system.stiffness.nnz + system.mass.nnz
     csr_upper = entries
     csr_bytes = 16 * entries + 16 * (dofs + 1)
-    history_bytes = 8 * (system.steps + 1) * (3 * dofs + 4)
+    history_bytes = 8 * (system.steps + 1) * (4 * dofs + 6)
     warnings = ["线性动力过程已实现，但 Gate 3 验证尚未完成。"]
     try:
         safe_time_step = central_difference_safe_time_step(system)
@@ -293,6 +292,73 @@ def plan_linear_dynamics(system: LinearSecondOrderSystem) -> ExecutionPlan:
     return ExecutionPlan(**payload, digest=digest)  # type: ignore[arg-type]
 
 
+def plan_t3_linear_dynamics(
+    problem: LinearElasticProblem,
+    density: float,
+    *,
+    time_step: float,
+    steps: int,
+    lumped_mass: bool,
+) -> ExecutionPlan:
+    """不装配矩阵，规划由自主 T3 语义生成的线性动力过程。"""
+
+    if not isinstance(problem, LinearElasticProblem):
+        raise TypeError("T3 动力规划需要 LinearElasticProblem。")
+    if not np.isfinite(density) or density <= 0.0:
+        raise ValueError("动力密度必须为正有限数。")
+    if not np.isfinite(time_step) or time_step <= 0.0:
+        raise ValueError("动力时间步必须为正有限数。")
+    if isinstance(steps, bool) or not isinstance(steps, int) or steps < 0:
+        raise ValueError("动力步数必须为非负整数。")
+    dofs = 2 * problem.mesh.node_count
+    stiffness_entries = 36 * problem.mesh.cell_count
+    mass_entries = dofs if lumped_mass else 18 * problem.mesh.cell_count
+    entries = stiffness_entries + mass_entries
+    csr_bytes = 16 * entries + 16 * (dofs + 1)
+    history_bytes = 8 * (steps + 1) * (4 * dofs + 6)
+    coo_bytes = 24 * entries
+    assembly = select_elasticity_assembly_mode(problem)
+    thread_count = problem.thread_count if assembly == "native" else 1
+    thread_workspace_bytes = 8 * dofs * thread_count if thread_count > 1 else 0
+    digest = sha256()
+    digest.update(_mesh_structure_digest(problem.mesh).encode("ascii"))
+    _digest_array(digest, (density, time_step), "<f8")
+    _digest_array(digest, (steps, int(lumped_mass)), "<i8")
+    structure_digest = digest.hexdigest()
+    warnings = (
+        "线性动力能力为 implemented；完整 Gate 3 验收尚未关闭。",
+        "中心差分稳定上限在预算通过并装配自由自由度算子后复核。",
+    )
+    payload: dict[str, object] = {
+        "problem_kind": "linear_dynamics_t3",
+        "maturity": "implemented",
+        "cell_type": "triangle_p1_vector2",
+        "node_count": problem.mesh.node_count,
+        "cell_count": problem.mesh.cell_count,
+        "dof_count": dofs,
+        "coo_entry_count": entries,
+        "csr_nnz_upper_bound": entries,
+        "csr_bytes_upper_bound": csr_bytes,
+        "peak_bytes_upper_bound": (
+            csr_bytes
+            + coo_bytes
+            + history_bytes
+            + 12 * 8 * dofs
+            + thread_workspace_bytes
+        ),
+        "provider": "native_sparse",
+        "assembly_mode": assembly,
+        "thread_count": thread_count,
+        "thread_workspace_bytes": thread_workspace_bytes,
+        "structure_digest": structure_digest,
+        "warnings": warnings,
+    }
+    plan_digest = sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return ExecutionPlan(**payload, digest=plan_digest)  # type: ignore[arg-type]
+
+
 def native_capabilities() -> dict[str, object]:
     """不导入可选提供者，返回当前安装环境的运行能力。"""
 
@@ -319,6 +385,7 @@ def native_capabilities() -> dict[str, object]:
             {
                 "name": "linear_dynamics_central_difference_newmark",
                 "maturity": "implemented",
+                "kernel_contract": "0.3.0",
                 "explicit_stability_preflight": "conservative_infinity_norm_bound",
                 "implicit_effective_matrix_reuse": True,
             },

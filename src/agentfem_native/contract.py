@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import platform
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 from importlib import resources
 from pathlib import Path, PurePosixPath
@@ -22,6 +22,14 @@ from .diffusion import (
     NeumannCondition,
     SteadyDiffusionProblem,
 )
+from .dynamics import (
+    DynamicCheckpoint,
+    Integrator,
+    LinearDynamicsResult,
+    LinearSecondOrderSystem,
+    TimeScale,
+    UnsafeTimeStepError,
+)
 from .elasticity import (
     DisplacementCondition,
     ElasticCellMaterial,
@@ -30,17 +38,30 @@ from .elasticity import (
     LinearElasticResult,
     TractionCondition,
 )
-from .execution import ExecutableRequest, ExecutionResult, execute_plan
+from .execution import (
+    ExecutableRequest,
+    ExecutionResult,
+    execute_plan,
+    execute_t3_linear_dynamics_plan,
+)
 from .mesh import TriangularMesh
 from .native import native_kernel_identity
 from .planning import (
     ExecutionPlan,
+    plan_linear_dynamics,
     plan_linear_elasticity,
     plan_linear_elasticity_3d,
     plan_steady_diffusion,
+    plan_t3_linear_dynamics,
 )
 from .providers import LinearSolveError, ProviderUnavailableError
 from .results import write_legacy_vtk, write_mechanics_vtk
+from .runtime import (
+    ExecutionContext,
+    NativeExecutionError,
+    ResourceBudget,
+    enforce_plan_budget,
+)
 from .solid import (
     LinearElastic3DProblem,
     LinearElastic3DResult,
@@ -54,8 +75,8 @@ from .volume_mesh import TetrahedralMesh
 
 JsonMapping: TypeAlias = Mapping[str, object]
 CONTRACT_NAME = "agentfem.native-kernel-request"
-CONTRACT_VERSION = "0.2.0"
-SUPPORTED_CONTRACT_VERSIONS = ("0.1.0", CONTRACT_VERSION)
+CONTRACT_VERSION = "0.3.0"
+SUPPORTED_CONTRACT_VERSIONS = ("0.1.0", "0.2.0", CONTRACT_VERSION)
 AFIR_SCHEMA = "agentfem.af-ir"
 AFIR_VERSION = "0.1.0"
 
@@ -73,14 +94,31 @@ class KernelRequestError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
+class _DynamicContractInput:
+    """保持无装配的 T3 动力输入，直到资源计划被接受。"""
+
+    problem: LinearElasticProblem
+    density: float
+    time_step: float
+    steps: int
+    initial_displacement: object | None
+    initial_velocity: object | None
+    load_scale: TimeScale
+    lumped_mass: bool
+
+
+@dataclass(frozen=True, slots=True)
 class _ParsedRequest:
     """解析后的拥有对象；不会保存 AgentFEM 或外部后端对象。"""
 
     version: str
-    problem: ExecutableRequest
+    problem: ExecutableRequest | _DynamicContractInput
     provider: str
     outputs: JsonMapping
     requested_assembly: str
+    method: Integrator | None = None
+    restart: DynamicCheckpoint | None = None
+    budget: ResourceBudget = field(default_factory=ResourceBudget)
 
 
 def _mapping(value: object, path: str) -> JsonMapping:
@@ -119,6 +157,22 @@ def _positive_integer(value: object, path: str) -> int:
     return result
 
 
+def _nonnegative_integer(value: object, path: str) -> int:
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
+        raise KernelRequestError("invalid_request", "此处应为非负整数。", path=path)
+    result = int(value)
+    if result < 0:
+        raise KernelRequestError("invalid_request", "此处应为非负整数。", path=path)
+    return result
+
+
+def _positive_scalar(value: object, path: str) -> float:
+    result = _finite_scalar(value, path)
+    if result <= 0.0:
+        raise KernelRequestError("invalid_request", "此处应为正有限数值。", path=path)
+    return result
+
+
 def _finite_vector(value: object, dimension: int, path: str) -> tuple[float, ...]:
     try:
         vector = np.asarray(value, dtype=np.float64)
@@ -131,6 +185,18 @@ def _finite_vector(value: object, dimension: int, path: str) -> tuple[float, ...
             "invalid_request", f"此处应为长度 {dimension} 的有限向量。", path=path
         )
     return tuple(float(item) for item in vector)
+
+
+def _finite_array(value: object, path: str) -> np.ndarray:
+    try:
+        array = np.asarray(value, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise KernelRequestError(
+            "invalid_request", "此处应为有限数值数组。", path=path
+        ) from error
+    if not np.all(np.isfinite(array)):
+        raise KernelRequestError("invalid_request", "此处应为有限数值数组。", path=path)
+    return array
 
 
 def _conductivity(value: object, path: str) -> float | np.ndarray:
@@ -452,6 +518,192 @@ def _mechanics_problem(
     )
 
 
+def _dynamic_checkpoint(value: object, method: Integrator) -> DynamicCheckpoint | None:
+    if value is None:
+        return None
+    record = _mapping(value, "$.restart")
+    checkpoint_method = _text(record.get("method"), "$.restart.method")
+    if checkpoint_method not in {
+        "central_difference",
+        "newmark_average_acceleration",
+    }:
+        raise KernelRequestError(
+            "invalid_request", "重启积分方法不受支持。", path="$.restart.method"
+        )
+    if checkpoint_method != method:
+        raise KernelRequestError(
+            "restart_method_mismatch",
+            "重启检查点的积分方法与本次请求不一致。",
+            path="$.restart.method",
+        )
+    try:
+        return DynamicCheckpoint(
+            cast(Integrator, checkpoint_method),
+            _nonnegative_integer(record.get("step"), "$.restart.step"),
+            _finite_scalar(record.get("time"), "$.restart.time"),
+            _finite_array(record.get("displacement"), "$.restart.displacement"),
+            _finite_array(record.get("velocity"), "$.restart.velocity"),
+            _finite_array(record.get("acceleration"), "$.restart.acceleration"),
+            _text(record.get("digest"), "$.restart.digest"),
+        )
+    except ValueError as error:
+        raise KernelRequestError(
+            "invalid_checkpoint", str(error), path="$.restart"
+        ) from error
+
+
+def _load_scale(value: object, *, start_time: float, end_time: float) -> TimeScale:
+    if not isinstance(value, Mapping):
+        return _finite_scalar(value, "$.procedure.load_scale")
+    record = _mapping(value, "$.procedure.load_scale")
+    times = _finite_array(record.get("times"), "$.procedure.load_scale.times")
+    values = _finite_array(record.get("values"), "$.procedure.load_scale.values")
+    if (
+        times.ndim != 1
+        or values.ndim != 1
+        or times.size < 2
+        or values.size != times.size
+    ):
+        raise KernelRequestError(
+            "invalid_load_curve",
+            "载荷曲线需要至少两个、数量相同的一维 times 与 values。",
+            path="$.procedure.load_scale",
+        )
+    if np.any(np.diff(times) <= 0.0):
+        raise KernelRequestError(
+            "invalid_load_curve",
+            "载荷曲线 times 必须严格递增。",
+            path="$.procedure.load_scale.times",
+        )
+    tolerance = (
+        16.0 * np.finfo(np.float64).eps * max(1.0, abs(start_time), abs(end_time))
+    )
+    if times[0] > start_time + tolerance or times[-1] < end_time - tolerance:
+        raise KernelRequestError(
+            "load_curve_range",
+            "载荷曲线必须覆盖本次执行的完整绝对时间区间。",
+            path="$.procedure.load_scale.times",
+        )
+    owned_times = np.array(times, copy=True)
+    owned_values = np.array(values, copy=True)
+
+    def interpolate(time: float) -> float:
+        return float(np.interp(time, owned_times, owned_values))
+
+    return interpolate
+
+
+def _resource_budget(request: JsonMapping) -> ResourceBudget:
+    execution = _mapping(request.get("execution", {}), "$.execution")
+    budget = _mapping(execution.get("budget", {}), "$.execution.budget")
+
+    def optional(name: str) -> int | None:
+        value = budget.get(name)
+        if value is None:
+            return None
+        return _nonnegative_integer(value, f"$.execution.budget.{name}")
+
+    return ResourceBudget(
+        maximum_dofs=optional("maximum_dofs"),
+        maximum_peak_bytes=optional("maximum_peak_bytes"),
+        maximum_steps=optional("maximum_steps"),
+    )
+
+
+def _dynamic_problem(
+    request: JsonMapping,
+    mesh_record: JsonMapping,
+    procedure: JsonMapping,
+) -> tuple[
+    _DynamicContractInput,
+    Integrator,
+    DynamicCheckpoint | None,
+]:
+    method_text = _text(
+        procedure.get("integrator", "central_difference"),
+        "$.procedure.integrator",
+    )
+    if method_text not in {
+        "central_difference",
+        "newmark_average_acceleration",
+    }:
+        raise KernelRequestError(
+            "unsupported_integrator",
+            f"不支持线性动力积分方法 {method_text!r}。",
+            path="$.procedure.integrator",
+        )
+    method = cast(Integrator, method_text)
+    mass = _text(procedure.get("mass", "lumped"), "$.procedure.mass")
+    if mass not in {"lumped", "consistent"}:
+        raise KernelRequestError(
+            "invalid_request",
+            "质量形式必须为 lumped 或 consistent。",
+            path="$.procedure.mass",
+        )
+    if method == "central_difference" and mass != "lumped":
+        raise KernelRequestError(
+            "unsupported_mass",
+            "中心差分当前只接受集中质量 mass=lumped。",
+            path="$.procedure.mass",
+        )
+    time_step = _positive_scalar(procedure.get("time_step"), "$.procedure.time_step")
+    steps = _nonnegative_integer(procedure.get("steps"), "$.procedure.steps")
+    restart = _dynamic_checkpoint(request.get("restart"), method)
+    initial_record = _mapping(request.get("initial_state", {}), "$.initial_state")
+    if restart is not None and initial_record:
+        raise KernelRequestError(
+            "ambiguous_initial_state",
+            "重启请求不能同时携带 initial_state。",
+            path="$.initial_state",
+        )
+    start_time = 0.0 if restart is None else restart.time
+    load_scale = _load_scale(
+        procedure.get("load_scale", 1.0),
+        start_time=start_time,
+        end_time=start_time + steps * time_step,
+    )
+    physics = _mapping(request.get("physics"), "$.physics")
+    density = _positive_scalar(physics.get("density"), "$.physics.density")
+    problem = _mechanics_problem(request, mesh_record, procedure, 2)
+    if not isinstance(problem, LinearElasticProblem):
+        raise KernelRequestError(
+            "unsupported_capability", "线性动力契约当前只支持二维 T3。", path="$.study"
+        )
+    _validate_named_references(problem)
+    initial_values: dict[str, np.ndarray | None] = {}
+    for name in ("displacement", "velocity"):
+        raw = initial_record.get(name)
+        if raw is None:
+            initial_values[name] = None
+            continue
+        values = _finite_array(raw, f"$.initial_state.{name}")
+        if values.shape != (problem.mesh.node_count, 2):
+            raise KernelRequestError(
+                "invalid_request",
+                "T3 动力初始状态必须是每节点两个分量的数组。",
+                path=f"$.initial_state.{name}",
+            )
+        initial_values[name] = np.array(values, copy=True)
+    dof_count = 2 * problem.mesh.node_count
+    if restart is not None and restart.displacement.shape != (dof_count,):
+        raise KernelRequestError(
+            "invalid_checkpoint",
+            "重启检查点自由度数量与本次模型不一致。",
+            path="$.restart",
+        )
+    dynamic = _DynamicContractInput(
+        problem,
+        density,
+        time_step,
+        steps,
+        initial_values["displacement"],
+        initial_values["velocity"],
+        load_scale,
+        mass == "lumped",
+    )
+    return dynamic, method, restart
+
+
 def _validate_named_references(problem: ExecutableRequest) -> None:
     """在规划前检查命名引用，避免 Agent 把拼写错误带入装配阶段。"""
 
@@ -491,12 +743,7 @@ def _problem_from_request(request: JsonMapping) -> _ParsedRequest:
     version = _version(request)
     _text(request.get("request_id"), "$.request_id")
     study = _mapping(request.get("study"), "$.study")
-    if study.get("analysis") != "linear_static":
-        raise KernelRequestError(
-            "unsupported_capability",
-            "当前契约只支持 linear_static。",
-            path="$.study.analysis",
-        )
+    analysis = study.get("analysis")
     dimension = study.get("dimension")
     if dimension not in {2, 3}:
         raise KernelRequestError(
@@ -509,6 +756,61 @@ def _problem_from_request(request: JsonMapping) -> _ParsedRequest:
     procedure = _mapping(request.get("procedure", {}), "$.procedure")
     provider = _provider(procedure)
     outputs = _mapping(request.get("outputs", {}), "$.outputs")
+    budget = _resource_budget(request)
+    if analysis == "linear_transient":
+        if version != CONTRACT_VERSION:
+            raise KernelRequestError(
+                "unsupported_capability",
+                "线性动力学需要 Kernel Contract 0.3.0。",
+                path="$.contract_version",
+            )
+        if physics_name != "solid_mechanics" or dimension != 2:
+            raise KernelRequestError(
+                "unsupported_capability",
+                "线性动力契约当前只支持二维 T3 固体力学。",
+                path="$.study",
+            )
+        if procedure.get("kind") != "linear_dynamics":
+            raise KernelRequestError(
+                "unsupported_capability",
+                "线性瞬态 procedure.kind 必须为 linear_dynamics。",
+                path="$.procedure.kind",
+            )
+        if provider not in {"native", "native_sparse", "auto"}:
+            raise KernelRequestError(
+                "unsupported_provider",
+                "线性动力契约当前只使用自主 native_sparse 提供者。",
+                path="$.procedure.linear_algebra",
+            )
+        if "neumann" in request:
+            raise KernelRequestError(
+                "invalid_request",
+                "固体动力学请求不接受热传导 neumann 字段。",
+                path="$.neumann",
+            )
+        if "vtk" in outputs:
+            raise KernelRequestError(
+                "unsupported_output",
+                "Kernel Contract 0.3 尚不支持时间序列 VTK。",
+                path="$.outputs.vtk",
+            )
+        problem, method, restart = _dynamic_problem(request, mesh_record, procedure)
+        return _ParsedRequest(
+            version,
+            problem,
+            "native_sparse",
+            outputs,
+            "preassembled",
+            method,
+            restart,
+            budget,
+        )
+    if analysis != "linear_static":
+        raise KernelRequestError(
+            "unsupported_capability",
+            "当前契约支持 linear_static 和 0.3.0 的 linear_transient。",
+            path="$.study.analysis",
+        )
     if physics_name == "heat_transfer" and dimension == 2:
         if "traction" in request:
             raise KernelRequestError(
@@ -525,7 +827,7 @@ def _problem_from_request(request: JsonMapping) -> _ParsedRequest:
         problem: ExecutableRequest = _heat_problem(request, mesh_record, procedure)
         _validate_named_references(problem)
         return _ParsedRequest(
-            version, problem, provider, outputs, problem.assembly_mode
+            version, problem, provider, outputs, problem.assembly_mode, budget=budget
         )
     if physics_name == "solid_mechanics" and dimension in {2, 3}:
         if "neumann" in request:
@@ -549,7 +851,9 @@ def _problem_from_request(request: JsonMapping) -> _ParsedRequest:
         assembly = _assembly(procedure, dimension=int(dimension))
         problem = _mechanics_problem(request, mesh_record, procedure, int(dimension))
         _validate_named_references(problem)
-        return _ParsedRequest(version, problem, provider, outputs, assembly)
+        return _ParsedRequest(
+            version, problem, provider, outputs, assembly, budget=budget
+        )
     raise KernelRequestError(
         "unsupported_capability",
         "当前契约支持二维稳态热传导和二维/三维线性固体力学。",
@@ -558,6 +862,15 @@ def _problem_from_request(request: JsonMapping) -> _ParsedRequest:
 
 
 def _execution_plan(parsed: _ParsedRequest) -> ExecutionPlan:
+    if isinstance(parsed.problem, _DynamicContractInput):
+        dynamic = parsed.problem
+        return plan_t3_linear_dynamics(
+            dynamic.problem,
+            dynamic.density,
+            time_step=dynamic.time_step,
+            steps=dynamic.steps,
+            lumped_mass=dynamic.lumped_mass,
+        )
     if isinstance(parsed.problem, SteadyDiffusionProblem):
         return plan_steady_diffusion(parsed.problem, provider=parsed.provider)
     if isinstance(parsed.problem, LinearElasticProblem):
@@ -568,6 +881,8 @@ def _execution_plan(parsed: _ParsedRequest) -> ExecutionPlan:
             provider=parsed.provider,
             assembly=cast(SolidAssemblyMode, parsed.requested_assembly),
         )
+    if isinstance(parsed.problem, LinearSecondOrderSystem):
+        return plan_linear_dynamics(parsed.problem)
     raise KernelRequestError("unsupported_capability", "当前契约不支持此问题类型。")
 
 
@@ -592,9 +907,9 @@ def _artifact_path(directory: Path, portable_path: object) -> tuple[Path, str]:
 def _runtime(result: ExecutionResult, plan: ExecutionPlan) -> dict[str, object]:
     convergence = getattr(result, "convergence", None)
     provider = {
-        "name": result.provider_name,
-        "version": result.provider_version,
-        "matrix_format": result.provider_matrix_format,
+        "name": getattr(result, "provider_name", "native_sparse"),
+        "version": getattr(result, "provider_version", __version__),
+        "matrix_format": getattr(result, "provider_matrix_format", "csr"),
     }
     if convergence is not None:
         provider["convergence"] = {
@@ -633,15 +948,25 @@ def _response_version(request: object) -> str:
 
 
 def _failure_result(
-    request: object, request_id: str, failure: KernelRequestError
+    request: object,
+    request_id: str,
+    failure: KernelRequestError | NativeExecutionError,
 ) -> dict[str, object]:
+    version = _response_version(request)
+    error = failure.as_dict()
+    if version != CONTRACT_VERSION:
+        error = {
+            key: value
+            for key, value in error.items()
+            if key in {"code", "message", "path"}
+        }
     return {
         "contract": CONTRACT_NAME,
-        "contract_version": _response_version(request),
+        "contract_version": version,
         "request_id": request_id,
         "status": "failed",
         "backend": {"name": "native", "version": __version__},
-        "error": failure.as_dict(),
+        "error": error,
     }
 
 
@@ -656,13 +981,18 @@ def plan_kernel_request(request: JsonMapping) -> dict[str, object]:
     try:
         mapping = _mapping(request, "$")
         parsed = _problem_from_request(mapping)
-        if parsed.version != CONTRACT_VERSION:
+        if parsed.version == "0.1.0":
             raise KernelRequestError(
                 "unsupported_capability",
-                "执行前资源预检属于 Kernel Contract 0.2，请先升级 contract_version。",
+                "执行前资源预检需要 Kernel Contract 0.2.0 或 0.3.0。",
                 path="$.contract_version",
             )
         plan = _execution_plan(parsed)
+        enforce_plan_budget(plan, parsed.budget)
+        if isinstance(parsed.problem, _DynamicContractInput):
+            ExecutionContext(parsed.budget).check(
+                "linear_dynamics", 0, parsed.problem.steps
+            )
         return {
             "contract": CONTRACT_NAME,
             "contract_version": parsed.version,
@@ -674,6 +1004,8 @@ def plan_kernel_request(request: JsonMapping) -> dict[str, object]:
             "warnings": list(plan.warnings),
         }
     except KernelRequestError as error:
+        failure = error
+    except NativeExecutionError as error:
         failure = error
     except (KeyError, TypeError, ValueError) as error:
         failure = KernelRequestError("invalid_model", str(error))
@@ -728,7 +1060,60 @@ def _fields_and_quantities(
                 "strain_energy": result.strain_energy,
             },
         )
+    if isinstance(result, LinearDynamicsResult):
+        displacement = result.displacement.reshape(result.times.size, -1, 2)
+        velocity = result.velocity.reshape(result.times.size, -1, 2)
+        acceleration = result.acceleration.reshape(result.times.size, -1, 2)
+        return (
+            {
+                "displacement": {
+                    "association": "node",
+                    "components": 2,
+                    "values": displacement.tolist(),
+                },
+                "velocity": {
+                    "association": "node",
+                    "components": 2,
+                    "values": velocity.tolist(),
+                },
+                "acceleration": {
+                    "association": "node",
+                    "components": 2,
+                    "values": acceleration.tolist(),
+                },
+                "reaction": {
+                    "association": "constrained_dof",
+                    "components": 1,
+                    "dofs": result.constrained_dofs.tolist(),
+                    "values": result.reaction.tolist(),
+                },
+            },
+            {
+                "times": result.times.tolist(),
+                "kinetic_energy": result.kinetic_energy.tolist(),
+                "strain_energy": result.strain_energy.tolist(),
+                "total_energy": result.total_energy.tolist(),
+                "external_work": result.external_work.tolist(),
+                "energy_balance_error": result.energy_balance_error.tolist(),
+                "maximum_energy_balance_error": float(
+                    np.max(np.abs(result.energy_balance_error))
+                ),
+            },
+        )
     raise KernelRequestError("unsupported_capability", "当前契约不支持此结果类型。")
+
+
+def _checkpoint_record(result: LinearDynamicsResult) -> dict[str, object]:
+    checkpoint = result.checkpoint()
+    return {
+        "method": checkpoint.method,
+        "step": checkpoint.step,
+        "time": checkpoint.time,
+        "displacement": checkpoint.displacement.tolist(),
+        "velocity": checkpoint.velocity.tolist(),
+        "acceleration": checkpoint.acceleration.tolist(),
+        "digest": checkpoint.digest,
+    }
 
 
 def _artifacts(
@@ -772,10 +1157,40 @@ def _artifacts(
     ]
 
 
+def _execution_context(
+    request_budget: ResourceBudget,
+    supplied: ExecutionContext | None,
+) -> ExecutionContext:
+    """合并请求与调用方上限，始终采用两者中更严格的资源边界。"""
+
+    external = ResourceBudget() if supplied is None else supplied.budget
+
+    def tighter(left: int | None, right: int | None) -> int | None:
+        if left is None:
+            return right
+        if right is None:
+            return left
+        return min(left, right)
+
+    budget = ResourceBudget(
+        maximum_dofs=tighter(request_budget.maximum_dofs, external.maximum_dofs),
+        maximum_peak_bytes=tighter(
+            request_budget.maximum_peak_bytes, external.maximum_peak_bytes
+        ),
+        maximum_steps=tighter(request_budget.maximum_steps, external.maximum_steps),
+    )
+    return ExecutionContext(
+        budget=budget,
+        cancellation=None if supplied is None else supplied.cancellation,
+        progress=None if supplied is None else supplied.progress,
+    )
+
+
 def run_kernel_request(
     request: JsonMapping,
     *,
     artifact_directory: str | Path | None = None,
+    context: ExecutionContext | None = None,
 ) -> dict[str, object]:
     """执行一个契约请求，并返回结构化结果或可定位失败。"""
 
@@ -788,7 +1203,25 @@ def run_kernel_request(
         mapping = _mapping(request, "$")
         parsed = _problem_from_request(mapping)
         plan = _execution_plan(parsed)
-        receipt = execute_plan(plan, parsed.problem)
+        execution_context = _execution_context(parsed.budget, context)
+        if isinstance(parsed.problem, _DynamicContractInput):
+            dynamic = parsed.problem
+            receipt = execute_t3_linear_dynamics_plan(
+                plan,
+                dynamic.problem,
+                dynamic.density,
+                time_step=dynamic.time_step,
+                steps=dynamic.steps,
+                initial_displacement=dynamic.initial_displacement,
+                initial_velocity=dynamic.initial_velocity,
+                load_scale=dynamic.load_scale,
+                lumped_mass=dynamic.lumped_mass,
+                method=cast(Integrator, parsed.method),
+                restart=parsed.restart,
+                context=execution_context,
+            )
+        else:
+            receipt = execute_plan(plan, parsed.problem, context=execution_context)
         result = receipt.result
         fields, quantities = _fields_and_quantities(result)
         capabilities = [
@@ -796,8 +1229,12 @@ def run_kernel_request(
             "native_sparse_cg:implemented",
             "linear_elasticity_t3_plane_stress_strain:verified",
         ]
-        if parsed.version == CONTRACT_VERSION:
+        if parsed.version != "0.1.0":
             capabilities.append("linear_elasticity_t4_3d:verified")
+        if isinstance(result, LinearDynamicsResult):
+            capabilities.append(
+                "linear_dynamics_t3_central_difference_newmark:implemented"
+            )
         response: dict[str, object] = {
             "contract": CONTRACT_NAME,
             "contract_version": parsed.version,
@@ -811,7 +1248,9 @@ def run_kernel_request(
             "runtime": _runtime(result, plan),
             "warnings": [] if parsed.version == "0.1.0" else list(plan.warnings),
         }
-        if parsed.version == CONTRACT_VERSION:
+        if isinstance(result, LinearDynamicsResult):
+            response["checkpoint"] = _checkpoint_record(result)
+        if parsed.version != "0.1.0":
             response["plan"] = plan.as_dict()
             response["evidence"] = {
                 "request_digest": _request_digest(mapping),
@@ -821,6 +1260,12 @@ def run_kernel_request(
         return response
     except KernelRequestError as error:
         failure = error
+    except NativeExecutionError as error:
+        failure = error
+    except UnsafeTimeStepError as error:
+        failure = KernelRequestError(
+            "unsafe_time_step", str(error), path="$.procedure.time_step"
+        )
     except ProviderUnavailableError as error:
         failure = KernelRequestError(
             "provider_unavailable", str(error), path="$.procedure"

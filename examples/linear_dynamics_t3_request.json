@@ -1,0 +1,60 @@
+{
+  "contract": "agentfem.native-kernel-request",
+  "contract_version": "0.3.0",
+  "request_id": "t3-dynamics-example",
+  "study": {
+    "analysis": "linear_transient",
+    "physics": "solid_mechanics",
+    "dimension": 2
+  },
+  "mesh": {
+    "points": [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+    "cells": [[0, 1, 2], [0, 2, 3]],
+    "node_sets": {"left": [0, 3], "right": [1, 2]},
+    "boundary_sets": {
+      "bottom": [[0, 1]],
+      "right": [[1, 2]],
+      "top": [[2, 3]],
+      "left": [[3, 0]]
+    },
+    "cell_sets": {}
+  },
+  "physics": {
+    "material": {
+      "young_modulus": 10.0,
+      "poisson_ratio": 0.25,
+      "model": "plane_stress"
+    },
+    "density": 1.0,
+    "thickness": 1.0,
+    "body_force": [0.0, 0.0]
+  },
+  "dirichlet": [{"node_set": "left", "value": [0.0, 0.0]}],
+  "traction": [],
+  "materials": [],
+  "procedure": {
+    "kind": "linear_dynamics",
+    "linear_algebra": "native_sparse",
+    "assembly": "reference",
+    "integrator": "newmark_average_acceleration",
+    "time_step": 0.01,
+    "steps": 20,
+    "mass": "consistent",
+    "load_scale": {
+      "times": [0.0, 0.2],
+      "values": [0.0, 0.0]
+    }
+  },
+  "initial_state": {
+    "displacement": [[0.0, 0.0], [0.01, 0.0], [0.01, 0.0], [0.0, 0.0]],
+    "velocity": [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+  },
+  "execution": {
+    "budget": {
+      "maximum_dofs": 100,
+      "maximum_peak_bytes": 1000000,
+      "maximum_steps": 100
+    }
+  },
+  "outputs": {}
+}

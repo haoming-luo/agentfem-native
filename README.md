@@ -102,9 +102,11 @@ agentfem-native examples/linear_elasticity_t3_request.json --plan-only
 ```
 
 Windows PowerShell 使用同一条单行命令。命令行与 Python API 都返回版本化、
-JSON 安全的结果；失败包含稳定错误码与字段路径。Contract 0.2 覆盖 T3/T4
-线性静力，并继续兼容 0.1 热传导请求；详见
-[Kernel Contract 0.2 规格](docs/specifications/KERNEL_CONTRACT_0_2.md)。
+JSON 安全的结果；失败包含稳定错误码与字段路径。Contract 0.3 新增限定 T3
+线性动力学的无装配预检、预算、取消、能量证据和检查点续算，并继续兼容 0.1
+热传导及 0.2 T3/T4 线性静力；详见
+[Kernel Contract 0.3 规格](docs/specifications/KERNEL_CONTRACT_0_3.md)。可运行的
+动力请求见 `examples/linear_dynamics_t3_request.json`。
 
 See [ROADMAP.md](ROADMAP.md), [ARCHITECTURE.md](ARCHITECTURE.md), the
 [project charter](docs/charter/PROJECT_CHARTER.md), and the
