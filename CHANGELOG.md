@@ -47,7 +47,10 @@
   关闭。源提交 `c1b3c9f` 的 Linux 快检 `35463705055` 通过。
 - 新增自由端同相反射与脉冲宽度分组色散证据：64→128 划分时反射到时误差由
   0.80% 降至 0.04%，反射/入射峰值由 0.9756 趋近 0.9973；窄脉冲误差高于
-  宽脉冲并随细化下降。
+  宽脉冲并随细化下降。源提交 `7e67cda` 的 Linux 快检 `35481948296` 通过。
+- 冻结 Gate 3 限定线性动力学的 12 项验收矩阵：G3L-01 至 G3L-10 已有本地
+  证据，版本化动力学 Kernel Contract 与最新候选三平台验收是仅余门禁；阻尼、
+  非零/时变位移约束和非线性不混入当前声明。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

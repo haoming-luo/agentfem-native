@@ -2,8 +2,8 @@
 
 - **日期：** 2026-09-20
 - **成熟度：** `implemented` 本地增量；不提升 Gate 3 整体成熟度
-- **最新源提交：** `c1b3c9f`
-- **Linux 快检：** [GitHub Actions `35463705055`](https://github.com/haoming-luo/agentfem-native/actions/runs/35463705055)
+- **最新源提交：** `7e67cda`
+- **Linux 快检：** [GitHub Actions `35481948296`](https://github.com/haoming-luo/agentfem-native/actions/runs/35481948296)
 
 ## 产品结论
 
@@ -101,8 +101,8 @@ dt_safe = 2 / sqrt(lambda_bound)
 - 一致质量继续被中心差分拒绝，防止把隐式质量系统误送入显式路径；
 - 超过保守上限的时间步以中文诊断返回请求值、上限和比值；
 - 受约束 T3 仍保持固定自由度为零并恢复完整反力历史。
-- 201 项安装态数学/提供者测试、格式、可移植契约示例和独立性扫描在 Linux
-  快检 `35463705055` 中通过；本增量未改变 C ABI，不重复执行刚通过的 Tier-1
+- 203 项安装态数学/提供者测试、格式、可移植契约示例和独立性扫描在 Linux
+  快检 `35481948296` 中通过；本增量未改变 C ABI，不重复执行刚通过的 Tier-1
   平台矩阵。
 
 ## Newmark 固定有效矩阵复用
@@ -119,6 +119,9 @@ dt_safe = 2 / sqrt(lambda_bound)
 
 ## 后续边界
 
-下一 Gate 3 增量应评估隐式初值复用、IC(0) 或窄提供者边界，并整理有限的
-Gate 3 线性验收矩阵；三平台证据齐备后才可提名晋级。全局非线性、MPI 和 GPU
-不进入这个阶段。
+有限验收范围现已写入
+[`GATE_3_LINEAR_ACCEPTANCE_MATRIX.md`](GATE_3_LINEAR_ACCEPTANCE_MATRIX.md)。
+G3L-01 至 G3L-10 已有本地证据；下一增量优先关闭面向 AgentFEM 的版本化动力学
+Kernel Contract（G3L-11），随后才为冻结候选运行一次完整三平台验收（G3L-12）。
+隐式初值复用和 IC(0) 保留为 P3 优化，不阻塞本表限定的科学正确性；全局非线性、
+MPI 和 GPU 不进入这个阶段。

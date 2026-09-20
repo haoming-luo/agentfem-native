@@ -259,10 +259,14 @@ G2-12 完成，T3/T4 基础线性静力范围提升为 `verified`。下一主线
 Newmark 固定有效矩阵及其 Jacobi 预条件器已移到循环外准备，`N` 步的预条件器
 构造从 `N+1` 次降为 2 次，能力清单显式报告该生命周期；数值公式与检查点格式
 不变。
-最新源提交 `c1b3c9f` 的 Linux 快检 `35463705055` 已通过；本增量未修改原生 ABI，
+最新源提交 `7e67cda` 的 Linux 快检 `35481948296` 已通过；本增量未修改原生 ABI，
 按 CI 治理复用 ABI 1.5 平台验收，不重复运行完整矩阵。
-隐式初值/更强预条件器复用、非零约束功和更广的受约束有限元平台证据仍是
-Gate 3 验证前的缺口。
+有限验收清单见
+[`GATE_3_LINEAR_ACCEPTANCE_MATRIX.md`](docs/verification/GATE_3_LINEAR_ACCEPTANCE_MATRIX.md)：
+G3L-01 至 G3L-10 已有本地证据，版本化动力学 Kernel Contract（G3L-11）和最新
+候选的三平台安装态验收（G3L-12）尚未关闭。非零/时变位移约束与阻尼明确不在
+本次无阻尼、零位移固定约束的线性验收范围；隐式初值与更强预条件器属于 P3
+优化，不冒充科学成熟度门禁。
 
 ## Gate 4 — nonlinear solids and material state
 
