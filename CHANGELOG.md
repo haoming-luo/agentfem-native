@@ -45,6 +45,9 @@
 - 新增 T3 局部高斯位移脉冲的反射前传播验证；32→64 划分时两传感点测得波速
   相对误差从 2.87% 降至 1.33%，能量偏移同步下降。边界反射和宽频色散仍未
   关闭。源提交 `c1b3c9f` 的 Linux 快检 `35463705055` 通过。
+- 新增自由端同相反射与脉冲宽度分组色散证据：64→128 划分时反射到时误差由
+  0.80% 降至 0.04%，反射/入射峰值由 0.9756 趋近 0.9973；窄脉冲误差高于
+  宽脉冲并随细化下降。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.

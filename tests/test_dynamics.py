@@ -112,7 +112,7 @@ def _t3_bar_lowest_frequency(nx: int) -> float:
     return float(np.sqrt(np.linalg.eigvalsh(transformed)[0]))
 
 
-def _t3_pulse_evidence(nx: int) -> tuple[float, float]:
+def _t3_pulse_evidence(nx: int, *, width: float = 0.04) -> tuple[float, float]:
     """在边界反射前用两个传感点估计 T3 局部脉冲传播速度。"""
 
     mesh = unit_square_triangles(nx, 1)
@@ -126,7 +126,7 @@ def _t3_pulse_evidence(nx: int) -> tuple[float, float]:
     )
     initial = np.zeros((mesh.node_count, 2), dtype=np.float64)
     x_coordinates = mesh.points[:, 0]
-    initial[:, 0] = np.exp(-0.5 * ((x_coordinates - 0.2) / 0.04) ** 2)
+    initial[:, 0] = np.exp(-0.5 * ((x_coordinates - 0.2) / width) ** 2)
     initial[mesh.nodes("left"), 0] = 0.0
     probe, _ = build_t3_linear_dynamics(
         problem,
@@ -168,6 +168,70 @@ def _t3_pulse_evidence(nx: int) -> tuple[float, float]:
         / result.total_energy[0]
     )
     return measured_speed, relative_energy_drift
+
+
+def _t3_free_end_reflection_evidence(nx: int) -> tuple[float, float, float, float]:
+    """测量固定—自由 T3 条带中入射脉冲与自由端同相反射。"""
+
+    mesh = unit_square_triangles(nx, 1)
+    problem = LinearElasticProblem(
+        mesh,
+        LinearElasticMaterial(100.0, 0.25),
+        dirichlet=(
+            DisplacementCondition("left", "x", 0.0),
+            DisplacementCondition("boundary", "y", 0.0),
+        ),
+    )
+    x_coordinates = mesh.points[:, 0]
+    initial = np.zeros((mesh.node_count, 2), dtype=np.float64)
+    initial[:, 0] = np.exp(-0.5 * ((x_coordinates - 0.5) / 0.04) ** 2)
+    initial[mesh.nodes("left"), 0] = 0.0
+    probe, _ = build_t3_linear_dynamics(
+        problem,
+        2.0,
+        time_step=1.0e-4,
+        steps=1,
+        initial_displacement=initial,
+        lumped_mass=True,
+    )
+    safe_time_step = central_difference_safe_time_step(probe)
+    end_time = 0.14
+    steps = int(np.ceil(end_time / (0.2 * safe_time_step)))
+    system, constrained = build_t3_linear_dynamics(
+        problem,
+        2.0,
+        time_step=end_time / steps,
+        steps=steps,
+        initial_displacement=initial,
+        lumped_mass=True,
+    )
+    result = integrate_constrained_linear_dynamics(system, constrained)
+    sensor = int(
+        np.flatnonzero(
+            np.isclose(x_coordinates, 0.75) & np.isclose(mesh.points[:, 1], 0.0)
+        )[0]
+    )
+    signal = result.displacement[:, 2 * sensor]
+    wave_speed = np.sqrt((100.0 / (1.0 - 0.25**2)) / 2.0)
+    peaks = []
+    for expected in (0.25 / wave_speed, 0.75 / wave_speed):
+        window = np.flatnonzero(
+            (result.times > 0.75 * expected) & (result.times < 1.25 * expected)
+        )
+        index = int(window[np.argmax(np.abs(signal[window]))])
+        peaks.append((float(result.times[index]), float(signal[index]), expected))
+    incident_time, incident_amplitude, incident_expected = peaks[0]
+    reflected_time, reflected_amplitude, reflected_expected = peaks[1]
+    relative_energy_drift = float(
+        np.max(np.abs(result.total_energy - result.total_energy[0]))
+        / result.total_energy[0]
+    )
+    return (
+        abs(incident_time - incident_expected) / incident_expected,
+        abs(reflected_time - reflected_expected) / reflected_expected,
+        reflected_amplitude / incident_amplitude,
+        relative_energy_drift,
+    )
 
 
 class T3MassTests(unittest.TestCase):
@@ -375,6 +439,32 @@ class LinearDynamicsTests(unittest.TestCase):
         self.assertLess(fine_error, 0.65 * coarse_error)
         self.assertLess(coarse_energy_drift, 0.005)
         self.assertLess(fine_energy_drift, 0.002)
+
+    def test_t3_free_end_reflection_is_in_phase_and_converges(self) -> None:
+        coarse = _t3_free_end_reflection_evidence(64)
+        fine = _t3_free_end_reflection_evidence(128)
+        self.assertLess(coarse[0], 0.02)
+        self.assertLess(fine[0], 0.01)
+        self.assertLess(coarse[1], 0.01)
+        self.assertLess(fine[1], 0.001)
+        self.assertGreater(coarse[2], 0.95)
+        self.assertGreater(fine[2], 0.99)
+        self.assertLess(abs(fine[2] - 1.0), abs(coarse[2] - 1.0))
+        self.assertLess(fine[3], coarse[3])
+
+    def test_t3_wideband_pulse_dispersion_reduces_with_refinement(self) -> None:
+        exact_speed = np.sqrt((100.0 / (1.0 - 0.25**2)) / 2.0)
+        narrow_coarse, _ = _t3_pulse_evidence(64, width=0.02)
+        narrow_fine, _ = _t3_pulse_evidence(128, width=0.02)
+        broad_coarse, _ = _t3_pulse_evidence(64, width=0.08)
+        broad_fine, _ = _t3_pulse_evidence(128, width=0.08)
+        narrow_coarse_error = abs(narrow_coarse - exact_speed) / exact_speed
+        narrow_fine_error = abs(narrow_fine - exact_speed) / exact_speed
+        broad_coarse_error = abs(broad_coarse - exact_speed) / exact_speed
+        broad_fine_error = abs(broad_fine - exact_speed) / exact_speed
+        self.assertGreater(narrow_coarse_error, broad_coarse_error)
+        self.assertLess(narrow_fine_error, 0.6 * narrow_coarse_error)
+        self.assertLess(broad_fine_error, 0.005)
 
     def test_explicit_method_rejects_consistent_mass(self) -> None:
         mass = CSRMatrix.from_coo(
