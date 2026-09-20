@@ -114,13 +114,14 @@ class PlanningTests(unittest.TestCase):
         )
         self.assertEqual(scientific["linear_elasticity_t4_3d"], "verified")
         self.assertEqual(
-            scientific["linear_dynamics_central_difference_newmark"], "implemented"
+            scientific["linear_dynamics_central_difference_newmark"], "verified"
         )
         dynamics = next(
             item
             for item in capabilities["scientific"]
             if item["name"] == "linear_dynamics_central_difference_newmark"
         )
+        self.assertEqual(dynamics["scope"], "undamped_t3_zero_fixed_displacement")
         self.assertEqual(
             dynamics["explicit_stability_preflight"],
             "conservative_infinity_norm_bound",

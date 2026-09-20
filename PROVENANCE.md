@@ -603,3 +603,19 @@ license-incompatible code is rejected.
 - 成熟度边界：G3L-11 形成本地候选，能力仍为 `implemented`；只有最新源提交的
   Linux 快检与 Windows/Linux/macOS Tier-1 安装态验收关闭后，才可处理 G3L-12
   和限定 Gate 3 线性范围晋级。
+
+## Gate 3 限定线性动力三平台验收与成熟度晋级 — 2026-09-20
+
+- 证据源：提交 `a630793` 本地通过 208 项测试、Ruff、格式、独立性扫描、macOS
+  arm64 Stable ABI wheel 构建和仓库外隔离安装；Linux 快检 `35482650495` 通过。
+- 平台证据：完整 Tier-1 运行 `35482705887` 通过 Windows x86_64、Linux x86_64、
+  macOS x86_64/arm64 wheel，Python 3.13 Stable ABI 复装后的 208 项科学套件，
+  三平台 C++20 契约、Linux sanitizer、Rust/C++/NumPy 对照、产物清单和最终
+  汇总门禁。
+- 成熟度：G3L-01 至 G3L-12 关闭，验收矩阵限定的无阻尼 T3、零位移固定约束
+  线性动力范围提升为 `verified`。不覆盖阻尼、非零/时变位移约束、T4 动力、
+  非线性、MPI、GPU、外部实验 `validated` 或整体内核 `production`。
+- 晋级策略：本提交只改变成熟度元数据和证据说明；数值与平台实现仍为已验收的
+  `a630793`，因此按 CI 治理只运行 Linux 快检，不重复完整 Tier-1。
+- CI 风险：Ubuntu 26 runner 迁移提示不影响本次结果，仍按既定计划在
+  2026-10-19 前单独预检。

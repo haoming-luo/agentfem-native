@@ -156,7 +156,7 @@ class ContractTests(unittest.TestCase):
             planned = plan_kernel_request(request)
         self.assertEqual(planned["status"], "planned")
         self.assertEqual(planned["plan"]["problem_kind"], "linear_dynamics_t3")  # type: ignore[index]
-        self.assertEqual(planned["plan"]["maturity"], "implemented")  # type: ignore[index]
+        self.assertEqual(planned["plan"]["maturity"], "verified")  # type: ignore[index]
 
         result = run_kernel_request(request)
         self.assertEqual(result["status"], "success")
@@ -167,6 +167,10 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(
             result["evidence"]["execution"]["analysis"]["spatial_dimension"],  # type: ignore[index]
             2,
+        )
+        self.assertIn(
+            "linear_dynamics_t3_central_difference_newmark:verified",
+            result["capabilities"],
         )
         json.dumps(result, allow_nan=False, sort_keys=True)
 

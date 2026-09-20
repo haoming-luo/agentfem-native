@@ -1233,7 +1233,7 @@ def run_kernel_request(
             capabilities.append("linear_elasticity_t4_3d:verified")
         if isinstance(result, LinearDynamicsResult):
             capabilities.append(
-                "linear_dynamics_t3_central_difference_newmark:implemented"
+                "linear_dynamics_t3_central_difference_newmark:verified"
             )
         response: dict[str, object] = {
             "contract": CONTRACT_NAME,

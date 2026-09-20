@@ -54,6 +54,9 @@
 - 新增向后兼容的 Kernel Contract 0.3 本地候选：AgentFEM 可对限定 T3 线性
   动力进行无装配资源预检、预算/取消控制、显式或 Newmark 执行、能量/反力
   审查和摘要绑定检查点续算；0.1 热传导和 0.2 静力兼容测试保持通过。
+- 源提交 `a630793` 的 Linux 快检 `35482650495` 与完整 Tier-1 `35482705887`
+  通过 Windows/Linux/macOS 安装态验收，G3L-01 至 G3L-12 关闭；验收矩阵限定
+  的无阻尼 T3 线性动力范围提升为 `verified`。
 - Extended the packaged C++20 Stable ABI to 1.2 with T4 volume assembly and
   canonical CSR SpMV, retaining readable differential oracles and automatic
   fallback when the extension is unavailable.
@@ -63,8 +66,8 @@
   balance ledgers, and a constrained T3 mesh-to-transient test.
 - Added deterministic internal mesh/field interchange and an Agent-native
   plan/execute/explain receipt surface with budgets and honest maturity labels.
-- 不声明 Gate 3、整体 P3、MPI、GPU、全局非线性或生产级成熟度；Gate 2 的
-  `verified` 仅覆盖验收矩阵中的 T3/T4 基础线性静力范围。
+- 不声明 Gate 3 非线性范围、整体 P3、MPI、GPU 或生产级成熟度；Gate 2 静力与
+  Gate 3 线性 `verified` 都仅覆盖各自验收矩阵中的明确范围。
 - Split CI into cancellable Linux fast checks and explicit Tier-1 acceptance,
   reduced acceptance duplication, shortened artifact retention, and recorded
   the time-boxed September 2026 public-repository policy without changing the

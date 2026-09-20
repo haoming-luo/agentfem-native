@@ -253,7 +253,9 @@ def plan_linear_dynamics(system: LinearSecondOrderSystem) -> ExecutionPlan:
     csr_upper = entries
     csr_bytes = 16 * entries + 16 * (dofs + 1)
     history_bytes = 8 * (system.steps + 1) * (4 * dofs + 6)
-    warnings = ["线性动力过程已实现，但 Gate 3 验证尚未完成。"]
+    warnings = [
+        "通用预装配二阶系统保持 implemented；verified 仅覆盖契约限定的无阻尼 T3 范围。"
+    ]
     try:
         safe_time_step = central_difference_safe_time_step(system)
     except ValueError:
@@ -326,12 +328,12 @@ def plan_t3_linear_dynamics(
     _digest_array(digest, (steps, int(lumped_mass)), "<i8")
     structure_digest = digest.hexdigest()
     warnings = (
-        "线性动力能力为 implemented；完整 Gate 3 验收尚未关闭。",
+        "verified 仅覆盖无阻尼 T3、零位移固定约束的 Gate 3 线性范围。",
         "中心差分稳定上限在预算通过并装配自由自由度算子后复核。",
     )
     payload: dict[str, object] = {
         "problem_kind": "linear_dynamics_t3",
-        "maturity": "implemented",
+        "maturity": "verified",
         "cell_type": "triangle_p1_vector2",
         "node_count": problem.mesh.node_count,
         "cell_count": problem.mesh.cell_count,
@@ -384,7 +386,8 @@ def native_capabilities() -> dict[str, object]:
             },
             {
                 "name": "linear_dynamics_central_difference_newmark",
-                "maturity": "implemented",
+                "maturity": "verified",
+                "scope": "undamped_t3_zero_fixed_displacement",
                 "kernel_contract": "0.3.0",
                 "explicit_stability_preflight": "conservative_infinity_norm_bound",
                 "implicit_effective_matrix_reuse": True,

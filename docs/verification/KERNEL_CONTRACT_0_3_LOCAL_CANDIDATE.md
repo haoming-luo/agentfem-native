@@ -1,8 +1,16 @@
-# Kernel Contract 0.3 线性动力本地候选报告
+# Kernel Contract 0.3 线性动力验收报告
 
-**日期：** 2026-09-20  
-**状态：** 本地候选通过；等待 Linux 快检与 Gate 3 三平台候选验收  
-**成熟度：** 契约能力 `implemented`，不提前提升 Gate 3
+**日期：** 2026-09-20
+
+**状态：** 验收通过
+
+**成熟度：** `verified`（仅限 Gate 3 验收矩阵定义的线性范围）
+
+**源提交：** `a630793`
+
+**Linux 快检：** [运行 `35482650495`](https://github.com/haoming-luo/agentfem-native/actions/runs/35482650495)
+
+**完整 Tier-1：** [运行 `35482705887`](https://github.com/haoming-luo/agentfem-native/actions/runs/35482705887)
 
 ## 产品结论
 
@@ -45,6 +53,7 @@ T3 算子，并在自由自由度系统上复核中心差分稳定上限。
 ## 明确未声明
 
 本候选不支持阻尼、非零/时变位移约束、T4 动力、自适应时间步、时间序列 VTK、
-非线性、MPI 或 GPU。接口可用不等于外部实验验证或生产成熟；G3L-12 的最新
-Windows/Linux/macOS 安装态验收关闭前，Gate 3 限定线性范围保持
-`implemented`。
+非线性、MPI 或 GPU。接口可用不等于外部实验验证或生产成熟。源提交 `a630793`
+已通过 Linux 快检和唯一一次完整 Tier-1：Windows/Linux/macOS 四类 wheel、
+Python 3.13 Stable ABI 安装态科学套件、三平台 C++20、sanitizer、语言对照、
+产物清单和汇总门禁全部通过，因此 G3L-11 与 G3L-12 关闭。
