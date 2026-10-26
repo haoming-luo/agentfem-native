@@ -109,10 +109,13 @@ def solve_tangent(
     bc: EssentialBC,
     *,
     context: ExecutionContext | None = None,
+    constraint_plan: CSRConstraintPlan | None = None,
 ) -> GMRESResult:
     """强约束保持对称，但一般切线允许不定。"""
     bc.validate(matrix.shape[0])
-    plan = CSRConstraintPlan.from_matrix(matrix, bc.dofs)
+    plan = constraint_plan or CSRConstraintPlan.from_matrix(matrix, bc.dofs)
+    if not np.array_equal(plan.constrained, bc.dofs):
+        raise ValueError("切线约束自由度与预备图不一致。")
     return gmres(
         plan.transform_matrix(matrix),
         plan.transform_rhs(matrix, rhs, bc.values),

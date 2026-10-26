@@ -22,6 +22,7 @@ from .simplex import (
     positive_integer,
     readonly,
 )
+from .sparse import CSRConstraintPlan
 
 
 def neo_hookean_tangent(
@@ -184,9 +185,12 @@ class FiniteStrainOperator:
         relative_tolerance: float = 1e-8,
         absolute_tolerance: float = 1e-10,
         context: ExecutionContext | None = None,
+        reuse_constraint_plan: bool = True,
     ) -> FiniteStrainResult:
         """静态比例加载，残差线搜索和失败增量二分；接受后才追加状态。"""
         g, mesh = self.geometry, self.geometry.mesh
+        if not isinstance(reuse_constraint_plan, bool):
+            raise TypeError("约束计划复用开关必须是布尔值。")
         g.check_rigid_constraints(bc)
         steps = positive_integer(steps, "载荷步数")
         maximum_iterations = positive_integer(maximum_iterations, "Newton 最大迭代")
@@ -208,6 +212,7 @@ class FiniteStrainOperator:
         current = np.zeros((mesh.node_count, g.dimension))
         factor, increment, rejected = 0.0, 1 / steps, 0
         accepted: list[FiniteStrainState] = []
+        constraint_plan = None
         ctx = context or ExecutionContext()
         check_accepted(ctx, "finite_strain.prepare", 0, steps, accepted)
         while factor < 1 - 8 * np.finfo(float).eps:
@@ -244,8 +249,16 @@ class FiniteStrainOperator:
                         break
                     if iteration == maximum_iterations:
                         break
+                    if reuse_constraint_plan and constraint_plan is None:
+                        constraint_plan = CSRConstraintPlan.from_matrix(
+                            matrix, zero_bc.dofs
+                        )
                     delta = solve_tangent(
-                        matrix, -residual, zero_bc, context=ctx
+                        matrix,
+                        -residual,
+                        zero_bc,
+                        context=ctx,
+                        constraint_plan=constraint_plan,
                     ).solution.reshape(trial.shape)
                     length = 1.0
                     for _ in range(20):

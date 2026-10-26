@@ -625,6 +625,8 @@ def run_multiphysics_request(
                 "request_digest": digest,
                 "plan_digest": plan["plan_digest"],
                 "result_digest": result_digest,
+                "result_digest_role": "exact_payload_integrity",
+                "repeatability": "numerical_tolerance_not_bitwise_guarantee",
                 "maturity": plan["maturity"],
                 "finite_element_owner": "agentfem_native",
             },

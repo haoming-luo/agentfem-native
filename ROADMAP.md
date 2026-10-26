@@ -24,6 +24,11 @@ FEniCSx/PETSc 已有 Windows 路线，不能以“仅我们支持 Windows”作�
 
 以上不改变既有 Gate 2 与限定 Gate 3 的证据，也不宣布 P3 完全关闭。
 
+本地后续增量：二维/三维二次制造解在 4/8 划分的重心采样范数下，温度和位移
+二阶、热流一阶；不是全域精确积分 L2 或复杂网格验证。Newton 约束图改为每次
+求解准备一次，三档同问题求解记录为 1.41–1.92×，完整接受轨迹逐位一致；仅为
+当前 macOS arm64 证据，见 `docs/verification/NONLINEAR_CONSTRAINT_REUSE.md`。
+
 2026-09-13 形成的下一阶段架构收敛、功能优先级和四周执行计划见
 `docs/charter/NEXT_DEVELOPMENT_PLAN.md`。该计划以关闭 P3、验证 Gate 2 和
 Gate 3 线性部分为主线，不改变本文件的 Gate 证据要求。

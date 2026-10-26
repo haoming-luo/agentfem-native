@@ -1,0 +1,100 @@
+{
+  "scope": "给定网格及节点力后的算子构建、全载荷步求解和结果；不含导入、网格生成与 I/O。",
+  "comparison": "同一数学实现、物理输入、容差；仅复用约束图，数值切线不复用。",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "native_kernel": {
+    "name": "cpp20",
+    "available": true,
+    "abi_version": "1.5",
+    "required_abi_version": "1.5"
+  },
+  "source_sha256": {
+    "agentfem_native.finite_strain": "2ec432d43338e961ae8656d676c33a21e87b01cf4e6f2ad71598b4e797ba0005",
+    "agentfem_native.krylov": "3f1ed68ba5f0df4d10d6d57a70c4ac7a75c3a24ff456701edd3ca9446f5559c4"
+  },
+  "cases": [
+    {
+      "dimension": 2,
+      "cells": 512,
+      "dofs": 578,
+      "accepted_steps": 4,
+      "rejected_steps": 0,
+      "newton_iterations": 12,
+      "maximum_displacement_error": 3.934057524190848e-10,
+      "trajectory_bitwise_equal": true,
+      "seconds": {
+        "rebuild_each_newton": [
+          0.10394379100034712,
+          0.1048148330010008,
+          0.10535908400197513,
+          0.10396874999787542,
+          0.10437366600308451
+        ],
+        "reuse_per_solve": [
+          0.05366604100345285,
+          0.05484612500004005,
+          0.053617334000591654,
+          0.05429220899895881,
+          0.055462666001403704
+        ]
+      },
+      "median_solve_speedup": 1.9224427947863778
+    },
+    {
+      "dimension": 3,
+      "cells": 384,
+      "dofs": 375,
+      "accepted_steps": 4,
+      "rejected_steps": 0,
+      "newton_iterations": 12,
+      "maximum_displacement_error": 3.9340597446368974e-10,
+      "trajectory_bitwise_equal": true,
+      "seconds": {
+        "rebuild_each_newton": [
+          0.13740404100099113,
+          0.14044233299864572,
+          0.1407022089988459,
+          0.14065666700116708,
+          0.1399854579976818
+        ],
+        "reuse_per_solve": [
+          0.09368337500200141,
+          0.09450650000144378,
+          0.0953649580005731,
+          0.09568099999887636,
+          0.0940787499966973
+        ]
+      },
+      "median_solve_speedup": 1.4860600381613982
+    },
+    {
+      "dimension": 3,
+      "cells": 3072,
+      "dofs": 2187,
+      "accepted_steps": 4,
+      "rejected_steps": 0,
+      "newton_iterations": 12,
+      "maximum_displacement_error": 3.9340813939858776e-10,
+      "trajectory_bitwise_equal": true,
+      "seconds": {
+        "rebuild_each_newton": [
+          1.0087372080015484,
+          1.0047780409986444,
+          1.0093740840020473,
+          1.0250420829979703,
+          1.0128547079984855
+        ],
+        "reuse_per_solve": [
+          0.716579667001497,
+          0.7158748330002709,
+          0.7149841249993187,
+          0.7190728329987905,
+          0.7216592499971739
+        ]
+      },
+      "median_solve_speedup": 1.4085999512458098
+    }
+  ]
+}

@@ -14,6 +14,39 @@ from agentfem_native.volume_mesh import unit_cube_tetrahedra
 
 
 class ThermalTests(unittest.TestCase):
+    def test_manufactured_quadratic_temperature_spatial_refinement(self):
+        for dimension in (2, 3):
+            errors = []
+            for resolution in (4, 8):
+                mesh = (
+                    unit_square_triangles(resolution)
+                    if dimension == 2
+                    else unit_cube_tetrahedra(resolution)
+                )
+                boundary = np.flatnonzero(
+                    np.any((mesh.points == 0) | (mesh.points == 1), axis=1)
+                )
+                exact = (mesh.points * (1 - mesh.points)).sum(axis=1)
+                operator = ThermalOperator(mesh, source=2 * dimension)
+                result = operator.steady(EssentialBC(boundary, exact[boundary]))
+                centers = mesh.points[mesh.cells].mean(axis=1)
+                # 指定体积加权重心采样范数，不把单点求积宣称为精确 L2。
+                delta_t = result.temperatures[0, mesh.cells].mean(axis=1) - (
+                    centers * (1 - centers)
+                ).sum(axis=1)
+                delta_q = result.cell_flux[0] - (2 * centers - 1)
+                errors.append(
+                    np.sqrt(
+                        [
+                            operator.geometry.volumes @ delta_t**2,
+                            operator.geometry.volumes @ (delta_q**2).sum(axis=1),
+                        ]
+                    )
+                )
+            ratios = errors[0] / errors[1]
+            self.assertTrue(3.8 < ratios[0] < 4.2, ratios)
+            self.assertTrue(1.9 < ratios[1] < 2.1, ratios)
+
     def meshes(self):
         return (unit_square_triangles(3), unit_cube_tetrahedra(2))
 

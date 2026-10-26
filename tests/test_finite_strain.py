@@ -11,16 +11,70 @@ from agentfem_native.finite_strain import (
     NonlinearConvergenceError,
     neo_hookean_tangent,
 )
-from agentfem_native.krylov import gmres
+from agentfem_native.krylov import gmres, solve_tangent
 from agentfem_native.materials import NeoHookeanMaterial
 from agentfem_native.mesh import unit_square_triangles
 from agentfem_native.providers import LinearSolveError
+from agentfem_native.runtime import (
+    CancellationToken,
+    ExecutionContext,
+    NativeExecutionError,
+    ResourceBudget,
+)
 from agentfem_native.simplex import EssentialBC
-from agentfem_native.sparse import CSRMatrix
+from agentfem_native.sparse import CSRConstraintPlan, CSRMatrix
 from agentfem_native.volume_mesh import unit_cube_tetrahedra
 
 
 class FiniteStrainTests(unittest.TestCase):
+    def test_krylov_cancellation_and_physical_step_budget_are_separate(self):
+        matrix = CSRMatrix.from_coo((3, 3), [0, 1, 2], [0, 1, 2], [1.0, 2.0, 3.0])
+        # 内迭代上限不是时间/载荷步数，maximum_steps=1 不应阻断 GMRES。
+        result = gmres(
+            matrix,
+            [1, 2, 3],
+            context=ExecutionContext(budget=ResourceBudget(maximum_steps=1)),
+        )
+        np.testing.assert_allclose(result.solution, [1, 1, 1], atol=1e-12)
+        token = CancellationToken()
+
+        def stop(event):
+            if event.stage == "krylov.gmres":
+                token.cancel()
+
+        with self.assertRaises(NativeExecutionError) as caught:
+            gmres(
+                matrix,
+                [1, 2, 3],
+                context=ExecutionContext(cancellation=token, progress=stop),
+            )
+        self.assertEqual(caught.exception.code, "execution.cancelled")
+
+    def test_constraint_graph_reuse_keeps_complete_trajectory(self):
+        mesh = unit_square_triangles(3)
+        op = FiniteStrainOperator(mesh, NeoHookeanMaterial(100, 0.25))
+        dofs = (2 * mesh.nodes("left")[:, None] + np.arange(2)).ravel()
+        bc = EssentialBC(dofs, np.zeros(dofs.size))
+        load = op.geometry.mechanical_load(tractions={"right": [10, 0]})
+        baseline = op.solve(bc, load=load, steps=4, reuse_constraint_plan=False)
+        original = CSRConstraintPlan.from_matrix
+        with patch.object(CSRConstraintPlan, "from_matrix", wraps=original) as prepare:
+            candidate = op.solve(bc, load=load, steps=4)
+        self.assertEqual(prepare.call_count, 1)
+        self.assertEqual(candidate.rejected_steps, baseline.rejected_steps)
+        for actual, expected in zip(candidate.states, baseline.states, strict=True):
+            self.assertEqual(actual.iterations, expected.iterations)
+            np.testing.assert_array_equal(actual.displacements, expected.displacements)
+            np.testing.assert_array_equal(actual.residual, expected.residual)
+            np.testing.assert_array_equal(actual.cell_cauchy, expected.cell_cauchy)
+            self.assertEqual(actual.strain_energy, expected.strain_energy)
+
+    def test_tangent_plan_rejects_different_constraints(self):
+        matrix = CSRMatrix.from_coo((2, 2), [0, 1], [0, 1], [1.0, 2.0])
+        plan = CSRConstraintPlan.from_matrix(matrix, [0])
+        with self.assertRaisesRegex(ValueError, "约束"):
+            solve_tangent(matrix, [0, 1], EssentialBC([1], [0]), constraint_plan=plan)
+
     def test_force_controlled_large_extension(self):
         for mesh in (unit_square_triangles(3), unit_cube_tetrahedra(2)):
             d = mesh.points.shape[1]

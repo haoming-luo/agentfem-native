@@ -4,6 +4,7 @@
 import copy
 import json
 import unittest
+from hashlib import sha256
 from unittest.mock import patch
 
 import numpy as np
@@ -93,10 +94,42 @@ class MultiphysicsTests(unittest.TestCase):
                     self.assertNotEqual(result["evidence"]["maturity"], "verified")
                     self.assertEqual(result["plan"]["dimension"], dimension)
                     json.dumps(result, allow_nan=False)
+                    repeated = run_multiphysics_request(request)
+                    self.assertEqual(repeated["status"], "success", repeated)
                     self.assertEqual(
-                        result["evidence"]["result_digest"],
-                        run_multiphysics_request(request)["evidence"]["result_digest"],
+                        result["plan"]["request_digest"],
+                        repeated["plan"]["request_digest"],
                     )
+                    self.assertEqual(
+                        result["plan"]["plan_digest"], repeated["plan"]["plan_digest"]
+                    )
+                    for record in (result, repeated):
+                        # 摘要证明这份载荷未被改写，不承诺两次浮点求解逐位相同。
+                        payload = json.dumps(
+                            record["result"], allow_nan=False, sort_keys=True
+                        ).encode()
+                        self.assertEqual(
+                            record["evidence"]["result_digest"],
+                            sha256(payload).hexdigest(),
+                        )
+                        # 复用此前数学测试的解析判据，不按 OS 或观测尾差放大容差。
+                        if kind.startswith("thermal_"):
+                            np.testing.assert_allclose(
+                                record["result"]["temperatures"], 30, rtol=0, atol=1e-10
+                            )
+                            np.testing.assert_allclose(
+                                record["result"]["cell_flux"], 0, rtol=0, atol=1e-10
+                            )
+                        if kind == "at2_fracture":
+                            # E=100, nu=.25 -> mu=lambda=40；u=.01*x，plane strain / 3D。
+                            psi = (
+                                40 * dimension * 0.01**2 + 20 * (dimension * 0.01) ** 2
+                            )
+                            exact = 2 * psi / (5 + 2 * psi)
+                            for state in record["result"]["states"][1:]:
+                                np.testing.assert_allclose(
+                                    state["damage"], exact, rtol=0, atol=1e-10
+                                )
 
     def test_planning_and_budget_precede_operator_construction(self):
         request = request_for("finite_strain")

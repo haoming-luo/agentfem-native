@@ -13,6 +13,42 @@ from agentfem_native.volume_mesh import unit_cube_tetrahedra
 
 
 class ThermoelasticTests(unittest.TestCase):
+    def test_manufactured_thermal_strain_with_body_force_spatial_refinement(self):
+        for dimension in (2, 3):
+            errors = []
+            for resolution in (4, 8):
+                mesh = (
+                    unit_square_triangles(resolution)
+                    if dimension == 2
+                    else unit_cube_tetrahedra(resolution)
+                )
+                boundary = np.flatnonzero(
+                    np.any((mesh.points == 0) | (mesh.points == 1), axis=1)
+                )
+                operator = ThermoelasticOperator(
+                    mesh,
+                    100,
+                    0.25,
+                    temperature=20 + mesh.points.sum(axis=1),
+                    expansion=0.001,
+                    reference_temperature=20,
+                )
+                exact = mesh.points**2
+                dofs = (dimension * boundary[:, None] + np.arange(dimension)).ravel()
+                # mu=lambda=40；-div(sigma)=-240+200*alpha，每个分量相同。
+                load = operator.geometry.mechanical_load(
+                    body_force=np.full(dimension, -239.8)
+                )
+                result = operator.solve(
+                    EssentialBC(dofs, exact.ravel()[dofs]), load=load
+                )
+                centers = mesh.points[mesh.cells].mean(axis=1)
+                delta = result.displacements[mesh.cells].mean(axis=1) - centers**2
+                errors.append(
+                    float(np.sqrt(operator.geometry.volumes @ (delta**2).sum(axis=1)))
+                )
+            self.assertTrue(3.8 < errors[0] / errors[1] < 4.2, errors)
+
     def test_free_expansion_and_blocked_stress(self):
         for mesh in (unit_square_triangles(2), unit_cube_tetrahedra(2)):
             d = mesh.points.shape[1]
