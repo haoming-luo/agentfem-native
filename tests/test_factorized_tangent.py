@@ -32,7 +32,12 @@ class FactorizedTangentTests(unittest.TestCase):
                     first[0].data, second[0].data, rtol=1e-12, atol=1e-12
                 )
                 for a, b in zip(first[1:], second[1:], strict=True):
-                    np.testing.assert_array_equal(a, b)
+                    # 同一公式的独立浮点调用不承诺逐位重复；单位随字段尺度变化。
+                    # 这里只容许 binary64 舍入带，不扩大下方切线/轨迹的科学容差。
+                    scale = max(float(np.max(np.abs(a))), float(np.max(np.abs(b))))
+                    np.testing.assert_allclose(
+                        a, b, rtol=0, atol=64 * np.finfo(float).eps * scale
+                    )
                 direction = random.normal(size=u.shape)
                 h = 1e-7
                 delta = (
