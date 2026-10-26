@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from dataclasses import asdict
 from hashlib import sha256
 from importlib.resources import files
@@ -588,6 +589,8 @@ def plan_multiphysics_request(
 ) -> dict:
     """预检不构造单元算子或 CSR 图；执行前由同一请求再次推导计划。"""
     try:
+        # 进度回调属于调用方；摘要和关联 ID 只能绑定内核持有的请求快照。
+        request = deepcopy(request)
         decoded = _decode(request)
         plan = _plan(decoded)
         ctx = _context(decoded[-2], context)
@@ -608,6 +611,8 @@ def run_multiphysics_request(
 ) -> dict:
     """计算、成熟度与数学账本一起返回，供 AgentFEM 审查。"""
     try:
+        # 深拷贝覆盖嵌套材料/载荷/约束，避免回调在预检后改写本次计算。
+        request = deepcopy(request)
         decoded = _decode(request)
         kind, mesh, material, thermal, mechanical, procedure, budget, digest = decoded
         plan = _plan(decoded)

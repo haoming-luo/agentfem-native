@@ -64,6 +64,63 @@ def request_for(kind, dimension=2):
 
 
 class MultiphysicsTests(unittest.TestCase):
+    def test_progress_cannot_change_solved_request_or_its_identity(self):
+        request = request_for("thermal_steady")
+        original = copy.deepcopy(request)
+        planned = plan_multiphysics_request(original)
+
+        def change_original(event):
+            if event.stage == "multiphysics.prepare":
+                request["thermal"]["constraints"]["values"][:] = [99] * 3
+                request["request_id"] = "被调用方修改的请求"
+
+        result = run_multiphysics_request(
+            request, context=ExecutionContext(progress=change_original)
+        )
+        self.assertEqual(result["status"], "success", result)
+        self.assertEqual(result["request_id"], original["request_id"])
+        self.assertEqual(
+            result["evidence"]["request_digest"], planned["plan"]["request_digest"]
+        )
+        # 原模型为无热源常温场；不能计算 99 度却保留 30 度请求的摘要。
+        np.testing.assert_allclose(
+            result["result"]["temperatures"], 30, rtol=0, atol=1e-10
+        )
+        self.assertEqual(request["thermal"]["constraints"]["values"], [99] * 3)
+
+    def test_plan_callback_cannot_change_returned_correlation(self):
+        request = request_for("thermal_steady")
+        expected = plan_multiphysics_request(copy.deepcopy(request))
+
+        def change_original(_event):
+            request.clear()
+
+        actual = plan_multiphysics_request(
+            request, context=ExecutionContext(progress=change_original)
+        )
+        self.assertEqual(actual, expected)
+        self.assertEqual(request, {})
+
+    def test_cancelled_callback_keeps_snapshot_correlation(self):
+        for entry in (plan_multiphysics_request, run_multiphysics_request):
+            request = request_for("thermal_steady")
+            request_id = request["request_id"]
+            token = CancellationToken()
+
+            def cancel_and_change(_event, request=request, token=token):
+                request.clear()
+                token.cancel()
+
+            result = entry(
+                request,
+                context=ExecutionContext(
+                    cancellation=token, progress=cancel_and_change
+                ),
+            )
+            self.assertEqual(result["status"], "failed")
+            self.assertEqual(result["error"]["code"], "execution.cancelled")
+            self.assertEqual(result["request_id"], request_id)
+
     def test_failed_requests_keep_correlation_and_solver_error_category(self):
         request = request_for("thermal_steady")
         request["request_id"] = "中文 Windows 作业"

@@ -85,7 +85,7 @@ T4 动力独立示例 `examples/linear_dynamics_t4_candidate.json` 可直接交�
 和 Linux runner 上验证。普通推送仍只有 Linux 快检。未运行的新矩阵必须写成
 待验收，不得复用旧提交的绿色结果作为新代码的证据。
 
-已完成源提交 `b5ec4af` 的完整 ABI 1.6 验收
-[40386606719](https://github.com/haoming-luo/agentfem-native/actions/runs/40386606719)，
+已完成源提交 `1988c35` 的完整 ABI 1.6 与多物理候选安装验收
+[40390539362](https://github.com/haoming-luo/agentfem-native/actions/runs/40390539362)，
 包含原生 Windows/Linux/macOS Intel/arm64、C/C++ 契约及后置 Stable ABI 检查。
 后续改动的状态集中保存在[阶段记录](../verification/MULTIPHYSICS_NATIVE_CANDIDATE.md)。

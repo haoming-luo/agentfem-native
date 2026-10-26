@@ -61,3 +61,20 @@ AgentFEM 材料扫描可显式持有 `IncompleteCholeskyPattern`，只复用镜�
 `benchmarks/results/2026-10-27-ic0-pattern-reuse.json`。
 小模型收益有限；不叠乘上一轮倍率，不外推有限元装配、Windows 或不同图重建。
 ABI 不变，仍是隔离 Python 显式入口，未迁入默认提供者或 JSON。
+
+## 与力学默认块 Jacobi 的无计时筛选
+
+源提交 `1988c35`，T3 `unit_square_triangles(32)`、T4 `unit_cube_tetrahedra(6)`，
+E=100、nu=.25；左面全部分量固定，右面节点均分总 x 向力 1。约束 CSR 通过
+`PreparedPreconditioner.from_matrix(..., "block_jacobi", block_size=d)` 或
+显式 native IC0（shift=.1）求解；CG 沿用默认真残差与精度参数。
+
+| 自由度总数 | 标量 Jacobi | 块 Jacobi | 自有 IC0 |
+|---|---:|---:|---:|
+| T3 2178 | 445 | 405 | 124 |
+| T4 1029 | 111 | 104 | 38 |
+
+所有真实残差不超过原阈值（分别约 1.741e-13、1.429e-13），解场相对标量
+基线按 rtol=1e-8、atol=1e-10 通过。因本机其他任务活跃，此筛选不测量或宣称
+时间收益；迭代数不能换算成速度倍率。结论只是对默认块 Jacobi 也存在减少
+迭代的潜力，下一阶段仍须计入分解/应用全部成本并保留失败算例。
