@@ -26,6 +26,13 @@ def sparse(dense):
 
 
 class IncompleteCholeskyTests(unittest.TestCase):
+    def assert_repeatable(self, first, second):
+        # ADR-0033：普通 NumPy 参考归约不承诺跨独立调用逐位相同。
+        scale = max(np.max(np.abs(first), initial=0), np.max(np.abs(second), initial=0))
+        np.testing.assert_allclose(
+            first, second, rtol=0, atol=64 * np.finfo(float).eps * scale
+        )
+
     def test_pattern_reuses_only_structure_across_material_changes(self):
         for mesh in (unit_square_triangles(2), unit_cube_tetrahedra(1)):
             dimension = mesh.points.shape[1]
@@ -47,10 +54,16 @@ class IncompleteCholeskyTests(unittest.TestCase):
                     np, "lexsort", side_effect=AssertionError("重复结构分析")
                 ):
                     candidate = pattern.factor(matrix, shift=0.1)
-                np.testing.assert_array_equal(candidate.lower.data, baseline.lower.data)
-                np.testing.assert_array_equal(candidate.diagonal, baseline.diagonal)
+                np.testing.assert_array_equal(
+                    candidate.lower.indptr, baseline.lower.indptr
+                )
+                np.testing.assert_array_equal(
+                    candidate.lower.indices, baseline.lower.indices
+                )
+                self.assert_repeatable(candidate.lower.data, baseline.lower.data)
+                self.assert_repeatable(candidate.diagonal, baseline.diagonal)
                 rhs = np.linspace(0.0, 1.0, matrix.shape[0])
-                np.testing.assert_array_equal(candidate.apply(rhs), baseline.apply(rhs))
+                self.assert_repeatable(candidate.apply(rhs), baseline.apply(rhs))
                 result = conjugate_gradient(
                     matrix, rhs, prepared_preconditioner=candidate
                 )
@@ -69,7 +82,7 @@ class IncompleteCholeskyTests(unittest.TestCase):
         before = first.apply([1, 2, 3, 4])
         with self.assertRaises(IncompleteFactorizationError):
             pattern.factor(sparse(bad))
-        np.testing.assert_array_equal(first.apply([1, 2, 3, 4]), before)
+        self.assert_repeatable(first.apply([1, 2, 3, 4]), before)
         retry = pattern.factor(sparse(bad), shift=0.2)
         self.assertFalse(np.array_equal(retry.diagonal, first.diagonal))
         with self.assertRaisesRegex(ValueError, "数值"):
@@ -224,7 +237,7 @@ class IncompleteCholeskyTests(unittest.TestCase):
         before = prepared.apply([1, 2])
         with self.assertRaises(ValueError):
             prepared.diagonal[0] = 0
-        np.testing.assert_array_equal(prepared.apply([1, 2]), before)
+        self.assert_repeatable(prepared.apply([1, 2]), before)
         invalid = (
             sparse([[1, 1], [0, 1]]),
             sparse([[2, 0.5], [0.4, 2]]),
@@ -294,6 +307,6 @@ class IncompleteCholeskyTests(unittest.TestCase):
         np.testing.assert_allclose(
             accelerated.apply(rhs), reference.apply(rhs), rtol=1e-14, atol=1e-14
         )
-        np.testing.assert_array_equal(accelerated.lower.data, reference.lower.data)
+        self.assert_repeatable(accelerated.lower.data, reference.lower.data)
         result = conjugate_gradient(matrix, rhs, prepared_preconditioner=accelerated)
         self.assertTrue(result.report.converged)

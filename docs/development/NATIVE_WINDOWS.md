@@ -47,16 +47,23 @@ Native 的必需通用运行依赖只有 NumPy；SciPy、PETSc、MPI 不拥有�
 ```
 
 T4 动力独立示例 `examples/linear_dynamics_t4_candidate.json` 可直接交给同一入口。
-其 `linear_dynamics_t4` 只支持无阻尼 Newmark、恒定节点力、零固定约束和
+其 `linear_dynamics_t4` 只支持无阻尼 Newmark、恒定载荷、零固定约束和
 `lumped`/`consistent` 质量；位移/速度初值为节点数 × 3，返回历史按节点优先 xyz
 展平。结果含反力与能量余额，但仍是 implemented 候选，不等于完整三维动力准入。
+
+工程载荷可以在 `mechanical` 中组合：`load` 是节点总力；`body_force` 是每单位
+参考体积的常向量；`tractions` 将命名外边界映射为每单位参考面积的常向量。
+三者相加，Native 积分体力/面力，二维包含厚度。例如三维右面拉伸可写成
+`"tractions": {"right": [1, 0, 0]}`，不是随动压力。体力也不是加速度，不能
+把重力加速度不乘密度就当作力密度。未知/空边界、维度错误在规划时拒绝。
 
 ```text
 .venv\Scripts\python.exe -m agentfem_native.cli examples/linear_dynamics_t4_candidate.json --result "work/T4 动力结果.json"
 ```
 
 诊断输出区分本机原生 Windows 与 WSL，并真正调用 C++ ABI 检查一个手算稀疏
-乘法。它不外推 Windows 性能，也不证明所有模型正确。可选包的元数据存在只说明
+乘法以及 ABI 1.6 的 IC0/LDLT 手算系统。它不外推 Windows 性能，也不证明所有
+模型正确，更不把实验 IC0 设为默认求解策略。可选包的元数据存在只说明
 安装信息，不保证提供者可用。
 
 ## 文件、失败与取消
@@ -67,6 +74,8 @@ T4 动力独立示例 `examples/linear_dynamics_t4_candidate.json` 可直接交�
   不合并结果，也不承诺断电后持久性。
 - 非线性取消保留已接受历史，不返回被拒绝的 Newton/损伤试探。该历史尚不是
   持久化、可跨版本继续计算的检查点协议。
+- 瞬态热/动力拒绝溢出的终点和不能区分的时间步；检查点的时间、步号、状态
+形状先合法，再核验摘要。动力取消/步数预算在初始质量求解前检查。
 - 新模型仍是候选。AT2 无张压分裂，不得用于压缩裂纹闭合；有限变形无接触、
   弧长跟踪、壳梁或近不可压缩混合公式。
 
@@ -75,3 +84,8 @@ T4 动力独立示例 `examples/linear_dynamics_t4_candidate.json` 可直接交�
 本地只负责 macOS；新增测试进入既有 GitHub Tier-1 安装态矩阵，在真正 Windows
 和 Linux runner 上验证。普通推送仍只有 Linux 快检。未运行的新矩阵必须写成
 待验收，不得复用旧提交的绿色结果作为新代码的证据。
+
+已完成源提交 `b5ec4af` 的完整 ABI 1.6 验收
+[40386606719](https://github.com/haoming-luo/agentfem-native/actions/runs/40386606719)，
+包含原生 Windows/Linux/macOS Intel/arm64、C/C++ 契约及后置 Stable ABI 检查。
+后续改动的状态集中保存在[阶段记录](../verification/MULTIPHYSICS_NATIVE_CANDIDATE.md)。

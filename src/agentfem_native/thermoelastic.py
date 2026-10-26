@@ -8,7 +8,6 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .materials import _elastic_parameters
 from .providers import NativeSparseProvider
 from .simplex import (
     EssentialBC,
@@ -18,6 +17,31 @@ from .simplex import (
     finite_array,
     readonly,
 )
+
+
+def cell_elastic_parameters(
+    young_modulus: ArrayLike, poisson_ratio: ArrayLike, count: int
+):
+    """逐单元各向同性参数准入；原参数有限不代表派生本构系数不会溢出。"""
+    if (
+        np.asarray(young_modulus).dtype.kind == "b"
+        or np.asarray(poisson_ratio).dtype.kind == "b"
+    ):
+        raise TypeError("弹性参数必须为实数，不能为布尔值。")
+    modulus = cell_values(young_modulus, count, "逐单元杨氏模量")
+    ratio = cell_values(poisson_ratio, count, "逐单元泊松比")
+    if np.any(modulus <= 0) or np.any((ratio <= -1) | (ratio >= 0.5)):
+        raise ValueError("每个单元必须满足 E>0 且 -1<nu<0.5。")
+    with np.errstate(over="ignore", invalid="ignore"):
+        shear = modulus / (2 * (1 + ratio))
+        lame = modulus * ratio / ((1 + ratio) * (1 - 2 * ratio))
+    if (
+        not np.all(np.isfinite(shear))
+        or not np.all(np.isfinite(lame))
+        or np.any(shear <= 0)
+    ):
+        raise ValueError("派生弹性系数溢出或剪切模量下溢，请检查材料值或调整单位。")
+    return readonly(shear), readonly(lame)
 
 
 @dataclass(frozen=True)
@@ -59,8 +83,8 @@ class ThermoelasticOperator:
     def __init__(
         self,
         mesh: Mesh,
-        young_modulus: float,
-        poisson_ratio: float,
+        young_modulus: ArrayLike,
+        poisson_ratio: ArrayLike,
         *,
         mode: str = "plane_strain",
         temperature: ArrayLike | None = None,
@@ -69,7 +93,9 @@ class ThermoelasticOperator:
         thickness: float = 1.0,
     ) -> None:
         self.geometry = g = SimplexGeometry(mesh, thickness)
-        self.shear, self.lame = _elastic_parameters(young_modulus, poisson_ratio)
+        self.shear, self.lame = cell_elastic_parameters(
+            young_modulus, poisson_ratio, mesh.cell_count
+        )
         if mode not in ("plane_stress", "plane_strain"):
             raise ValueError("二维模式必须是 plane_stress 或 plane_strain。")
         if g.dimension == 3 and mode == "plane_stress":
@@ -83,11 +109,14 @@ class ThermoelasticOperator:
             else self.lame
         )
         gradients = g.gradients
-        local = self.shear * np.einsum(
+        shear_local = self.shear[:, None, None, None, None]
+        local = shear_local * np.einsum(
             "eaj,ebj,ik->eaibk", gradients, gradients, np.eye(d)
         )
-        local += self.shear * np.einsum("eak,ebi->eaibk", gradients, gradients)
-        local += lame * np.einsum("eai,ebk->eaibk", gradients, gradients)
+        local += shear_local * np.einsum("eak,ebi->eaibk", gradients, gradients)
+        local += lame[:, None, None, None, None] * np.einsum(
+            "eai,ebk->eaibk", gradients, gradients
+        )
         size = (d + 1) * d
         self.local_stiffness = readonly(
             local.reshape(mesh.cell_count, size, size) * g.volumes[:, None, None]
@@ -136,7 +165,9 @@ class ThermoelasticOperator:
             )
         elastic = strain - a[:, None, None] * np.eye(3)
         trace = np.trace(elastic, axis1=1, axis2=2)
-        stress = 2 * self.shear * elastic + self.lame * trace[:, None, None] * np.eye(3)
+        stress = 2 * self.shear[:, None, None] * elastic + (self.lame * trace)[
+            :, None, None
+        ] * np.eye(3)
         energy = 0.5 * np.einsum("eij,eij->e", stress, elastic)
         # 恢复单元积分热能中的温度方差项；不能把平均温度平方冒充平方平均。
         coefficient = (
@@ -188,8 +219,8 @@ def solve_thermal_elastic(
     thermal_bc: EssentialBC,
     mechanical_bc: EssentialBC,
     *,
-    young_modulus: float,
-    poisson_ratio: float,
+    young_modulus: ArrayLike,
+    poisson_ratio: ArrayLike,
     expansion: ArrayLike,
     reference_temperature: float,
     mode: str = "plane_strain",

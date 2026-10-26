@@ -23,8 +23,8 @@
     "material": {
       "type": "object", "additionalProperties": false,
       "properties": {
-        "young_modulus": {"type": "number", "exclusiveMinimum": 0},
-        "poisson_ratio": {"type": "number", "exclusiveMinimum": -1, "exclusiveMaximum": 0.5},
+        "young_modulus": {"oneOf": [{"type": "number", "exclusiveMinimum": 0}, {"type": "array", "minItems": 1, "items": {"type": "number", "exclusiveMinimum": 0}}], "description": "热弹性可用逐单元数组，其余分析仅标量；执行前另查长度与派生系数有限性。"},
+        "poisson_ratio": {"oneOf": [{"type": "number", "exclusiveMinimum": -1, "exclusiveMaximum": 0.5}, {"type": "array", "minItems": 1, "items": {"type": "number", "exclusiveMinimum": -1, "exclusiveMaximum": 0.5}}]},
         "mode": {"enum": ["plane_stress", "plane_strain"]},
         "expansion": {"$ref": "#/$defs/scalarOrCells"},
         "reference_temperature": {"type": "number"},

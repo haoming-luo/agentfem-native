@@ -31,6 +31,8 @@ T3/T4 基础线性静力，不代表整体内核已达生产级。
 当前开发分支另有 C++ ABI 1.6 IC0/LDLT 候选，用于稀疏强预条件研究；默认
 Jacobi/块 Jacobi 与稳定契约不变。新 ABI 平台证据与既有 1.5 分开记录，不将
 有限模型的本机提速外推到所有 Windows 工程问题。
+源提交 `b5ec4af` 的 ABI 1.6 已通过完整原生 Windows/Linux/macOS 安装态验收
+（运行 `40386606719`）。后续工程载荷和强约束修复另按源提交验收。
 
 ## 稳定架构方向
 
@@ -41,7 +43,8 @@ AgentFEM engineering model
         -> replaceable linear-algebra and hardware providers
 ```
 
-The same AgentFEM engineering model is intended eventually to support:
+长期目标是让同一 AgentFEM 工程模型通过稳定适配层选择后端；下面是目标用法，
+不代表当前 AgentFEM 已经接入全部 Native 候选：
 
 ```python
 study.solve()
@@ -67,7 +70,9 @@ GitHub Actions 运行 `35461748299` 通过完整 Windows/Linux/macOS 验收；AB
 二维/三维稳态与瞬态热、热弹性、T4 线性动力已形成 `implemented` 候选；有限
 变形 Neo-Hookean 与 AT2 断裂为 `experimental`。它们没有自动继承既有 Gate
 的 `verified` 标签。候选入口 `0.4.0-experimental.1` 提供显式预检、资源预算、
-成熟度、结果摘要和失败时的已接受非线性状态；T4 动力目前仅提供 Python API。
+成熟度、结果摘要和失败时的已接受非线性状态；T4 动力已接入候选 JSON，限定
+Newmark、零固定约束和常载荷。候选还接纳体力、命名边界参考面力及节点力，
+载荷积分由 Native 拥有，不包含随动压力。
 
 Windows 使用同一自主串行内核，不要求 WSL、PETSc、MPI 或 SciPy。安装诊断、
 中文/空格路径和安全结果替换进入测试；新提交的 Windows 实际通过情况以专属
@@ -89,21 +94,19 @@ python examples/multiphysics_candidate.py --directory "work/多物理 验收"
 
 ## 当前证据与环境
 
-Create the repository-local environment on Windows, macOS, or Linux:
+在 Windows、macOS 或 Linux 创建仓库专属开发环境：
 
 ```text
 python tools/bootstrap_env.py
-python tools/bootstrap_env.py --with-scipy  # optional sparse provider
+python tools/bootstrap_env.py --with-scipy  # 可选通用稀疏提供者
 python tools/bootstrap_env.py --agentfem /path/to/agentfem
 ```
 
-For this development checkout, the active `.venv` contains editable
-AgentFEM 0.3.1 from the clean local `agentfem-main-worktree` and editable
-AgentFEM Native 0.7.0a1 with its C++20 extension and optional SciPy provider.
-Installing both does not make AgentFEM or FEniCSx a Native runtime dependency;
-their communication remains the public contract.
+本开发工作区的 `.venv` 同时安装 AgentFEM 与可编辑的 AgentFEM Native，包含
+C++20 扩展及可选 SciPy。开发时共存不代表 AgentFEM 或 FEniCSx 成为 Native
+运行依赖；双方仍通过公开契约通信。另有仅含 NumPy 的隔离安装环境验证独立性。
 
-Then run the reference tests without FEniCSx:
+随后运行不依赖 FEniCSx 的自有参考与优化实现测试：
 
 ```text
 python -m unittest discover -v
@@ -113,8 +116,7 @@ python tools/check_independence.py
 执行一个可移植的 Kernel Contract 请求：
 
 ```text
-agentfem-native examples/linear_elasticity_t3_request.json \
-  --artifact-directory work/example --result work/example-result.json
+agentfem-native examples/linear_elasticity_t3_request.json --artifact-directory work/example --result work/example-result.json
 ```
 
 AgentFEM 或智能体在正式求解前，可以先做不装配、不求解的资源预检：
@@ -130,9 +132,9 @@ JSON 安全的结果；失败包含稳定错误码与字段路径。Contract 0.3
 [Kernel Contract 0.3 规格](docs/specifications/KERNEL_CONTRACT_0_3.md)。可运行的
 动力请求见 `examples/linear_dynamics_t3_request.json`。
 
-See [ROADMAP.md](ROADMAP.md), [ARCHITECTURE.md](ARCHITECTURE.md), the
-[project charter](docs/charter/PROJECT_CHARTER.md), and the
-[steady-diffusion specification](docs/specifications/STEADY_DIFFUSION.md).
+项目约束见[路线图](ROADMAP.md)、[架构](ARCHITECTURE.md)、
+[项目宪章](docs/charter/PROJECT_CHARTER.md)与
+[稳态扩散规格](docs/specifications/STEADY_DIFFUSION.md)。
 环境说明见[开发环境](docs/development/ENVIRONMENT.md)，编译边界见
 [Native ABI 规格](docs/specifications/NATIVE_P1_ABI.md)。性能与力学证据分别见
 [P2 报告](docs/verification/PERFORMANCE_P2_REPORT.md)、
@@ -143,10 +145,8 @@ See [ROADMAP.md](ROADMAP.md), [ARCHITECTURE.md](ARCHITECTURE.md), the
 [Mechanics Alpha 0.2 报告](docs/verification/MECHANICS_ALPHA_0_2_REPORT.md)。
 长期技术判断记录在[2035 愿景](docs/charter/NATIVE_VISION_2035.md)中。
 
-## Licensing
+## 许可
 
-The kernel is source-available under PolyForm Noncommercial 1.0.0. Others may
-use it only for purposes permitted by that license; commercial use requires a
-separate written AgentFEM commercial license. See [LICENSE](LICENSE) and
-[LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md). It is not OSI-approved open
-source.
+内核采用 PolyForm Noncommercial 1.0.0，属于源代码可见项目，不是 OSI 批准的
+开源许可。使用须符合该许可；商用需要独立书面的 AgentFEM 商业许可。正式条款
+见 [LICENSE](LICENSE) 与 [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md)。

@@ -39,7 +39,7 @@ from .simplex import (
 )
 from .solid_dynamics import assemble_t4_mass
 from .thermal import ThermalBoundary, ThermalOperator, conductivity_tensors
-from .thermoelastic import ThermoelasticOperator
+from .thermoelastic import ThermoelasticOperator, cell_elastic_parameters
 from .time_grid import validate_time_interval
 from .volume_mesh import TetrahedralMesh
 
@@ -62,6 +62,7 @@ def multiphysics_capabilities() -> dict:
         "elements": ["T3", "T4"],
         "provider": "native_sparse",
         "required_optional_providers": [],
+        "cellwise_elastic_parameters": ["thermoelastic"],
         "mechanical_loads": [
             "nodal_force",
             "constant_body_force",
@@ -341,7 +342,14 @@ def _validate_physics(decoded):
             raise ValueError(f"参考面力边界 {name} 为空，不能静默忽略载荷。")
     if not kind.startswith("thermal_"):
         check_component_constraints(mesh, components, mechanical_bc)
-        _elastic_parameters(material["young_modulus"], material["poisson_ratio"])
+        if kind == "thermoelastic":
+            cell_elastic_parameters(
+                material["young_modulus"], material["poisson_ratio"], count
+            )
+        else:
+            if np.ndim(material["young_modulus"]) or np.ndim(material["poisson_ratio"]):
+                raise ValueError("当前分析仅接纳标量弹性参数；逐单元参数限热弹性候选。")
+            _elastic_parameters(material["young_modulus"], material["poisson_ratio"])
         mode = material.get("mode", "plane_strain")
         if mode not in ("plane_strain", "plane_stress") or (
             d == 3 and mode == "plane_stress"

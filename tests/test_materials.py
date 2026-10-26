@@ -48,7 +48,7 @@ class NeoHookeanTests(unittest.TestCase):
             NeoHookeanMaterial(1.0, 0.2).response(np.diag((1.0, 1.0, -1.0)))
 
     def test_invalid_elastic_parameters_fail_at_construction(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Young"):
+        with self.assertRaisesRegex(ValueError, "杨氏模量"):
             NeoHookeanMaterial(0.0, 0.2)
 
 

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Independently specified nonlinear material-point candidates."""
+"""独立数学规格约束的非线性材料点候选，不依赖第三方有限元实现。"""
 
 from __future__ import annotations
 
@@ -17,15 +17,17 @@ def _elastic_parameters(
     if isinstance(young_modulus, (bool, np.bool_)) or isinstance(
         poisson_ratio, (bool, np.bool_)
     ):
-        raise TypeError("Elastic parameters must be real scalars.")
+        raise TypeError("弹性参数必须是实数标量。")
     modulus = float(young_modulus)
     ratio = float(poisson_ratio)
     if not np.isfinite(modulus) or modulus <= 0.0:
-        raise ValueError("Young's modulus must be finite and positive.")
+        raise ValueError("杨氏模量必须有限且为正。")
     if not np.isfinite(ratio) or ratio <= -1.0 or ratio >= 0.5:
-        raise ValueError("Poisson's ratio must satisfy -1 < nu < 0.5.")
+        raise ValueError("泊松比必须有限且满足 -1 < nu < 0.5。")
     shear = modulus / (2.0 * (1.0 + ratio))
     lame = modulus * ratio / ((1.0 + ratio) * (1.0 - 2.0 * ratio))
+    if not np.all(np.isfinite((shear, lame))) or shear <= 0:
+        raise ValueError("派生弹性系数溢出或剪切模量下溢，请检查材料值或调整单位。")
     return shear, lame
 
 
