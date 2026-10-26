@@ -16,7 +16,7 @@ bool close(const double left, const double right, const double tolerance = 1e-15
 }  // namespace
 
 int main() {
-  static_assert(AFN_P1_ABI_VERSION == 0x00010005u);
+  static_assert(AFN_P1_ABI_VERSION == 0x00010006u);
   assert(afn_p1_abi_version() == AFN_P1_ABI_VERSION);
   const std::array<double, 8> points{{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}};
   const std::array<std::int64_t, 6> cells{{0, 1, 2, 0, 2, 3}};
@@ -230,5 +230,41 @@ int main() {
          AFN_P1_NONFINITE_INPUT);
   assert(afn_csr_fill_from_contributions(0, 0, nullptr, nullptr, nullptr) ==
          AFN_P1_SUCCESS);
+
+  // IC0 在三对角 SPD 上是精确 LDLT；预条件器不改变原线性方程。
+  const std::array<std::int64_t, 4> lower_ptr{{0, 0, 1, 2}};
+  const std::array<std::int64_t, 2> lower_col{{0, 1}};
+  const std::array<double, 2> lower_values{{-1.0, -1.0}};
+  const std::array<double, 3> diagonal{{4.0, 4.0, 4.0}};
+  std::array<double, 2> factors{};
+  std::array<double, 3> pivots{};
+  std::int64_t failed_row = 99;
+  assert(afn_ic0_factor(3, 2, lower_ptr.data(), lower_col.data(),
+      lower_values.data(), diagonal.data(), factors.data(), pivots.data(),
+      &failed_row) == AFN_P1_SUCCESS);
+  assert(failed_row == -1);
+  assert(close(pivots[0], 4.0) && close(pivots[1], 3.75));
+  const std::array<double, 3> rhs{{2.0, 4.0, 10.0}};
+  std::array<double, 3> solved{};
+  assert(afn_ldlt_solve(3, 2, lower_ptr.data(), lower_col.data(), factors.data(),
+      pivots.data(), rhs.data(), solved.data()) == AFN_P1_SUCCESS);
+  for (std::size_t i = 0; i < 3; ++i) assert(close(solved[i], static_cast<double>(i + 1)));
+  auto bad_lower = lower_col;
+  bad_lower[0] = 1;
+  assert(afn_ic0_factor(3, 2, lower_ptr.data(), bad_lower.data(),
+      lower_values.data(), diagonal.data(), factors.data(), pivots.data(),
+      &failed_row) == AFN_P1_INVALID_CELL);
+  const std::array<double, 3> bad_diagonal{{1.0, 0.5, 1.0}};
+  assert(afn_ic0_factor(3, 2, lower_ptr.data(), lower_col.data(),
+      lower_values.data(), bad_diagonal.data(), factors.data(), pivots.data(),
+      &failed_row) == AFN_P1_NONPOSITIVE_PIVOT);
+  assert(failed_row == 1);
+  assert(afn_ldlt_solve(3, 2, lower_ptr.data(), lower_col.data(), factors.data(),
+      pivots.data(), rhs.data(), solved.data()) == AFN_P1_NONPOSITIVE_PIVOT);
+  const std::array<std::int64_t, 2> empty_lower{{0, 0}};
+  double one_pivot = 0.0;
+  assert(afn_ic0_factor(1, 0, empty_lower.data(), nullptr, nullptr,
+      diagonal.data(), nullptr, &one_pivot, &failed_row) == AFN_P1_SUCCESS);
+  assert(one_pivot == 4.0);
   return 0;
 }

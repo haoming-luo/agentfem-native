@@ -104,10 +104,13 @@ class FiniteStrainTests(unittest.TestCase):
         self.assertEqual(candidate.rejected_steps, baseline.rejected_steps)
         for actual, expected in zip(candidate.states, baseline.states, strict=True):
             self.assertEqual(actual.iterations, expected.iterations)
-            np.testing.assert_array_equal(actual.displacements, expected.displacements)
-            np.testing.assert_array_equal(actual.residual, expected.residual)
-            np.testing.assert_array_equal(actual.cell_cauchy, expected.cell_cauchy)
-            self.assertEqual(actual.strain_energy, expected.strain_energy)
+            for name in ("displacements", "residual", "cell_cauchy", "strain_energy"):
+                first, second = getattr(actual, name), getattr(expected, name)
+                scale = max(float(np.max(np.abs(first))), float(np.max(np.abs(second))))
+                # 两次独立 NumPy 归约按舍入带比较；结构复用次数及迭代路径仍严格检查。
+                np.testing.assert_allclose(
+                    first, second, rtol=0, atol=64 * np.finfo(float).eps * scale
+                )
 
     def test_tangent_plan_rejects_different_constraints(self):
         matrix = CSRMatrix.from_coo((2, 2), [0, 1], [0, 1], [1.0, 2.0])

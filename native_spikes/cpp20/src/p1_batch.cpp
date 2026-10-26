@@ -11,6 +11,39 @@
 
 namespace {
 
+int validate_strict_lower(const std::size_t rows, const std::size_t nnz,
+                          const std::int64_t* indptr,
+                          const std::int64_t* indices, const double* values,
+                          const double* diagonal) {
+  if (rows == 0 || indptr == nullptr || diagonal == nullptr ||
+      (nnz > 0 && (indices == nullptr || values == nullptr))) {
+    return AFN_P1_NULL_POINTER;
+  }
+  const auto limit = static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max());
+  if (rows > limit || nnz > limit || indptr[0] != 0 ||
+      indptr[rows] != static_cast<std::int64_t>(nnz)) {
+    return AFN_P1_INVALID_CELL;
+  }
+  for (std::size_t row = 0; row < rows; ++row) {
+    const auto start = indptr[row];
+    const auto stop = indptr[row + 1];
+    if (start < 0 || stop < start || stop > static_cast<std::int64_t>(nnz)) {
+      return AFN_P1_INVALID_CELL;
+    }
+    if (!std::isfinite(diagonal[row])) return AFN_P1_NONFINITE_INPUT;
+    std::int64_t previous = -1;
+    for (auto slot = start; slot < stop; ++slot) {
+      const auto column = indices[slot];
+      if (column <= previous || column >= static_cast<std::int64_t>(row)) {
+        return AFN_P1_INVALID_CELL;
+      }
+      if (!std::isfinite(values[slot])) return AFN_P1_NONFINITE_INPUT;
+      previous = column;
+    }
+  }
+  return AFN_P1_SUCCESS;
+}
+
 bool finite_tensor(const double* tensor) {
   return std::isfinite(tensor[0]) && std::isfinite(tensor[1]) &&
          std::isfinite(tensor[2]) && std::isfinite(tensor[3]);
@@ -668,6 +701,91 @@ extern "C" AFN_API int afn_t4_elasticity_assemble_cells_parallel(
             rows + 144 * begin, columns + 144 * begin, data + 144 * begin,
             private_load);
       });
+}
+
+extern "C" AFN_API int afn_ic0_factor(
+    const std::size_t rows, const std::size_t nnz,
+    const std::int64_t* indptr, const std::int64_t* indices,
+    const double* values, const double* diagonal,
+    double* factors, double* pivots, std::int64_t* failed_row) {
+  if (pivots == nullptr || failed_row == nullptr || (nnz > 0 && factors == nullptr)) {
+    return AFN_P1_NULL_POINTER;
+  }
+  *failed_row = -1;
+  const int status = validate_strict_lower(rows, nnz, indptr, indices, values, diagonal);
+  if (status != AFN_P1_SUCCESS) return status;
+  for (std::size_t row = 0; row < rows; ++row) {
+    const auto start = indptr[row];
+    const auto stop = indptr[row + 1];
+    for (auto slot = start; slot < stop; ++slot) {
+      const auto column = indices[slot];
+      auto left = start;
+      auto right = indptr[column];
+      double correction = 0.0;
+      // 两条已排序的严格下三角行求交；不分配填充，也不读取尚未形成的因子。
+      while (left < slot && right < indptr[column + 1]) {
+        if (indices[left] < indices[right]) {
+          ++left;
+        } else if (indices[left] > indices[right]) {
+          ++right;
+        } else {
+          correction += factors[left] * pivots[indices[left]] * factors[right];
+          ++left;
+          ++right;
+        }
+      }
+      factors[slot] = (values[slot] - correction) / pivots[column];
+      if (!std::isfinite(factors[slot])) {
+        *failed_row = static_cast<std::int64_t>(row);
+        return AFN_P1_NONFINITE_INPUT;
+      }
+    }
+    double pivot = diagonal[row];
+    for (auto slot = start; slot < stop; ++slot) {
+      pivot -= factors[slot] * factors[slot] * pivots[indices[slot]];
+    }
+    pivots[row] = pivot;
+    if (!std::isfinite(pivot) || pivot <= 0.0) {
+      *failed_row = static_cast<std::int64_t>(row);
+      return AFN_P1_NONPOSITIVE_PIVOT;
+    }
+  }
+  return AFN_P1_SUCCESS;
+}
+
+extern "C" AFN_API int afn_ldlt_solve(
+    const std::size_t rows, const std::size_t nnz,
+    const std::int64_t* indptr, const std::int64_t* indices,
+    const double* factors, const double* diagonal,
+    const double* rhs, double* result) {
+  if (rhs == nullptr || result == nullptr) return AFN_P1_NULL_POINTER;
+  const int status = validate_strict_lower(rows, nnz, indptr, indices, factors, diagonal);
+  if (status != AFN_P1_SUCCESS) return status;
+  // 写入之前确认输入；非正枢轴不能被当作一般三角求解继续使用。
+  for (std::size_t row = 0; row < rows; ++row) {
+    if (diagonal[row] <= 0.0) return AFN_P1_NONPOSITIVE_PIVOT;
+    if (!std::isfinite(rhs[row])) return AFN_P1_NONFINITE_INPUT;
+  }
+  for (std::size_t row = 0; row < rows; ++row) {
+    double value = rhs[row];
+    for (auto slot = indptr[row]; slot < indptr[row + 1]; ++slot) {
+      value -= factors[slot] * result[indices[slot]];
+    }
+    if (!std::isfinite(value)) return AFN_P1_NONFINITE_INPUT;
+    result[row] = value;
+  }
+  for (std::size_t row = 0; row < rows; ++row) {
+    result[row] /= diagonal[row];
+    if (!std::isfinite(result[row])) return AFN_P1_NONFINITE_INPUT;
+  }
+  for (std::size_t remaining = rows; remaining > 0; --remaining) {
+    const auto row = remaining - 1;
+    if (!std::isfinite(result[row])) return AFN_P1_NONFINITE_INPUT;
+    for (auto slot = indptr[row]; slot < indptr[row + 1]; ++slot) {
+      result[indices[slot]] -= factors[slot] * result[row];
+    }
+  }
+  return AFN_P1_SUCCESS;
 }
 
 extern "C" AFN_API int afn_csr_spmv(

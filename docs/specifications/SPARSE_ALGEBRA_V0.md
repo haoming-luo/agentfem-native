@@ -132,6 +132,35 @@ BSR is not claimed merely from interleaved numbering.
 
 ## Acceptance evidence
 
+### IC0 隔离候选
+
+令 S=diag(A_ii^-1/2)，B=S A S + sigma I，sigma>=0 为显式预条件平移。
+对源矩阵的严格下三角结构位置依次计算单位下三角 L 和正对角 D：
+`L_ij=(B_ij-sum_{k<j} L_ik D_k L_jk)/D_j`，
+`D_i=B_ii-sum_{j<i} L_ij² D_j`。仅遍历两行结构交集，不添加填充；显式结构
+零仍属于已声明的稀疏图。不采用排序、丢弃阈值、自动平移或不明确的回退。
+每个枢轴须有限且严格为正；失败返回行号，不留下可用的部分对象。
+
+预条件应用为 `z=S L^-T D^-1 L^-1 S r`。B 的对称性按 64*eps 的逐项相对尺度
+准入，仅对容许的舍入差取对称均值；原 CG 的 A 不变。矩阵须非空、方阵、正
+对角、结构对称；拒绝非有限平移、非法后端、陈旧图/数值和不合法 RHS。
+准备对象绑定原 CSR 数值快照，缓存原 A 的范数，保持 CG 的真残差与停止规则。
+
+`reference` 后端只使用 NumPy 数组与自有前/后代入；`scipy` 后端延迟导入
+通用稀疏三角求解，缺席时明确不可用。两者数学完全相同，科学容差一致。
+最低证据：三对角精确分解、一般稀疏应用对照、SPD 但 IC0 失败的反例、显式
+平移、单位缩放、缓存失配、无稠密化、T3/T4 平衡/能量以及完整求解成本。
+该实验不进入默认提供者或契约能力清单。
+
+ABI 1.6 实验增量只接受已经规范化的严格下三角 CSR 和独立对角：
+`afn_ic0_factor` 按升序两指针交集执行相同 LDLT 递推；
+`afn_ldlt_solve` 执行单位下三角前代入、正 D 除法及反向散射。
+输入指针、行界限、升序且列号小于行号、有限数值及正 D 每次检查；不以不安全
+的 trusted 标志省略边界验证。零严格下三角条目允许，行数须大于零。
+分解失败返回独立的非正枢轴状态及失败行号，输出只在成功时可用；调用方不得
+把部分分解当作缓存。输出缓冲不得与结构或因子输入重叠。Python 绑定拥有独立
+输出，并以 Stable ABI 的 buffer 协议检查长度、类型与可写性。
+
 - malformed shapes, pointers, columns, ordering, and non-finite data fail;
 - COO duplicates and empty rows canonicalize exactly;
 - matvec, diagonal, residual, and constraint transformation match small dense

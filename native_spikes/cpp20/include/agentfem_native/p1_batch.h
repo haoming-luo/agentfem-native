@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define AFN_P1_ABI_VERSION 0x00010005u
+#define AFN_P1_ABI_VERSION 0x00010006u
 
 typedef enum AfnP1Status {
   AFN_P1_SUCCESS = 0,
@@ -28,9 +28,22 @@ typedef enum AfnP1Status {
   AFN_P1_NONFINITE_INPUT = 4,
   AFN_P1_INVALID_THREAD_COUNT = 5,
   AFN_P1_RESOURCE_FAILURE = 6,
+  AFN_P1_NONPOSITIVE_PIVOT = 7,
 } AfnP1Status;
 
 AFN_API uint32_t afn_p1_abi_version(void);
+
+/* ABI 1.6：严格下三角 CSR 的 IC0 实验；失败时不使用部分输出。 */
+AFN_API int afn_ic0_factor(
+    size_t row_count, size_t nonzero_count, const int64_t* indptr,
+    const int64_t* indices, const double* lower_values, const double* diagonal,
+    double* lower_factor, double* diagonal_factor, int64_t* failed_row);
+
+/* 单位 L 与正 D 的 L D L^T 求解；所有输出由调用方独占。 */
+AFN_API int afn_ldlt_solve(
+    size_t row_count, size_t nonzero_count, const int64_t* indptr,
+    const int64_t* indices, const double* lower_factor, const double* diagonal,
+    const double* rhs, double* result);
 
 AFN_API int afn_p1_diffusion_assemble(
     size_t node_count,

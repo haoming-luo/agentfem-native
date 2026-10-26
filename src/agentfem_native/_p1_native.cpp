@@ -5,6 +5,7 @@
 #include "agentfem_native/p1_batch.h"
 
 #include <cstddef>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <limits>
@@ -31,6 +32,10 @@ class BufferView {
       return false;
     }
     acquired_ = true;
+    if (view_.len > 0 && reinterpret_cast<std::uintptr_t>(view_.buf) % alignof(double) != 0) {
+      PyErr_SetString(PyExc_ValueError, "原生缓冲区必须满足 64 位数值的内存对齐要求。");
+      return false;
+    }
     const char* format = view_.format;
     if (format != nullptr && (format[0] == '@' || format[0] == '=')) {
       ++format;
@@ -56,6 +61,15 @@ class BufferView {
   }
 
   Py_ssize_t size_bytes() const { return view_.len; }
+
+  bool overlaps(const BufferView& other) const {
+    if (view_.len == 0 || other.view_.len == 0) return false;
+    const auto left = reinterpret_cast<std::uintptr_t>(view_.buf);
+    const auto right = reinterpret_cast<std::uintptr_t>(other.view_.buf);
+    return left <= right
+        ? right - left < static_cast<std::uintptr_t>(view_.len)
+        : left - right < static_cast<std::uintptr_t>(other.view_.len);
+  }
 
   template <typename Value>
   Value* data() const {
@@ -608,6 +622,84 @@ PyObject* csr_fill_into(PyObject*, PyObject* arguments) {
   return PyLong_FromLong(status);
 }
 
+PyObject* ic0_factor_into(PyObject*, PyObject* arguments) {
+  Py_ssize_t rows = 0, nnz = 0;
+  std::array<PyObject*, 7> objects{};
+  if (!PyArg_ParseTuple(arguments, "nnOOOOOOO", &rows, &nnz,
+                        &objects[0], &objects[1], &objects[2], &objects[3],
+                        &objects[4], &objects[5], &objects[6])) return nullptr;
+  if (rows == std::numeric_limits<Py_ssize_t>::max()) {
+    PyErr_SetString(PyExc_OverflowError, "IC0 行数超出缓冲区范围。");
+    return nullptr;
+  }
+  Py_ssize_t pointer_bytes = 0, entry_bytes = 0, row_bytes = 0;
+  if (rows == std::numeric_limits<Py_ssize_t>::max() ||
+      !checked_bytes(rows + 1, 8, &pointer_bytes) ||
+      !checked_bytes(nnz, 8, &entry_bytes) ||
+      !checked_bytes(rows, 8, &row_bytes)) return nullptr;
+  std::array<BufferView, 7> buffers;
+  const std::array<Py_ssize_t, 7> lengths{{pointer_bytes, entry_bytes, entry_bytes,
+                                        row_bytes, entry_bytes, row_bytes, 8}};
+  for (std::size_t i = 0; i < buffers.size(); ++i) {
+    if (!buffers[i].acquire(objects[i], lengths[i], i >= 4,
+                            i >= 2 && i <= 5, "ic0_buffer")) return nullptr;
+    if (i >= 4) {
+      for (std::size_t j = 0; j < i; ++j) {
+        if (buffers[i].overlaps(buffers[j])) {
+          PyErr_SetString(PyExc_ValueError, "IC0 输出缓冲不得重叠输入或其他输出。");
+          return nullptr;
+        }
+      }
+    }
+  }
+  int status = AFN_P1_NULL_POINTER;
+  Py_BEGIN_ALLOW_THREADS
+  status = afn_ic0_factor(static_cast<std::size_t>(rows), static_cast<std::size_t>(nnz),
+      buffers[0].data<std::int64_t>(), buffers[1].data<std::int64_t>(),
+      buffers[2].data<double>(), buffers[3].data<double>(),
+      buffers[4].data<double>(), buffers[5].data<double>(), buffers[6].data<std::int64_t>());
+  Py_END_ALLOW_THREADS
+  return PyLong_FromLong(status);
+}
+
+PyObject* ldlt_solve_into(PyObject*, PyObject* arguments) {
+  Py_ssize_t rows = 0, nnz = 0;
+  std::array<PyObject*, 6> objects{};
+  if (!PyArg_ParseTuple(arguments, "nnOOOOOO", &rows, &nnz,
+                        &objects[0], &objects[1], &objects[2], &objects[3],
+                        &objects[4], &objects[5])) return nullptr;
+  if (rows == std::numeric_limits<Py_ssize_t>::max()) {
+    PyErr_SetString(PyExc_OverflowError, "LDLT 行数超出缓冲区范围。");
+    return nullptr;
+  }
+  Py_ssize_t pointer_bytes = 0, entry_bytes = 0, row_bytes = 0;
+  if (rows == std::numeric_limits<Py_ssize_t>::max() ||
+      !checked_bytes(rows + 1, 8, &pointer_bytes) ||
+      !checked_bytes(nnz, 8, &entry_bytes) ||
+      !checked_bytes(rows, 8, &row_bytes)) return nullptr;
+  std::array<BufferView, 6> buffers;
+  const std::array<Py_ssize_t, 6> lengths{{pointer_bytes, entry_bytes, entry_bytes,
+                                        row_bytes, row_bytes, row_bytes}};
+  for (std::size_t i = 0; i < buffers.size(); ++i) {
+    if (!buffers[i].acquire(objects[i], lengths[i], i == 5, i >= 2,
+                            "ldlt_buffer")) return nullptr;
+  }
+  for (std::size_t i = 0; i < 5; ++i) {
+    if (buffers[5].overlaps(buffers[i])) {
+      PyErr_SetString(PyExc_ValueError, "LDLT 输出缓冲不得重叠输入。");
+      return nullptr;
+    }
+  }
+  int status = AFN_P1_NULL_POINTER;
+  Py_BEGIN_ALLOW_THREADS
+  status = afn_ldlt_solve(static_cast<std::size_t>(rows), static_cast<std::size_t>(nnz),
+      buffers[0].data<std::int64_t>(), buffers[1].data<std::int64_t>(),
+      buffers[2].data<double>(), buffers[3].data<double>(),
+      buffers[4].data<double>(), buffers[5].data<double>());
+  Py_END_ALLOW_THREADS
+  return PyLong_FromLong(status);
+}
+
 PyMethodDef methods[] = {
     {"abi_version", abi_version, METH_NOARGS,
      "返回编码后的 AgentFEM Native P1 C ABI 版本。"},
@@ -629,6 +721,10 @@ PyMethodDef methods[] = {
      "使用 C++20 内核应用不可变规范 CSR 矩阵。"},
     {"csr_fill_into", csr_fill_into, METH_VARARGS,
      "按原 COO 贡献顺序确定性回填规范 CSR 数值。"},
+    {"ic0_factor_into", ic0_factor_into, METH_VARARGS,
+     "严格下三角零填充 LDLT 实验分解，失败保留行号。"},
+    {"ldlt_solve_into", ldlt_solve_into, METH_VARARGS,
+     "应用单位下三角与正对角的 LDLT 实验分解。"},
     {nullptr, nullptr, 0, nullptr},
 };
 

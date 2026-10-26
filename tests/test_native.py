@@ -27,9 +27,9 @@ class NativeKernelTests(unittest.TestCase):
         identity = native_kernel_identity()
         self.assertEqual(identity["name"], "cpp20")
         self.assertTrue(identity["available"])
-        self.assertEqual(identity["abi_version"], "1.5")
-        self.assertEqual(identity["required_abi_version"], "1.5")
-        self.assertEqual(NATIVE_P1_ABI_VERSION, 0x0001_0005)
+        self.assertEqual(identity["abi_version"], "1.6")
+        self.assertEqual(identity["required_abi_version"], "1.6")
+        self.assertEqual(NATIVE_P1_ABI_VERSION, 0x0001_0006)
 
     def test_global_and_per_cell_conductivity_emit_owned_arrays(self) -> None:
         mesh = unit_square_two_triangles()

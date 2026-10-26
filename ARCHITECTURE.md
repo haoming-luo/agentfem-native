@@ -67,6 +67,11 @@ non-shipping comparison track, and both must reproduce the same reference.
 
 ## 跨平台规则
 
+新增隔离 `IncompleteCholesky` 候选拥有缩放、显式平移、IC0 分解与矩阵身份。
+外层仍是自有 CG 的真残差/停止规则；三角应用可显式选择自有参考、可选 SciPy
+或 C++20。ABI 1.6 新增受检的严格下三角分解/应用，旧函数保持兼容；不把 IC0
+设为默认、不进入 JSON，也不把非正枢轴失败静默替换为另一个方程。
+
 新增候选层以 `SimplexGeometry` 复用参考梯度、体积、连通分量和稀疏图：
 `ThermalOperator` 拥有热导/热容，`ThermoelasticOperator` 拥有温度到热应变载荷，
 `FiniteStrainOperator` 拥有总拉格朗日内力和解析切线，`AT2FractureOperator`

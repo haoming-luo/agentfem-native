@@ -84,7 +84,7 @@ class PortabilityTests(unittest.TestCase):
         missing = {
             "available": False,
             "abi_version": None,
-            "required_abi_version": "1.5",
+            "required_abi_version": "1.6",
         }
         with patch(
             "agentfem_native.diagnostics.native_kernel_identity", return_value=missing

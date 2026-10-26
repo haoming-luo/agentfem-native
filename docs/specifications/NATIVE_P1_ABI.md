@@ -1,11 +1,11 @@
-# Native P1/T3/T4 与稀疏 C ABI 1.5
+# Native P1/T3/T4 与稀疏 C ABI 1.6 候选
 
-**状态：** ABI 1.5 已通过 Tier-1 三平台验收。Rust 对照实验仅实现 ABI 1.0
-扩散子集。
+**状态：** ABI 1.5 已通过 Tier-1；1.6 新增显式 IC0/LDLT 隔离实验，需单独
+完成平台验收。Rust 对照实验仅实现 ABI 1.0 扩散子集，不声称覆盖 IC0。
 
 ## 版本与所有权
 
-`afn_p1_abi_version()` 返回 `0x00010005`，编码为主版本 1、次版本 5。主版本不
+`afn_p1_abi_version()` 返回 `0x00010006`，编码为主版本 1、次版本 6。主版本不
 兼容时不得调用。调用方在整个调用期间拥有所有输入和输出缓冲区；内核不保留
 指针、不分配调用方输出、不调用回调，也不能让 C++ 异常越过 C ABI。
 
@@ -84,6 +84,22 @@ Python Stable ABI 以独立的 `assemble_t3_values_into` 和
 贡献 16 字节。它仍保留完整 `data` 贡献数组和计划映射，不构成最终直接 CSR
 装配，也不改变贡献归并顺序。
 
+## ABI 1.6 IC0 与 LDLT 实验入口
+
+`afn_ic0_factor(rows, nnz, indptr, indices, lower_values, diagonal, lower_factor,
+diagonal_factor, failed_row)` 接收严格下三角 CSR（不存单位对角），对原结构
+进行不完全 LDLT，输出 `nnz` 个 L 条目、`rows` 个 D 和一个 int64 失败行号。
+成功时失败行号为 -1；非正/非有限枢轴返回状态 7 和对应行号。
+
+`afn_ldlt_solve` 使用同一结构、单位 L、正 D、长度 rows 的 RHS，输出完整解。
+rows 必须大于零，nnz 可为零；nnz=0 时列和值指针允许为空。它不分配内部数组，
+仍检查整个结构、D 正值、RHS 与结果有限性。Python Stable ABI 适配器还显式
+拒绝未对齐的数值缓冲，以及本次两个新增入口的输出/输入或多输出缓冲重叠。
+
+接口只实现线性代数，不拥有 FEM 语义。对称性、对角缩放与显式平移由隔离
+`IncompleteCholesky` 候选拥有，参见 `SPARSE_ALGEBRA_V0.md` 和 ADR-0034。
+默认求解提供者不改为 IC0；旧 ABI 函数签名及语义保持兼容。
+
 ## ABI 1.3 确定性 CPU 并行入口
 
 ABI 1.3 新增：
@@ -136,6 +152,7 @@ CSR SpMV 在每行内按存储列顺序归约，CSR 数值回填按原 COO 贡�
 | 4 | 非有限坐标、源、体力、稀疏贡献或计算结果 |
 | 5 | `thread_count` 为零 |
 | 6 | 线程或内部临时资源创建失败 |
+| 7 | IC0 非正/非有限枢轴或 LDLT 非正对角 |
 
 任何非零状态都使所有输出缓冲区无效，包括失败前已经写入的条目。Python 边界在
 构造公开矩阵结果前把状态转换为稳定异常。

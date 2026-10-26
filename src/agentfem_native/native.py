@@ -8,7 +8,7 @@ from typing import Final
 import numpy as np
 from numpy.typing import NDArray
 
-NATIVE_P1_ABI_VERSION: Final = 0x0001_0005
+NATIVE_P1_ABI_VERSION: Final = 0x0001_0006
 
 try:
     from . import _p1_native
@@ -21,6 +21,82 @@ else:
 
 class NativeKernelUnavailableError(RuntimeError):
     """Raised when the platform wheel does not contain the compiled kernel."""
+
+
+class NativeIC0Breakdown(ValueError):
+    """原生实验分解返回的非正枢轴，不等价于完整矩阵不正定。"""
+
+    def __init__(self, row: int, pivot: float):
+        self.row, self.pivot = row, pivot
+        super().__init__(f"原生 IC0 在第 {row} 行失败，枢轴 {pivot:.6e}。")
+
+
+def ic0_factor(indptr, indices, values, diagonal):
+    """ABI 1.6 实验分解；独占输出，不转交部分失败结果。"""
+    if not native_kernel_available():
+        raise NativeKernelUnavailableError("IC0 实验需要已安装的 C++ ABI 1.6。")
+    pointers = np.ascontiguousarray(indptr, dtype=np.int64)
+    columns = np.ascontiguousarray(indices, dtype=np.int64)
+    lower = np.ascontiguousarray(values, dtype=np.float64)
+    diag = np.ascontiguousarray(diagonal, dtype=np.float64)
+    if (
+        diag.ndim != 1
+        or pointers.shape != (diag.size + 1,)
+        or columns.ndim != 1
+        or lower.shape != columns.shape
+    ):
+        raise ValueError("IC0 缓冲区形状不一致。")
+    factors, pivots = np.empty_like(lower), np.empty_like(diag)
+    failed = np.full(1, -1, dtype=np.int64)
+    status = int(
+        _p1_native.ic0_factor_into(
+            diag.size,
+            columns.size,
+            pointers,
+            columns,
+            lower,
+            diag,
+            factors,
+            pivots,
+            failed,
+        )
+    )
+    if status == 7:
+        row = int(failed[0])
+        raise NativeIC0Breakdown(row, float(pivots[row]))
+    if status:
+        raise ValueError(
+            f"IC0 原生分解输入或计算无效，状态码 {status}，行号 {int(failed[0])}。"
+        )
+    return factors, pivots
+
+
+def ldlt_solve(indptr, indices, factors, diagonal, rhs):
+    """ABI 1.6 实验三角应用；每次检查结构/正枢轴和结果有限性。"""
+    if not native_kernel_available():
+        raise NativeKernelUnavailableError("LDLT 实验需要已安装的 C++ ABI 1.6。")
+    pointers = np.ascontiguousarray(indptr, dtype=np.int64)
+    columns = np.ascontiguousarray(indices, dtype=np.int64)
+    lower = np.ascontiguousarray(factors, dtype=np.float64)
+    diag = np.ascontiguousarray(diagonal, dtype=np.float64)
+    values = np.ascontiguousarray(rhs, dtype=np.float64)
+    if (
+        diag.ndim != 1
+        or pointers.shape != (diag.size + 1,)
+        or columns.ndim != 1
+        or lower.shape != columns.shape
+        or values.shape != diag.shape
+    ):
+        raise ValueError("LDLT 缓冲区形状不一致。")
+    result = np.empty_like(values)
+    status = int(
+        _p1_native.ldlt_solve_into(
+            diag.size, columns.size, pointers, columns, lower, diag, values, result
+        )
+    )
+    if status:
+        raise ValueError(f"LDLT 原生三角应用失败，状态码 {status}。")
+    return result
 
 
 def native_kernel_available() -> bool:

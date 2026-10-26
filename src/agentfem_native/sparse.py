@@ -5,10 +5,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from hashlib import sha256
-from typing import Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+
+if TYPE_CHECKING:
+    from .experimental_preconditioners import IncompleteCholesky
 
 FloatArray: TypeAlias = NDArray[np.float64]
 IndexArray: TypeAlias = NDArray[np.int64]
@@ -1142,7 +1145,7 @@ def conjugate_gradient(
     maximum_iterations: int | None = None,
     preconditioner: Literal["none", "jacobi", "block_jacobi"] = "jacobi",
     block_size: int | None = None,
-    prepared_preconditioner: PreparedPreconditioner | None = None,
+    prepared_preconditioner: PreparedPreconditioner | IncompleteCholesky | None = None,
 ) -> CGResult:
     """求解对称正定系统，并返回明确的收敛、上限或失效证据。"""
 
@@ -1170,7 +1173,13 @@ def conjugate_gradient(
         raise ValueError(f"Unknown CG preconditioner {preconditioner!r}.")
     if prepared_preconditioner is not None:
         if not isinstance(prepared_preconditioner, PreparedPreconditioner):
-            raise TypeError("预备预条件器必须为 PreparedPreconditioner。")
+            # 隔离研究对象需显式传入；默认路径不导入实验模块或可选库。
+            from .experimental_preconditioners import IncompleteCholesky
+
+            if not isinstance(prepared_preconditioner, IncompleteCholesky):
+                raise TypeError(
+                    "预备预条件器必须为 PreparedPreconditioner 或显式 IC0 实验对象。"
+                )
         prepared_preconditioner.validate_matrix(matrix)
 
     if initial_guess is None:
