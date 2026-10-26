@@ -14,8 +14,8 @@ AgentFEM Native 同时承担国产替代和自主掌握有限元求解内核的�
 基础设施可以作为可替换能力使用，但不能控制 Native 的数学定义或成为串行核心
 唯一可运行的条件。
 
-仓库已经完成 **Gate 1**，并验证 T3/T4 Gate 2 基础线性静力范围；Gate 3 线性
-动力仍为候选。
+仓库已经完成 **Gate 1**，并验证 T3/T4 Gate 2 基础线性静力及 Gate 3 的限定
+无阻尼 T3、零固定约束线性动力范围。
 已验证串行内核覆盖二维 P1 三角形稳态扩散、命名集合、材料区域、各向异性电导、
 确定性 COO、自有 CSR/CG/Jacobi、可选 NumPy/SciPy 对照与提供者、平衡证据和
 VTK 输出。力学切片覆盖向量 DOF、T3 平面应力/应变、T4 三维弹性、体力与面力、
@@ -53,12 +53,30 @@ GitHub Actions 运行 `35461748299` 通过完整 Windows/Linux/macOS 验收；AB
 短期安装测试工件，不是公开发布包；项目仍快速迭代，
 尚未发布到 PyPI 或 GitHub Releases。
 
-The GitHub repository is temporarily public through September 2026 to avoid
-private Actions-minute pressure during intensive development. This does not
-change the PolyForm Noncommercial license or permit unrestricted commercial
-use. Ordinary pushes run one Linux fast job; full native Tier-1 acceptance is
-manual or tag-triggered. See
-[CI governance](docs/development/CI_GOVERNANCE.md).
+仓库此前获准临时公开至 2026 年 9 月；2026-10-27 查询仍为 public，原定
+10 月 1 日的可见性复核待负责人决定。公开不改变 PolyForm Noncommercial 许可，
+不允许无授权商用。本批开发不自动变更可见性或发布包。普通推送仅跑一个 Linux
+快检，完整平台验收由明确里程碑触发。见 [CI 治理](docs/development/CI_GOVERNANCE.md)。
+
+## 新增多物理与原生 Windows 候选
+
+二维/三维稳态与瞬态热、热弹性、T4 线性动力已形成 `implemented` 候选；有限
+变形 Neo-Hookean 与 AT2 断裂为 `experimental`。它们没有自动继承既有 Gate
+的 `verified` 标签。候选入口 `0.4.0-experimental.1` 提供显式预检、资源预算、
+成熟度、结果摘要和失败时的已接受非线性状态；T4 动力目前仅提供 Python API。
+
+Windows 使用同一自主串行内核，不要求 WSL、PETSc、MPI 或 SciPy。安装诊断、
+中文/空格路径和安全结果替换进入测试；新提交的 Windows 实际通过情况以专属
+CI 记录为准，不由本机 macOS 结果推断。
+
+- [原生 Windows 开发与集成](docs/development/NATIVE_WINDOWS.md)
+- [候选数学规格与明确限制](docs/specifications/MULTIPHYSICS_CANDIDATE.md)
+- [阶段证据与后续验收](docs/verification/MULTIPHYSICS_NATIVE_CANDIDATE.md)
+
+```text
+python -m agentfem_native.cli --diagnose --require-native
+python examples/multiphysics_candidate.py --directory "work/多物理 验收"
+```
 
 项目的重要注释、介绍、规格和验证说明从 2026-09-13 起以中文为主要工程表达
 语言；稳定代码标识符和机器契约继续使用英文。参见

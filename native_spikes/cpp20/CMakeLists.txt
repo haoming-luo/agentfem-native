@@ -18,7 +18,7 @@ set_target_properties(
 )
 
 if(MSVC)
-  target_compile_options(agentfem_native_p1 PRIVATE /W4 /WX)
+  target_compile_options(agentfem_native_p1 PRIVATE /W4 /WX /utf-8)
 else()
   target_compile_options(agentfem_native_p1 PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
@@ -27,6 +27,9 @@ enable_testing()
 add_executable(agentfem_native_p1_test tests/test_p1_batch.cpp)
 target_compile_features(agentfem_native_p1_test PRIVATE cxx_std_20)
 target_link_libraries(agentfem_native_p1_test PRIVATE agentfem_native_p1)
+if(MSVC)
+  target_compile_options(agentfem_native_p1_test PRIVATE /utf-8)
+endif()
 
 if(AFN_ENABLE_SANITIZERS)
   if(MSVC)
@@ -44,7 +47,7 @@ add_executable(agentfem_native_c_header_test tests/test_c_header.c)
 target_compile_features(agentfem_native_c_header_test PRIVATE c_std_11)
 target_link_libraries(agentfem_native_c_header_test PRIVATE agentfem_native_p1)
 if(MSVC)
-  target_compile_options(agentfem_native_c_header_test PRIVATE /W4 /WX)
+  target_compile_options(agentfem_native_c_header_test PRIVATE /W4 /WX /utf-8)
 else()
   target_compile_options(
     agentfem_native_c_header_test PRIVATE -Wall -Wextra -Wpedantic -Werror

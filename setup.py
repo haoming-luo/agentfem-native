@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Build the owned C++20 accelerator without a third-party binding layer."""
+"""构建自主 C++20 加速器，不依赖第三方绑定层。"""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ import sys
 from setuptools import Extension, setup
 
 if sys.platform == "win32":
-    compile_arguments = ["/std:c++20", "/O2", "/W4", "/WX", "/EHsc"]
+    # 中文源码与诊断不能受 Windows 当前 ANSI 代码页影响。
+    compile_arguments = ["/std:c++20", "/O2", "/W4", "/WX", "/EHsc", "/utf-8"]
     link_arguments: list[str] = []
 else:
     compile_arguments = [

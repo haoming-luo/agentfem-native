@@ -1,0 +1,183 @@
+{
+  "scope": "固定参考几何和 CSR 图后的有限变形装配；不含全局 Newton、构图或 I/O。",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "machine": "arm64",
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "native_kernel": {
+    "name": "cpp20",
+    "available": true,
+    "abi_version": "1.5",
+    "required_abi_version": "1.5"
+  },
+  "cases": [
+    {
+      "dimension": 2,
+      "resolution": 8,
+      "cells": 128,
+      "dofs": 162,
+      "csr_bytes": 33112,
+      "prepared_graph_bytes": 60216,
+      "matrix_max_abs_difference": 0.0,
+      "force_max_abs_difference": 0.0,
+      "energy_abs_difference": 3.885780586188048e-16,
+      "seconds": {
+        "reference": [
+          0.006857915999717079,
+          0.006863624992547557,
+          0.006770083011360839,
+          0.006905917005497031,
+          0.006866791998618282
+        ],
+        "vectorized": [
+          0.00044091699237469584,
+          0.00043037500290665776,
+          0.00043245799315627664,
+          0.00042033399222418666,
+          0.0004285830073058605
+        ]
+      },
+      "median_phase_speedup": 15.948010330972172
+    },
+    {
+      "dimension": 2,
+      "resolution": 16,
+      "cells": 512,
+      "dofs": 578,
+      "csr_bytes": 125528,
+      "prepared_graph_bytes": 237112,
+      "matrix_max_abs_difference": 5.684341886080802e-14,
+      "force_max_abs_difference": 0.0,
+      "energy_abs_difference": 1.7763568394002505e-15,
+      "seconds": {
+        "reference": [
+          0.027827375000924803,
+          0.027581959002418444,
+          0.027334957994753495,
+          0.02771237499837298,
+          0.02748933300608769
+        ],
+        "vectorized": [
+          0.0014902080001775175,
+          0.0015070000081323087,
+          0.001453917007893324,
+          0.0014807080005994067,
+          0.0014844580000499263
+        ]
+      },
+      "median_phase_speedup": 18.5804913318469
+    },
+    {
+      "dimension": 2,
+      "resolution": 24,
+      "cells": 1152,
+      "dofs": 1250,
+      "csr_bytes": 277336,
+      "prepared_graph_bytes": 530744,
+      "matrix_max_abs_difference": 1.1368683772161603e-13,
+      "force_max_abs_difference": 1.3877787807814457e-16,
+      "energy_abs_difference": 6.661338147750939e-16,
+      "seconds": {
+        "reference": [
+          0.062154749990440905,
+          0.06281658400257584,
+          0.06263825000496581,
+          0.06268495800031815,
+          0.06250962500052992
+        ],
+        "vectorized": [
+          0.003277416995842941,
+          0.003225791995646432,
+          0.003210166993085295,
+          0.003261458987253718,
+          0.0033128329960163683
+        ]
+      },
+      "median_phase_speedup": 19.205591807153088
+    },
+    {
+      "dimension": 3,
+      "resolution": 2,
+      "cells": 48,
+      "dofs": 81,
+      "csr_bytes": 32768,
+      "prepared_graph_bytes": 76616,
+      "matrix_max_abs_difference": 5.684341886080802e-14,
+      "force_max_abs_difference": 0.0,
+      "energy_abs_difference": 1.1102230246251565e-16,
+      "seconds": {
+        "reference": [
+          0.0032532909972360358,
+          0.0032567499874858186,
+          0.003236040996853262,
+          0.0032947909930953756,
+          0.0031971249991329387
+        ],
+        "vectorized": [
+          0.00048600000445730984,
+          0.0004870830016443506,
+          0.00043533300049602985,
+          0.0004368329973658547,
+          0.0004575000057229772
+        ]
+      },
+      "median_phase_speedup": 7.111018484240085
+    },
+    {
+      "dimension": 3,
+      "resolution": 3,
+      "cells": 162,
+      "dofs": 192,
+      "csr_bytes": 91112,
+      "prepared_graph_bytes": 248504,
+      "matrix_max_abs_difference": 2.842170943040401e-14,
+      "force_max_abs_difference": 3.0531133177191805e-16,
+      "energy_abs_difference": 5.218048215738236e-15,
+      "seconds": {
+        "reference": [
+          0.011059124997700565,
+          0.010796792004839517,
+          0.010615000006509945,
+          0.01089874999888707,
+          0.010778249998111278
+        ],
+        "vectorized": [
+          0.0013671250053448603,
+          0.0013705420133192092,
+          0.0014762500068172812,
+          0.0013927499967394397,
+          0.0014304579963209108
+        ]
+      },
+      "median_phase_speedup": 7.752139314389399
+    },
+    {
+      "dimension": 3,
+      "resolution": 4,
+      "cells": 384,
+      "dofs": 375,
+      "csr_bytes": 194960,
+      "prepared_graph_bytes": 578216,
+      "matrix_max_abs_difference": 2.842170943040401e-14,
+      "force_max_abs_difference": 0.0,
+      "energy_abs_difference": 1.2212453270876722e-15,
+      "seconds": {
+        "reference": [
+          0.02585616600117646,
+          0.025708041997859254,
+          0.02586370799690485,
+          0.02588441700208932,
+          0.02550520800286904
+        ],
+        "vectorized": [
+          0.003267708991188556,
+          0.0032456659973831847,
+          0.0032125840079970658,
+          0.0032733750122133642,
+          0.003259709003032185
+        ]
+      },
+      "median_phase_speedup": 7.932047301499927
+    }
+  ]
+}

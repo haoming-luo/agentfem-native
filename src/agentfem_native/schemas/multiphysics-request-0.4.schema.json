@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentFEM Native 多物理候选请求（非稳定契约）",
+  "description": "形状、网格几何、张量正定性和跨字段兼容性由执行前的同源预检继续检查。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "kind", "mesh"],
+  "properties": {
+    "contract_version": {"const": "0.4.0-experimental.1"},
+    "request_id": {"type": "string"},
+    "kind": {"enum": ["thermal_steady", "thermal_transient", "thermoelastic", "finite_strain", "at2_fracture"]},
+    "experimental": {"type": "boolean"},
+    "mesh": {
+      "type": "object", "additionalProperties": false, "required": ["points", "cells"],
+      "properties": {
+        "points": {"$ref": "#/$defs/matrix"},
+        "cells": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/indices"}},
+        "node_sets": {"type": "object", "additionalProperties": {"$ref": "#/$defs/indices"}},
+        "boundary_sets": {"type": "object", "additionalProperties": {"type": "array", "items": {"$ref": "#/$defs/indices"}}},
+        "cell_sets": {"type": "object", "additionalProperties": {"$ref": "#/$defs/indices"}}
+      }
+    },
+    "material": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "young_modulus": {"type": "number", "exclusiveMinimum": 0},
+        "poisson_ratio": {"type": "number", "exclusiveMinimum": -1, "exclusiveMaximum": 0.5},
+        "mode": {"enum": ["plane_stress", "plane_strain"]},
+        "expansion": {"$ref": "#/$defs/scalarOrCells"},
+        "reference_temperature": {"type": "number"},
+        "thermal_stretch": {"$ref": "#/$defs/scalarOrCells"},
+        "toughness": {"type": "number", "exclusiveMinimum": 0},
+        "length_scale": {"type": "number", "exclusiveMinimum": 0},
+        "residual_stiffness": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+        "thickness": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "thermal": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "conductivity": {"oneOf": [{"$ref": "#/$defs/scalarOrCells"}, {"$ref": "#/$defs/matrix"}, {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/matrix"}}]},
+        "capacity": {"$ref": "#/$defs/scalarOrCells"},
+        "source": {"$ref": "#/$defs/scalarOrCells"},
+        "constraints": {"$ref": "#/$defs/constraints"},
+        "initial": {"$ref": "#/$defs/vector"},
+        "temperature": {"$ref": "#/$defs/vector"},
+        "boundaries": {
+          "type": "array", "items": {
+            "type": "object", "additionalProperties": false, "required": ["boundary_set"],
+            "properties": {
+              "boundary_set": {"type": "string", "minLength": 1},
+              "inward_flux": {"type": "number"},
+              "convection": {"type": "number", "minimum": 0},
+              "ambient_temperature": {"type": "number"}
+            }
+          }
+        }
+      }
+    },
+    "mechanical": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "constraints": {"$ref": "#/$defs/constraints"},
+        "load": {"$ref": "#/$defs/matrix"},
+        "initial_damage": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1}}
+      }
+    },
+    "procedure": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "steps": {"type": "integer", "minimum": 1},
+        "time_step": {"type": "number", "exclusiveMinimum": 0},
+        "maximum_iterations": {"type": "integer", "minimum": 1},
+        "maximum_cutbacks": {"type": "integer", "minimum": 1},
+        "maximum_accepted_steps": {"type": "integer", "minimum": 1},
+        "relative_tolerance": {"type": "number", "exclusiveMinimum": 0},
+        "absolute_tolerance": {"type": "number", "exclusiveMinimum": 0},
+        "load_factors": {"type": "array", "minItems": 1, "items": {"type": "number", "minimum": 0}},
+        "maximum_alternations": {"type": "integer", "minimum": 1},
+        "tolerance": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "budget": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "maximum_dofs": {"type": "integer", "minimum": 0},
+        "maximum_peak_bytes": {"type": "integer", "minimum": 0},
+        "maximum_steps": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"kind": {"enum": ["finite_strain", "at2_fracture"]}}}, "then": {"required": ["experimental"], "properties": {"experimental": {"const": true}}}},
+    {"if": {"properties": {"kind": {"enum": ["thermoelastic", "finite_strain", "at2_fracture"]}}}, "then": {"required": ["material"], "properties": {"material": {"required": ["young_modulus", "poisson_ratio"]}}}},
+    {"if": {"properties": {"kind": {"const": "at2_fracture"}}}, "then": {"properties": {"material": {"required": ["toughness", "length_scale"]}}}},
+    {"if": {"properties": {"kind": {"const": "thermal_transient"}}}, "then": {"required": ["thermal", "procedure"], "properties": {"thermal": {"required": ["initial"]}, "procedure": {"required": ["steps", "time_step"]}}}}
+  ],
+  "$defs": {
+    "vector": {"type": "array", "items": {"type": "number"}},
+    "matrix": {"type": "array", "minItems": 1, "items": {"type": "array", "minItems": 1, "items": {"type": "number"}}},
+    "indices": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+    "scalarOrCells": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vector"}]},
+    "constraints": {"type": "object", "additionalProperties": false, "required": ["dofs", "values"], "properties": {"dofs": {"$ref": "#/$defs/indices"}, "values": {"$ref": "#/$defs/vector"}}}
+  }
+}

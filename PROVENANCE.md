@@ -1,5 +1,23 @@
 # Provenance policy and initial record
 
+## 2026-10-26/27：多物理候选与原生 Windows
+
+- 来源：负责人要求自主推进二维/三维力、热、耦合、大变形和断裂，并以原生
+  Windows、macOS、Linux 服务 AgentFEM。数学规格和 ADR-0031/0032 随代码保存。
+- AI 辅助范围：共享单纯形几何、热/热弹性/有限变形/AT2、GMRES、T4 质量和动力
+  Python 入口、候选契约、预检、取消接受状态、安装诊断与安全 JSON 写入、测试。
+- 数学依据：项目已有小应变/材料点规格，参考体积变分、单纯形精确质量、
+  Neo-Hookean 解析导数和 AT2 约束能量；公开理论链接见候选规格。
+- 平台研究仅查 FEniCSx 公开安装/发布说明与 PETSc Windows 安装文档。未读取、
+  复制、翻译、重排或 AI 改写 DOLFINx、Basix、UFL、FFCx 实现源码。公开发布页
+  的 API 示例不是实现输入；早期检索偶然出现的其他 FEM 源码片段亦未使用。
+- 依赖：未新增必需依赖，NumPy 是第三方通用数组库，不属于项目自研声明；
+  本批新有限变形装配是自有 NumPy 向量化，不是已迁入 C++ 的生产切线。
+- 证据与成熟度：见 `docs/verification/MULTIPHYSICS_NATIVE_CANDIDATE.md`。
+  新模型不继承 Gate 2/3 的 verified；无第三方 FEM 黑盒或实验验证声明。
+- 可见性：2026-10-27 GitHub 查询仍 public，九月临时公开授权的到期复核待
+  负责人决定；本批不修改许可证/可见性，不提交私有模型或公开发布安装包。
+
 Every scientific feature must connect requirement, mathematical source,
 implementation, tests, and acceptance evidence. Unattributed or
 license-incompatible code is rejected.

@@ -57,6 +57,12 @@ from .execution import (
     execute_t3_linear_dynamics_plan,
     explain_execution,
 )
+from .finite_strain import (
+    FiniteStrainOperator,
+    FiniteStrainResult,
+    NonlinearConvergenceError,
+)
+from .fracture import AT2FractureOperator, FractureResult
 from .geometry import AffineTriangleMap
 from .interchange import (
     INTERCHANGE_FORMAT,
@@ -73,6 +79,13 @@ from .materials import (
     SmallStrainJ2Material,
 )
 from .mesh import TriangularMesh, unit_square_triangles, unit_square_two_triangles
+from .multiphysics import (
+    MULTIPHYSICS_VERSION,
+    multiphysics_capabilities,
+    multiphysics_request_schema,
+    plan_multiphysics_request,
+    run_multiphysics_request,
+)
 from .native import native_kernel_available, native_kernel_identity
 from .planning import (
     ExecutionPlan,
@@ -108,6 +121,7 @@ from .runtime import (
     ResourceBudget,
     enforce_plan_budget,
 )
+from .simplex import EssentialBC, SimplexGeometry
 from .solid import (
     LinearElastic3DProblem,
     LinearElastic3DResult,
@@ -126,6 +140,7 @@ from .solid import (
     t4_geometry,
     t4_strain_displacement,
 )
+from .solid_dynamics import assemble_t4_mass, build_t4_linear_dynamics
 from .sparse import (
     BSRMatrix,
     CGReport,
@@ -137,14 +152,22 @@ from .sparse import (
     PreparedPreconditioner,
     conjugate_gradient,
 )
+from .thermal import ThermalBoundary, ThermalOperator, ThermalResult
+from .thermoelastic import (
+    ThermoelasticOperator,
+    ThermoelasticResult,
+    solve_thermal_elastic,
+)
 from .volume_mesh import TetrahedralMesh, unit_cube_tetrahedra
 
 __all__ = (
     "CONTRACT_NAME",
     "CONTRACT_VERSION",
     "INTERCHANGE_FORMAT",
+    "MULTIPHYSICS_VERSION",
     "REFERENCE_TRIANGLE_VERTICES",
     "SUPPORTED_CONTRACT_VERSIONS",
+    "AT2FractureOperator",
     "AffineTriangleMap",
     "BSRMatrix",
     "CGReport",
@@ -160,9 +183,13 @@ __all__ = (
     "DisplacementCondition",
     "DynamicCheckpoint",
     "ElasticCellMaterial",
+    "EssentialBC",
     "ExecutionContext",
     "ExecutionPlan",
     "ExecutionReceipt",
+    "FiniteStrainOperator",
+    "FiniteStrainResult",
+    "FractureResult",
     "J2MaterialPoint",
     "J2Response",
     "J2State",
@@ -182,6 +209,7 @@ __all__ = (
     "NeoHookeanMaterial",
     "NeoHookeanResponse",
     "NeumannCondition",
+    "NonlinearConvergenceError",
     "NumpyDenseProvider",
     "PreparedPreconditioner",
     "ProgressEvent",
@@ -189,6 +217,7 @@ __all__ = (
     "ProviderUnavailableError",
     "ResourceBudget",
     "ScipySparseProvider",
+    "SimplexGeometry",
     "SmallStrainJ2Material",
     "SolidCellMaterial",
     "SolidDisplacementCondition",
@@ -196,6 +225,11 @@ __all__ = (
     "SolidTractionCondition",
     "SteadyDiffusionProblem",
     "TetrahedralMesh",
+    "ThermalBoundary",
+    "ThermalOperator",
+    "ThermalResult",
+    "ThermoelasticOperator",
+    "ThermoelasticResult",
     "TractionCondition",
     "TriangleQuadrature",
     "TriangularMesh",
@@ -206,7 +240,9 @@ __all__ = (
     "assemble_linear_elasticity_3d_prepared",
     "assemble_linear_elasticity_prepared",
     "assemble_t3_mass",
+    "assemble_t4_mass",
     "build_t3_linear_dynamics",
+    "build_t4_linear_dynamics",
     "central_difference_safe_time_step",
     "conjugate_gradient",
     "enforce_plan_budget",
@@ -221,6 +257,8 @@ __all__ = (
     "kernel_result_schema",
     "lower_agentfem_ir",
     "lower_agentfem_model",
+    "multiphysics_capabilities",
+    "multiphysics_request_schema",
     "native_capabilities",
     "native_kernel_available",
     "native_kernel_identity",
@@ -234,16 +272,19 @@ __all__ = (
     "plan_linear_dynamics",
     "plan_linear_elasticity",
     "plan_linear_elasticity_3d",
+    "plan_multiphysics_request",
     "plan_steady_diffusion",
     "plan_t3_linear_dynamics",
     "prepare_linear_elasticity_3d_assembly",
     "prepare_linear_elasticity_assembly",
     "read_native_bundle",
     "run_kernel_request",
+    "run_multiphysics_request",
     "select_solid_assembly_mode",
     "solve_linear_elasticity",
     "solve_linear_elasticity_3d",
     "solve_steady_diffusion",
+    "solve_thermal_elastic",
     "t4_body_force_load",
     "t4_boundary_traction_load",
     "t4_elastic_stiffness",
