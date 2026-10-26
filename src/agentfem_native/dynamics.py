@@ -14,6 +14,7 @@ from numpy.typing import ArrayLike, NDArray
 from .elasticity import LinearElasticProblem
 from .geometry import AffineTriangleMap
 from .mesh import TriangularMesh
+from .providers import LinearSolveError
 from .runtime import ExecutionContext
 from .sparse import (
     CSRAssemblyPlan,
@@ -256,6 +257,7 @@ def _solve_spd(
     right_hand_side: FloatArray,
     *,
     prepared_preconditioner: PreparedPreconditioner | None = None,
+    initial_guess: ArrayLike | None = None,
 ) -> FloatArray:
     result = conjugate_gradient(
         matrix,
@@ -263,11 +265,13 @@ def _solve_spd(
         relative_tolerance=1.0e-13,
         absolute_tolerance=1.0e-14,
         prepared_preconditioner=prepared_preconditioner,
+        initial_guess=initial_guess,
     )
     if not result.report.converged:
-        raise ValueError(
-            f"Dynamic SPD solve failed with {result.report.reason} after "
-            f"{result.report.iterations} iterations."
+        raise LinearSolveError(
+            f"动力学 SPD 求解未收敛：{result.report.reason}，"
+            f"迭代 {result.report.iterations} 次，残差 {result.report.residual_norm:.6e}。",
+            result.report,
         )
     return result.solution
 
@@ -326,9 +330,14 @@ def integrate_linear_dynamics(
     method: Integrator = "central_difference",
     restart: DynamicCheckpoint | None = None,
     context: ExecutionContext | None = None,
+    warm_start: bool = False,
 ) -> LinearDynamicsResult:
-    """Integrate accepted states and return immutable energy/restart evidence."""
+    """积分已接受状态；显式初猜实验不改变积分与真实残差准则。"""
 
+    if not isinstance(warm_start, bool):
+        raise TypeError("隐式初猜开关必须是布尔值。")
+    if warm_start and method != "newmark_average_acceleration":
+        raise ValueError("前步加速度初猜仅适用于 Newmark 隐式积分。")
     if method not in {"central_difference", "newmark_average_acceleration"}:
         raise ValueError(f"Unknown linear dynamics method {method!r}.")
     size = system.stiffness.shape[0]
@@ -419,6 +428,7 @@ def integrate_linear_dynamics(
                 effective,
                 next_load - system.stiffness.matvec(displacement_predictor),
                 prepared_preconditioner=effective_preconditioner,
+                initial_guess=acceleration if warm_start else None,
             )
             displacement = displacement_predictor + beta * dt * dt * next_acceleration
             velocity = velocity_predictor + gamma * dt * next_acceleration
@@ -460,8 +470,9 @@ def integrate_constrained_linear_dynamics(
     method: Integrator = "central_difference",
     restart: DynamicCheckpoint | None = None,
     context: ExecutionContext | None = None,
+    warm_start: bool = False,
 ) -> LinearDynamicsResult:
-    """Eliminate zero fixed DOFs, integrate the free system, and recover reactions."""
+    """零固定 DOF 消元、自由系统积分与反力恢复；初猜只取已接受加速度。"""
 
     constrained = np.asarray(constrained_dofs)
     if constrained.ndim != 1 or not np.issubdtype(constrained.dtype, np.integer):
@@ -527,7 +538,11 @@ def integrate_constrained_linear_dynamics(
             ),
         )
     result = integrate_linear_dynamics(
-        reduced, method=method, restart=reduced_restart, context=context
+        reduced,
+        method=method,
+        restart=reduced_restart,
+        context=context,
+        warm_start=warm_start,
     )
     count = result.times.size
     displacement = np.zeros((count, size), dtype=np.float64)

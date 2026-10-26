@@ -140,33 +140,39 @@ class TetrahedralMesh:
             raise KeyError(f"Unknown cell set {name!r}.") from error
 
 
-def unit_cube_tetrahedra(resolution: int = 1) -> TetrahedralMesh:
-    """Create a conforming six-T4-per-cube mesh with named Cartesian faces."""
+def unit_cube_tetrahedra(
+    resolution: int = 1,
+    resolution_y: int | None = None,
+    resolution_z: int | None = None,
+) -> TetrahedralMesh:
+    """单位立方体的相容六分 T4；可按方向细化，原等向调用与编号保持不变。"""
 
-    if (
-        isinstance(resolution, bool)
-        or not isinstance(resolution, int)
-        or resolution < 1
-    ):
-        raise ValueError("Cube resolution must be a positive integer.")
-    axis = np.linspace(0.0, 1.0, resolution + 1)
+    nx, ny, nz = (
+        resolution,
+        resolution if resolution_y is None else resolution_y,
+        resolution if resolution_z is None else resolution_z,
+    )
+    for value in (nx, ny, nz):
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ValueError("立方体各方向划分必须是正整数。")
+    axes = [np.linspace(0.0, 1.0, count + 1) for count in (nx, ny, nz)]
     points = np.asarray(
         [
-            (axis[i], axis[j], axis[k])
-            for k in range(resolution + 1)
-            for j in range(resolution + 1)
-            for i in range(resolution + 1)
+            (axes[0][i], axes[1][j], axes[2][k])
+            for k in range(nz + 1)
+            for j in range(ny + 1)
+            for i in range(nx + 1)
         ],
         dtype=np.float64,
     )
 
     def node(i: int, j: int, k: int) -> int:
-        return (k * (resolution + 1) + j) * (resolution + 1) + i
+        return (k * (ny + 1) + j) * (nx + 1) + i
 
     cells: list[tuple[int, int, int, int]] = []
-    for k in range(resolution):
-        for j in range(resolution):
-            for i in range(resolution):
+    for k in range(nz):
+        for j in range(ny):
+            for i in range(nx):
                 a = node(i, j, k)
                 b = node(i + 1, j, k)
                 c = node(i + 1, j + 1, k)

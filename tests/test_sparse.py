@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -213,6 +214,42 @@ class CSRConstraintPlanTests(unittest.TestCase):
 
 
 class ConjugateGradientTests(unittest.TestCase):
+    def test_unrepresentable_matrix_norm_is_not_an_infinite_stopping_tolerance(self):
+        matrix = CSRMatrix.from_coo(
+            (2, 2), [0, 0, 1, 1], [0, 1, 0, 1], [1.7e308, 1e308, 1e308, 1.7e308]
+        )
+        for operation in (
+            lambda: PreparedPreconditioner.from_matrix(matrix),
+            lambda: conjugate_gradient(matrix, [1, 1]),
+        ):
+            with self.assertRaisesRegex(ValueError, "行和溢出"):
+                operation()
+
+    def test_prepared_norm_reuses_snapshot_but_validates_equal_or_changed_graph(self):
+        matrix, rhs, _ = self._spd()
+        prepared = PreparedPreconditioner.from_matrix(matrix)
+        self.assertIs(prepared.indptr, matrix.indptr)
+        self.assertIs(prepared.indices, matrix.indices)
+        self.assertEqual(
+            prepared.infinity_norm(), np.linalg.norm(matrix.to_dense(), ord=np.inf)
+        )
+        cold = conjugate_gradient(matrix, rhs)
+        equivalent = CSRMatrix(matrix.shape, matrix.indptr, matrix.indices, matrix.data)
+        with patch.object(
+            CSRMatrix, "row_indices", side_effect=AssertionError("重复扫描矩阵范数")
+        ):
+            warm = conjugate_gradient(equivalent, rhs, prepared_preconditioner=prepared)
+        np.testing.assert_array_equal(warm.solution, cold.solution)
+        self.assertEqual(warm.report, cold.report)
+        changed = CSRMatrix.from_coo(
+            matrix.shape,
+            np.arange(matrix.shape[0]),
+            np.arange(matrix.shape[0]),
+            np.ones(matrix.shape[0]),
+        )
+        with self.assertRaisesRegex(ValueError, "图"):
+            conjugate_gradient(changed, rhs, prepared_preconditioner=prepared)
+
     @staticmethod
     def _spd() -> tuple[CSRMatrix, np.ndarray, np.ndarray]:
         dense = np.array(((4.0, 1.0, 0.0), (1.0, 3.0, 1.0), (0.0, 1.0, 2.0)))

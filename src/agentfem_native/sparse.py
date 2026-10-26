@@ -907,6 +907,17 @@ class BSRMatrix:
         return self.to_csr().to_dense()
 
 
+def _matrix_infinity_norm(matrix: CSRMatrix) -> float:
+    """范数必须可表示；不能让无穷大把收敛阈值变成无条件通过。"""
+    sums = np.zeros(matrix.shape[0], dtype=np.float64)
+    try:
+        with np.errstate(over="raise", invalid="raise"):
+            np.add.at(sums, matrix.row_indices(), np.abs(matrix.data))
+    except FloatingPointError as error:
+        raise ValueError("稀疏矩阵绝对行和溢出，请检查单位或先缩放系统。") from error
+    return float(np.max(sums)) if sums.size else 0.0
+
+
 @dataclass(frozen=True, slots=True)
 class PreparedPreconditioner:
     """绑定一个 CSR 数值快照的 CG 预条件器。"""
@@ -919,6 +930,7 @@ class PreparedPreconditioner:
     inverse_diagonal: FloatArray | None = None
     inverse_blocks: FloatArray | None = None
     block_size: int | None = None
+    matrix_infinity_norm: float = field(init=False)
 
     def __post_init__(self) -> None:
         if self.kind not in {"none", "jacobi", "block_jacobi"}:
@@ -962,6 +974,18 @@ class PreparedPreconditioner:
         object.__setattr__(self, "matrix_data", graph.data)
         object.__setattr__(self, "inverse_diagonal", inverse_diagonal)
         object.__setattr__(self, "inverse_blocks", inverse_blocks)
+        object.__setattr__(
+            self,
+            "matrix_infinity_norm",
+            _matrix_infinity_norm(graph),
+        )
+
+    def _share_validated_snapshot(self, matrix: CSRMatrix) -> PreparedPreconditioner:
+        """构造已验证同值快照后，持有源只读数组以复用身份，不跳过公共校验。"""
+        object.__setattr__(self, "indptr", matrix.indptr)
+        object.__setattr__(self, "indices", matrix.indices)
+        object.__setattr__(self, "matrix_data", matrix.data)
+        return self
 
     @classmethod
     def from_matrix(
@@ -975,8 +999,7 @@ class PreparedPreconditioner:
 
         if kind == "none":
             result = cls(kind, matrix.shape, matrix.indptr, matrix.indices, matrix.data)
-            object.__setattr__(result, "matrix_data", matrix.data)
-            return result
+            return result._share_validated_snapshot(matrix)
         if kind == "jacobi":
             diagonal = matrix.diagonal()
             if not np.all(np.isfinite(diagonal)) or np.any(diagonal <= 0.0):
@@ -989,8 +1012,7 @@ class PreparedPreconditioner:
                 matrix.data,
                 inverse_diagonal=1.0 / diagonal,
             )
-            object.__setattr__(result, "matrix_data", matrix.data)
-            return result
+            return result._share_validated_snapshot(matrix)
         if kind != "block_jacobi":
             raise ValueError(f"未知 CG 预条件器 {kind!r}。")
         if block_size is None:
@@ -1012,8 +1034,7 @@ class PreparedPreconditioner:
             inverse_blocks=inverse_blocks,
             block_size=int(block_size),
         )
-        object.__setattr__(result, "matrix_data", matrix.data)
-        return result
+        return result._share_validated_snapshot(matrix)
 
     @property
     def storage_nbytes(self) -> int:
@@ -1044,6 +1065,10 @@ class PreparedPreconditioner:
             matrix.data, self.matrix_data
         ):
             raise ValueError("CSR 数值已改变，必须重建数值预条件器。")
+
+    def infinity_norm(self) -> float:
+        """返回所绑定数值快照的精确行绝对和范数，不能代替调用前身份检查。"""
+        return self.matrix_infinity_norm
 
     def apply(self, values: FloatArray) -> FloatArray:
         """应用已准备的数值预条件器。"""
@@ -1160,11 +1185,11 @@ def conjugate_gradient(
         float(absolute_tolerance),
         float(relative_tolerance) * float(np.linalg.norm(rhs)),
     )
-    absolute_row_sums = np.zeros(matrix.shape[0], dtype=np.float64)
-    np.add.at(absolute_row_sums, matrix.row_indices(), np.abs(matrix.data))
-    matrix_infinity_norm = (
-        0.0 if absolute_row_sums.size == 0 else float(np.max(absolute_row_sums))
-    )
+    if prepared_preconditioner is not None:
+        # 数值身份已在上方验证；范数绑定该快照，不对每个 RHS 重扫同一 CSR。
+        matrix_infinity_norm = prepared_preconditioner.infinity_norm()
+    else:
+        matrix_infinity_norm = _matrix_infinity_norm(matrix)
 
     def attainable_threshold(current_solution: FloatArray) -> float:
         """把用户阈值与 binary64 可达到的保守后向误差底线合并。"""

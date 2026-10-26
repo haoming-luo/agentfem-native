@@ -25,6 +25,25 @@ from agentfem_native.volume_mesh import TetrahedralMesh, unit_cube_tetrahedra
 
 
 class TetrahedralMeshTests(unittest.TestCase):
+    def test_directional_resolution_preserves_topology_volume_and_legacy_order(self):
+        mesh = unit_cube_tetrahedra(3, 2, 1)
+        self.assertEqual(mesh.node_count, 24)
+        self.assertEqual(mesh.cell_count, 36)
+        self.assertEqual(sum(len(f) for f in mesh.boundary_sets.values()), 44)
+        vertices = mesh.points[mesh.cells]
+        jacobians = np.transpose(vertices[:, 1:] - vertices[:, :1], (0, 2, 1))
+        np.testing.assert_allclose(np.abs(np.linalg.det(jacobians)) / 6, 1 / 36)
+        legacy, explicit = unit_cube_tetrahedra(2), unit_cube_tetrahedra(2, 2, 2)
+        np.testing.assert_array_equal(legacy.points, explicit.points)
+        np.testing.assert_array_equal(legacy.cells, explicit.cells)
+        for name in legacy.boundary_sets:
+            np.testing.assert_array_equal(
+                legacy.boundary_faces(name), explicit.boundary_faces(name)
+            )
+        for args in ((True,), (2, 0), (2, 1, 1.5), (2, False, 1)):
+            with self.assertRaises(ValueError):
+                unit_cube_tetrahedra(*args)
+
     def test_unit_cube_has_expected_volume_and_boundary_faces(self) -> None:
         mesh = unit_cube_tetrahedra(2)
         self.assertEqual(mesh.node_count, 27)

@@ -21,6 +21,7 @@ from agentfem_native.solid import (
     SolidElasticMaterial,
 )
 from agentfem_native.solid_dynamics import build_t4_linear_dynamics
+from agentfem_native.sparse import CGReport, CGResult
 from agentfem_native.volume_mesh import unit_cube_tetrahedra
 
 
@@ -51,6 +52,18 @@ def dynamics_request():
 
 
 class T4DynamicsContractTests(unittest.TestCase):
+    def test_linear_failure_keeps_numerical_diagnostics_not_input_error(self):
+        request = dynamics_request()
+        report = CGReport(False, "maximum_iterations", 1, 1.0, 0.1, 1e-12, 1e-12, 1e-14)
+        with patch(
+            "agentfem_native.dynamics.conjugate_gradient",
+            return_value=CGResult(np.zeros(12), report),
+        ):
+            answer = run_multiphysics_request(request)
+        self.assertEqual(answer["error"]["code"], "solver.linear_nonconvergence")
+        self.assertEqual(answer["error"]["convergence"]["iterations"], 1)
+        self.assertEqual(answer["request_id"], request["request_id"])
+
     def test_full_histories_match_typed_route_for_both_mass_forms(self):
         request = dynamics_request()
         mesh = unit_cube_tetrahedra(1)
@@ -138,6 +151,7 @@ class T4DynamicsContractTests(unittest.TestCase):
             ("procedure", "time_step", -0.1),
             ("procedure", "steps", True),
             ("procedure", "mass", "diagonal_scaled"),
+            ("procedure", "warm_start", 1),
             ("procedure", "method", "central_difference"),
             ("mechanical", "initial_velocity", [[1, 0, 0]] * 8),
             ("mechanical", "initial_displacement", [0] * 24),

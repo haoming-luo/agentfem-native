@@ -1,0 +1,195 @@
+{
+  "scope": "已给定相同完整 K/M/载荷/初值后的约束消元、预条件准备、100 步积分与反力/历史恢复；不含导入、网格和装配。",
+  "strategy": "同版本冷初猜；干预组每个 RHS 重新扫描范数，对照组复用快照范数，不关闭身份验证。",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "dynamics_source_sha256": "a703e7bcdad4fb425c9555ccfba22ea8c69c6162b66f9da7c989a4b33668d03a",
+  "sparse_source_sha256": "1d1eae4a5860c5c094691c29f4258f560a3fa3b3c11d394b26240d30fed8cea6",
+  "cases": [
+    {
+      "dimension": 2,
+      "resolution": 24,
+      "dofs": 1250,
+      "cells": 1152,
+      "time_step": 0.001,
+      "steps": 100,
+      "seconds": {
+        "scan_each_rhs": [
+          0.10288241599846515,
+          0.10300987499795156,
+          0.10418570800175075,
+          0.10403266700086533,
+          0.103871084000275
+        ],
+        "reuse_snapshot_norm": [
+          0.09612670799833722,
+          0.09604733399828547,
+          0.09716191700135823,
+          0.0970435829985945,
+          0.09670604200073285
+        ]
+      },
+      "median_speedup": 1.0740909445915268,
+      "iterations": {
+        "scan_each_rhs": {
+          "initial_mass": 26,
+          "effective_system_total": 2487
+        },
+        "reuse_snapshot_norm": {
+          "initial_mass": 26,
+          "effective_system_total": 2487
+        }
+      },
+      "maximum_differences": {
+        "displacement": 0.0,
+        "velocity": 0.0,
+        "acceleration": 0.0,
+        "reaction": 0.0,
+        "kinetic_energy": 0.0,
+        "strain_energy": 0.0,
+        "external_work": 0.0,
+        "energy_balance_error": 0.0
+      },
+      "maximum_relative_energy_balance": 2.8206197143568536e-14
+    },
+    {
+      "dimension": 3,
+      "resolution": 5,
+      "dofs": 648,
+      "cells": 750,
+      "time_step": 0.001,
+      "steps": 100,
+      "seconds": {
+        "scan_each_rhs": [
+          0.08551862499734852,
+          0.08526966699719196,
+          0.08519833399986965,
+          0.084775458999502,
+          0.08496379199641524
+        ],
+        "reuse_snapshot_norm": [
+          0.0816296249977313,
+          0.07869125000070198,
+          0.0782367499996326,
+          0.07780862500294461,
+          0.07806541700119851
+        ]
+      },
+      "median_speedup": 1.0889809967856505,
+      "iterations": {
+        "scan_each_rhs": {
+          "initial_mass": 28,
+          "effective_system_total": 2800
+        },
+        "reuse_snapshot_norm": {
+          "initial_mass": 28,
+          "effective_system_total": 2800
+        }
+      },
+      "maximum_differences": {
+        "displacement": 0.0,
+        "velocity": 0.0,
+        "acceleration": 0.0,
+        "reaction": 0.0,
+        "kinetic_energy": 0.0,
+        "strain_energy": 0.0,
+        "external_work": 0.0,
+        "energy_balance_error": 0.0
+      },
+      "maximum_relative_energy_balance": 4.077051919450711e-14
+    },
+    {
+      "dimension": 3,
+      "resolution": 8,
+      "dofs": 2187,
+      "cells": 3072,
+      "time_step": 0.001,
+      "steps": 100,
+      "seconds": {
+        "scan_each_rhs": [
+          0.28780433399879257,
+          0.28742504099864163,
+          0.2880564580009377,
+          0.28796637499908684,
+          0.28756754099958926
+        ],
+        "reuse_snapshot_norm": [
+          0.26011787499737693,
+          0.26018924999880255,
+          0.2606479170026432,
+          0.2607929579971824,
+          0.2603164590000233
+        ]
+      },
+      "median_speedup": 1.1055940723239739,
+      "iterations": {
+        "scan_each_rhs": {
+          "initial_mass": 29,
+          "effective_system_total": 2801
+        },
+        "reuse_snapshot_norm": {
+          "initial_mass": 29,
+          "effective_system_total": 2801
+        }
+      },
+      "maximum_differences": {
+        "displacement": 0.0,
+        "velocity": 0.0,
+        "acceleration": 0.0,
+        "reaction": 0.0,
+        "kinetic_energy": 0.0,
+        "strain_energy": 0.0,
+        "external_work": 0.0,
+        "energy_balance_error": 0.0
+      },
+      "maximum_relative_energy_balance": 1.0503208545953277e-14
+    },
+    {
+      "dimension": 3,
+      "resolution": 8,
+      "dofs": 2187,
+      "cells": 3072,
+      "time_step": 0.01,
+      "steps": 100,
+      "seconds": {
+        "scan_each_rhs": [
+          0.2375566250011616,
+          0.23765420799827552,
+          0.23754333299802965,
+          0.2377594579993456,
+          0.2378761250001844
+        ],
+        "reuse_snapshot_norm": [
+          0.2105537909992563,
+          0.21041841599799227,
+          0.210566582998581,
+          0.2119314999981725,
+          0.21091225000054692
+        ]
+      },
+      "median_speedup": 1.1286416135644708,
+      "iterations": {
+        "scan_each_rhs": {
+          "initial_mass": 29,
+          "effective_system_total": 2001
+        },
+        "reuse_snapshot_norm": {
+          "initial_mass": 29,
+          "effective_system_total": 2001
+        }
+      },
+      "maximum_differences": {
+        "displacement": 0.0,
+        "velocity": 0.0,
+        "acceleration": 0.0,
+        "reaction": 0.0,
+        "kinetic_energy": 0.0,
+        "strain_energy": 0.0,
+        "external_work": 0.0,
+        "energy_balance_error": 0.0
+      },
+      "maximum_relative_energy_balance": 1.6161388633611977e-13
+    }
+  ]
+}

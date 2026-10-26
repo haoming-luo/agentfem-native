@@ -1,0 +1,194 @@
+{
+  "scope": "已给定相同完整 K/M/载荷/初值后的约束消元、预条件准备、100 步积分与反力/历史恢复；不含导入、网格和装配。",
+  "strategy": "Newmark 初猜仅改为上一已接受加速度，默认仍为冷初猜；不改变方程/容差。",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "dynamics_source_sha256": "bc774f13dfe47190cff784ef8f356b41822ee7b827ed1dc59a36c031236febd2",
+  "cases": [
+    {
+      "dimension": 2,
+      "resolution": 24,
+      "dofs": 1250,
+      "cells": 1152,
+      "time_step": 0.001,
+      "steps": 100,
+      "seconds": {
+        "cold": [
+          0.10372683400055394,
+          0.10331149999910849,
+          0.1032911670008616,
+          0.10411745800229255,
+          0.10441416699904948
+        ],
+        "warm": [
+          0.1014851660002023,
+          0.10156379199906951,
+          0.10147874999893247,
+          0.10170237500278745,
+          0.10128104099931079
+        ]
+      },
+      "median_speedup": 1.0220886272221024,
+      "iterations": {
+        "cold": {
+          "initial_mass": 26,
+          "effective_system_total": 2487
+        },
+        "warm": {
+          "initial_mass": 26,
+          "effective_system_total": 2397
+        }
+      },
+      "maximum_differences": {
+        "displacement": 8.4893030105615e-17,
+        "velocity": 1.7780048267024284e-14,
+        "acceleration": 1.272515426364862e-11,
+        "reaction": 3.634245682171411e-15,
+        "kinetic_energy": 6.63396204289568e-18,
+        "strain_energy": 4.126744519022951e-18,
+        "external_work": 0.0,
+        "energy_balance_error": 2.7850443305721395e-18
+      },
+      "maximum_relative_energy_balance": 8.042577834179676e-14
+    },
+    {
+      "dimension": 3,
+      "resolution": 5,
+      "dofs": 648,
+      "cells": 750,
+      "time_step": 0.001,
+      "steps": 100,
+      "seconds": {
+        "cold": [
+          0.08506312499957858,
+          0.08478708300026483,
+          0.08497929199802456,
+          0.08471908299907227,
+          0.08508933299890487
+        ],
+        "warm": [
+          0.08147004099737387,
+          0.08096374999877298,
+          0.08101583299867343,
+          0.08100808300150675,
+          0.08126420799817424
+        ]
+      },
+      "median_speedup": 1.048922029838489,
+      "iterations": {
+        "cold": {
+          "initial_mass": 28,
+          "effective_system_total": 2800
+        },
+        "warm": {
+          "initial_mass": 28,
+          "effective_system_total": 2596
+        }
+      },
+      "maximum_differences": {
+        "displacement": 2.1618991319360958e-16,
+        "velocity": 2.37774210043451e-14,
+        "acceleration": 3.0175861809311755e-12,
+        "reaction": 2.3310346708438345e-15,
+        "kinetic_energy": 2.256495771485456e-18,
+        "strain_energy": 1.5720931501039814e-18,
+        "external_work": 0.0,
+        "energy_balance_error": 1.395910297075087e-18
+      },
+      "maximum_relative_energy_balance": 1.76182853028895e-14
+    },
+    {
+      "dimension": 3,
+      "resolution": 8,
+      "dofs": 2187,
+      "cells": 3072,
+      "time_step": 0.001,
+      "steps": 100,
+      "seconds": {
+        "cold": [
+          0.28891183299856493,
+          0.28798629099765094,
+          0.28898529099751613,
+          0.2884656249989348,
+          0.2941542919979838
+        ],
+        "warm": [
+          0.2773951669987582,
+          0.2776807500013092,
+          0.2778225840011146,
+          0.2783437079997384,
+          0.27708404200166115
+        ]
+      },
+      "median_speedup": 1.0404460265870168,
+      "iterations": {
+        "cold": {
+          "initial_mass": 29,
+          "effective_system_total": 2801
+        },
+        "warm": {
+          "initial_mass": 29,
+          "effective_system_total": 2626
+        }
+      },
+      "maximum_differences": {
+        "displacement": 3.9562537273996057e-16,
+        "velocity": 4.570996359198887e-14,
+        "acceleration": 9.59710089176724e-12,
+        "reaction": 2.3418766925686896e-15,
+        "kinetic_energy": 1.6466320494623599e-18,
+        "strain_energy": 1.7414997395548415e-18,
+        "external_work": 0.0,
+        "energy_balance_error": 4.404571325722362e-19
+      },
+      "maximum_relative_energy_balance": 1.1745523535259579e-14
+    },
+    {
+      "dimension": 3,
+      "resolution": 8,
+      "dofs": 2187,
+      "cells": 3072,
+      "time_step": 0.01,
+      "steps": 100,
+      "seconds": {
+        "cold": [
+          0.23746791599842254,
+          0.2374738750004326,
+          0.2376903330005007,
+          0.2386038330005249,
+          0.23835229199903551
+        ],
+        "warm": [
+          0.24019929099813453,
+          0.24062591699839686,
+          0.24160191700138967,
+          0.2421959160019469,
+          0.24143720899883192
+        ]
+      },
+      "median_speedup": 0.9844809504969495,
+      "iterations": {
+        "cold": {
+          "initial_mass": 29,
+          "effective_system_total": 2001
+        },
+        "warm": {
+          "initial_mass": 29,
+          "effective_system_total": 2045
+        }
+      },
+      "maximum_differences": {
+        "displacement": 1.3232619752549801e-15,
+        "velocity": 1.1404592548114323e-13,
+        "acceleration": 2.3467811027799712e-11,
+        "reaction": 5.702686586839256e-15,
+        "kinetic_energy": 5.355958732078392e-17,
+        "strain_energy": 4.2016222315602314e-17,
+        "external_work": 0.0,
+        "energy_balance_error": 2.5668486433594317e-17
+      },
+      "maximum_relative_energy_balance": 2.7409986173149033e-13
+    }
+  ]
+}

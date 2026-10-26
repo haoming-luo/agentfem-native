@@ -18,6 +18,15 @@ diagonal is `mu`. The element stiffness is `V B^T D B`.
 
 ## Loads, conditions, and results
 
+### 结构化验证网格
+
+`unit_cube_tetrahedra(resolution, resolution_y=None, resolution_z=None)` 在单位立方体
+三个方向分别划分 nx、ny、nz；省略 y/z 时继续使用原来的等向 resolution。
+每个六面体仍按相同体对角线剖分成六个相容 T4，节点顺序仍为 x 最快、随后 y、z。
+节点数 `(nx+1)(ny+1)(nz+1)`，单元数 `6 nx ny nz`，边界三角形总数
+`4(nx ny+nx nz+ny nz)`；六个具名面及其节点集合保持原语义。
+这是验证网格构造工具，不是通用工程网格器。三方向划分均须为正整数，拒绝 bool。
+
 Constant body force contributes `V b/4` to every node. A triangular-face
 traction is integrated by the symmetric three-point degree-2 triangle rule.
 Component or vector displacement conditions must remove three translations and
