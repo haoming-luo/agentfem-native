@@ -161,6 +161,14 @@ ABI 1.6 实验增量只接受已经规范化的严格下三角 CSR 和独立对�
 把部分分解当作缓存。输出缓冲不得与结构或因子输入重叠。Python 绑定拥有独立
 输出，并以 Stable ABI 的 buffer 协议检查长度、类型与可写性。
 
+结构复用实验只缓存规范 CSR 的形状/行指针/列号、镜像位置、严格下三角位置与
+对角位置。`IncompleteCholeskyPattern` 不缓存材料数值、缩放或分解：每次
+`factor(matrix, ...)` 先精确匹配结构，再重新检查数值对称、正对角、范数并完成
+数值分解，返回独立不可变快照。显式零也属于图；图变化必须重新分析。失败不
+修改 pattern 或已有分解。不添加全局缓存或隐藏自动重试，ABI 和默认提供者不变。
+验收覆盖同图变值/完整应用差分、异图拒绝、失败后原快照仍有效、只分析一次和
+含首轮结构准备的多矩阵成本；仅省去结构分析不能宣称省去数值重分解。
+
 - malformed shapes, pointers, columns, ordering, and non-finite data fail;
 - COO duplicates and empty rows canonicalize exactly;
 - matvec, diagonal, residual, and constraint transformation match small dense

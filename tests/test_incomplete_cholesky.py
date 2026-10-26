@@ -9,6 +9,7 @@ import numpy as np
 
 from agentfem_native.experimental_preconditioners import (
     IncompleteCholesky,
+    IncompleteCholeskyPattern,
     IncompleteFactorizationError,
 )
 from agentfem_native.mesh import unit_square_triangles
@@ -25,6 +26,80 @@ def sparse(dense):
 
 
 class IncompleteCholeskyTests(unittest.TestCase):
+    def test_pattern_reuses_only_structure_across_material_changes(self):
+        for mesh in (unit_square_triangles(2), unit_cube_tetrahedra(1)):
+            dimension = mesh.points.shape[1]
+            fixed = (
+                dimension * mesh.nodes("left")[:, None] + np.arange(dimension)
+            ).ravel()
+            matrices = []
+            for young, poisson in ((100, 0.2), (300, 0.3), (70, 0.1)):
+                matrix = ThermoelasticOperator(mesh, young, poisson).stiffness
+                matrices.append(
+                    CSRConstraintPlan.from_matrix(matrix, fixed).transform_matrix(
+                        matrix
+                    )
+                )
+            pattern = IncompleteCholeskyPattern(matrices[0])
+            for matrix in matrices:
+                baseline = IncompleteCholesky(matrix, shift=0.1)
+                with patch.object(
+                    np, "lexsort", side_effect=AssertionError("重复结构分析")
+                ):
+                    candidate = pattern.factor(matrix, shift=0.1)
+                np.testing.assert_array_equal(candidate.lower.data, baseline.lower.data)
+                np.testing.assert_array_equal(candidate.diagonal, baseline.diagonal)
+                rhs = np.linspace(0.0, 1.0, matrix.shape[0])
+                np.testing.assert_array_equal(candidate.apply(rhs), baseline.apply(rhs))
+                result = conjugate_gradient(
+                    matrix, rhs, prepared_preconditioner=candidate
+                )
+                self.assertTrue(result.report.converged)
+                self.assertLessEqual(
+                    result.report.residual_norm, result.report.threshold
+                )
+
+    def test_pattern_failure_does_not_modify_previous_factor(self):
+        bad = np.array(
+            [[1, 0.6, 0.6, 0], [0.6, 1, 0, 0.6], [0.6, 0, 1, -0.6], [0, 0.6, -0.6, 1]]
+        )
+        initial = sparse(bad + np.eye(4))
+        pattern = IncompleteCholeskyPattern(initial)
+        first = pattern.factor(initial)
+        before = first.apply([1, 2, 3, 4])
+        with self.assertRaises(IncompleteFactorizationError):
+            pattern.factor(sparse(bad))
+        np.testing.assert_array_equal(first.apply([1, 2, 3, 4]), before)
+        retry = pattern.factor(sparse(bad), shift=0.2)
+        self.assertFalse(np.array_equal(retry.diagonal, first.diagonal))
+        with self.assertRaisesRegex(ValueError, "数值"):
+            first.validate_matrix(sparse(bad))
+        for values in (pattern.indices, pattern.transposed_order, pattern.lower_slots):
+            with self.assertRaises(ValueError):
+                values[0] = 42
+        self.assertGreater(
+            pattern.storage_nbytes, initial.indptr.nbytes + initial.indices.nbytes
+        )
+
+    def test_pattern_rejects_changed_graph_and_rechecks_numerical_admission(self):
+        initial = sparse([[2, -1], [-1, 2]])
+        pattern = IncompleteCholeskyPattern(initial)
+        with self.assertRaisesRegex(ValueError, "图"):
+            pattern.factor(sparse([[2, 0], [0, 2]]))
+        for matrix in (sparse([[2, -1], [-0.5, 2]]), sparse([[-2, -1], [-1, 2]])):
+            with self.assertRaises(ValueError):
+                pattern.factor(matrix)
+        # 同一显式图的零值是数值变化，不能触发删边或继承旧非零因子。
+        diagonal = CSRMatrix(
+            initial.shape, initial.indptr, initial.indices, [2, 0, 0, 3]
+        )
+        factor = pattern.factor(diagonal)
+        np.testing.assert_allclose(factor.apply([2, 3]), [1, 1], atol=1e-15)
+        with self.assertRaises(ValueError):
+            IncompleteCholeskyPattern(sparse([[0, 1], [1, 0]]))
+        with self.assertRaises(ValueError):
+            IncompleteCholesky(initial, pattern="automatic")
+
     @unittest.skipUnless(native_kernel_available(), "原生 ABI 1.6 不可用")
     def test_native_factor_and_application_match_readable_route(self):
         for mesh in (unit_square_triangles(4), unit_cube_tetrahedra(2)):
@@ -36,6 +111,11 @@ class IncompleteCholeskyTests(unittest.TestCase):
             )
             reference = IncompleteCholesky(matrix, shift=0.1)
             native = IncompleteCholesky(matrix, shift=0.1, backend="native")
+            reused = IncompleteCholeskyPattern(matrix).factor(
+                matrix, shift=0.1, backend="native"
+            )
+            np.testing.assert_array_equal(reused.lower.data, native.lower.data)
+            np.testing.assert_array_equal(reused.diagonal, native.diagonal)
             np.testing.assert_allclose(
                 native.diagonal, reference.diagonal, rtol=1e-13, atol=1e-14
             )

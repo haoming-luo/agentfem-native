@@ -76,7 +76,8 @@ non-shipping comparison track, and both must reproduce the same reference.
 `ThermalOperator` 拥有热导/热容，`ThermoelasticOperator` 拥有温度到热应变载荷，
 `FiniteStrainOperator` 拥有总拉格朗日内力和解析切线，`AT2FractureOperator`
 拥有退化能、损伤界限约束和交替接受状态。它们不依赖 AgentFEM 内部对象，也不
-把通用 NumPy 数组库宣称为自研。C++ ABI 1.5 本批保持不变，新的有限变形切线
+把通用 NumPy 数组库宣称为自研。最初多物理增量未改变 C++ ABI 1.5；当前 IC0
+独立增量扩展到 1.6。新的有限变形切线
 主要为 NumPy 向量化候选，复用自有 CSR 和 C++ SpMV，不冒充已完成 C++ 迁移。
 
 单独候选 JSON 边界在构建算子前校验物理参数、连通分量、能力和预算；通过
@@ -89,11 +90,14 @@ Kernel Contract 在原生 Windows、macOS、Linux 上保持一致。代码使用
 与 `pathlib`，不要求 POSIX shell，显式处理文件系统大小写差异，也不在工件中
 嵌入开发者绝对路径。
 
-基础包只依赖 Python、NumPy 和平台 C/C++ 运行时。C++20 扩展通过 C ABI 1.5
+基础包只依赖 Python、NumPy 和平台 C/C++ 运行时。C++20 扩展通过 C ABI 1.6
 提供 P1 扩散、T3/T4 串行与并行体积装配、CSR SpMV 和确定性数值回填，并使用 CPython 3.11+
 Stable ABI；已准备的串行 T3/T4 可省略重复 COO 行列索引。扩展不使用第三方绑定
 框架。PETSc、SciPy、MPI、GPU 和厂商求解器只能是
 可选提供者，不能成为参考路径的导入时依赖。
+
+材料扫描的 IC0 结构复用仅由调用方持有 `IncompleteCholeskyPattern`；结构计划
+无数值因子。不同值必须产生新分解快照，异图拒绝复用，失败保留旧快照。
 
 See `docs/adr/` for decisions and `docs/specifications/KERNEL_CONTRACT_V0.md`
 for the boundary presented to AgentFEM.
