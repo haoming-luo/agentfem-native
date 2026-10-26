@@ -22,6 +22,7 @@ from .sparse import (
     PreparedPreconditioner,
     conjugate_gradient,
 )
+from .time_grid import time_grid, validate_time_interval
 
 FloatArray: TypeAlias = NDArray[np.float64]
 Integrator = Literal["central_difference", "newmark_average_acceleration"]
@@ -105,14 +106,7 @@ class LinearSecondOrderSystem:
             raise ValueError("Dynamic stiffness must be square.")
         if self.mass.shape != self.stiffness.shape:
             raise ValueError("Dynamic mass and stiffness shapes must match.")
-        if not np.isfinite(self.time_step) or self.time_step <= 0.0:
-            raise ValueError("Dynamic time step must be finite and positive.")
-        if (
-            isinstance(self.steps, (bool, np.bool_))
-            or not isinstance(self.steps, (int, np.integer))
-            or int(self.steps) < 0
-        ):
-            raise ValueError("Dynamic step count must be a nonnegative integer.")
+        validate_time_interval(self.time_step, self.steps)
         size = self.stiffness.shape[0]
         for name in ("initial_displacement", "initial_velocity"):
             values = np.array(getattr(self, name), dtype=np.float64, copy=True)
@@ -135,12 +129,28 @@ class DynamicCheckpoint:
     digest: str
 
     def __post_init__(self) -> None:
+        if self.method not in {"central_difference", "newmark_average_acceleration"}:
+            raise ValueError("检查点积分方法无效。")
+        if (
+            isinstance(self.step, (bool, np.bool_))
+            or not isinstance(self.step, (int, np.integer))
+            or not 0 <= self.step <= np.iinfo(np.int64).max
+        ):
+            raise ValueError("检查点步号必须为非负 int64 整数。")
+        validate_time_interval(1.0, 0, start_time=self.time)
+        # 后续累计步号使用 Python 整数，避免 np.int64 在比较之前先回绕。
+        object.__setattr__(self, "step", int(self.step))
+        object.__setattr__(self, "time", float(self.time))
         for name in ("displacement", "velocity", "acceleration"):
             values = np.array(getattr(self, name), dtype=np.float64, copy=True)
             if values.ndim != 1 or not np.all(np.isfinite(values)):
                 raise ValueError("Checkpoint state arrays must be finite vectors.")
             values.setflags(write=False)
             object.__setattr__(self, name, values)
+        if not (
+            self.displacement.shape == self.velocity.shape == self.acceleration.shape
+        ):
+            raise ValueError("检查点的位移、速度和加速度必须等长。")
         if self.digest != _checkpoint_digest(
             self.method,
             self.step,
@@ -340,6 +350,15 @@ def integrate_linear_dynamics(
         raise ValueError("前步加速度初猜仅适用于 Newmark 隐式积分。")
     if method not in {"central_difference", "newmark_average_acceleration"}:
         raise ValueError(f"Unknown linear dynamics method {method!r}.")
+    if context is not None:
+        context.check("linear_dynamics.prepare", 0, system.steps)
+    if restart is not None and restart.step + system.steps > np.iinfo(np.int64).max:
+        raise ValueError("重启后的步号超出 int64 范围。")
+    times = time_grid(
+        system.time_step,
+        system.steps,
+        start_time=0.0 if restart is None else restart.time,
+    )
     size = system.stiffness.shape[0]
     dt = system.time_step
     if method == "central_difference":
@@ -366,7 +385,6 @@ def integrate_linear_dynamics(
             _load_at(system.load, 0.0, size) - system.stiffness.matvec(displacement),
         )
     count = system.steps + 1
-    times = start_time + system.time_step * np.arange(count, dtype=np.float64)
     displacements = np.empty((count, size), dtype=np.float64)
     velocities = np.empty_like(displacements)
     accelerations = np.empty_like(displacements)
@@ -474,6 +492,8 @@ def integrate_constrained_linear_dynamics(
 ) -> LinearDynamicsResult:
     """零固定 DOF 消元、自由系统积分与反力恢复；初猜只取已接受加速度。"""
 
+    if context is not None:
+        context.check("linear_dynamics.constraints", 0, system.steps)
     constrained = np.asarray(constrained_dofs)
     if constrained.ndim != 1 or not np.issubdtype(constrained.dtype, np.integer):
         raise ValueError("Constrained dynamic DOFs must be an integer vector.")

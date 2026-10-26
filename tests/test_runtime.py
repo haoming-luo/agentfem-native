@@ -46,7 +46,8 @@ class RuntimeControlTests(unittest.TestCase):
         with self.assertRaises(NativeExecutionError) as captured:
             integrate_linear_dynamics(_system(10), context=context)
         self.assertEqual(captured.exception.code, "execution.cancelled")
-        self.assertEqual([event.completed for event in events], [0, 1, 2])
+        self.assertEqual(events[0].stage, "linear_dynamics.prepare")
+        self.assertEqual([event.completed for event in events], [0, 0, 1, 2])
 
     def test_step_budget_rejects_before_first_transition(self) -> None:
         with self.assertRaises(NativeExecutionError) as captured:

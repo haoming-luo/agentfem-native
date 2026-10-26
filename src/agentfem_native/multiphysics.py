@@ -40,6 +40,7 @@ from .simplex import (
 from .solid_dynamics import assemble_t4_mass
 from .thermal import ThermalBoundary, ThermalOperator, conductivity_tensors
 from .thermoelastic import ThermoelasticOperator
+from .time_grid import validate_time_interval
 from .volume_mesh import TetrahedralMesh
 
 MULTIPHYSICS_VERSION = "0.4.0-experimental.1"
@@ -333,8 +334,10 @@ def _validate_physics(decoded):
         if d != 3:
             raise ValueError("linear_dynamics_t4 只支持三维 T4 实体。")
         positive(material["density"], "密度")
-        positive(procedure["time_step"], "动力时间步")
-        positive_integer(procedure["steps"], "动力步数")
+        validate_time_interval(
+            positive(procedure["time_step"], "动力时间步"),
+            positive_integer(procedure["steps"], "动力步数"),
+        )
         if procedure.get("mass", "lumped") not in ("lumped", "consistent"):
             raise ValueError("动力质量形式必须是 lumped 或 consistent。")
         if np.any(mechanical_bc.values != 0) or mechanical_bc.dofs.size == n * d:
@@ -384,8 +387,10 @@ def _validate_physics(decoded):
         if kind != "thermal_transient" and anchored != set(components):
             raise ValueError("稳态热场每个连通分量都需要固定温度或正换热边界。")
         if kind == "thermal_transient":
-            positive(procedure["time_step"], "时间步")
-            positive_integer(procedure["steps"], "时间步数")
+            validate_time_interval(
+                positive(procedure["time_step"], "时间步"),
+                positive_integer(procedure["steps"], "时间步数"),
+            )
             initial = finite_array(thermal["initial"], (n,), "初始温度")
             if not np.allclose(
                 initial[thermal_bc.dofs], thermal_bc.values, rtol=0, atol=1e-12

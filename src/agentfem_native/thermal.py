@@ -21,6 +21,7 @@ from .simplex import (
     readonly,
 )
 from .sparse import CSRMatrix
+from .time_grid import time_grid, validate_time_interval
 
 
 def conductivity_tensors(value: ArrayLike, count: int, dimension: int) -> np.ndarray:
@@ -199,6 +200,7 @@ class ThermalOperator:
         """常系数、固定温度边界；每步使用接受温度，固定算子仅准备一次。"""
         dt = positive(time_step, "时间步")
         steps = positive_integer(steps, "步数")
+        validate_time_interval(dt, steps)
         n = self.stiffness.shape[0]
         bc.validate(n)
         current = finite_array(initial, (n,), "初始温度").copy()
@@ -206,6 +208,7 @@ class ThermalOperator:
             raise ValueError("初始温度必须满足固定温度约束。")
         ctx = context or ExecutionContext()
         ctx.check("thermal.prepare", 0, steps)
+        times = time_grid(dt, steps)
         matrix = CSRMatrix.from_coo(
             (n, n),
             np.concatenate((self.capacity.row_indices(), self.stiffness.row_indices())),
@@ -225,6 +228,4 @@ class ThermalOperator:
             balances.append(residual.sum() - residual[bc.dofs].sum())
             current = candidate
         ctx.check("thermal.complete", steps, steps)
-        return self._result(
-            temperatures, np.arange(steps + 1) * dt, residuals, bc, balances
-        )
+        return self._result(temperatures, times, residuals, bc, balances)

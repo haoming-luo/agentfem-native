@@ -657,10 +657,18 @@ def _dynamic_problem(
             path="$.initial_state",
         )
     start_time = 0.0 if restart is None else restart.time
+    from .time_grid import validate_time_interval
+
+    try:
+        end_time = validate_time_interval(time_step, steps, start_time=start_time)
+    except (ValueError, TypeError) as error:
+        raise KernelRequestError(
+            "invalid_request", str(error), path="$.procedure"
+        ) from error
     load_scale = _load_scale(
         procedure.get("load_scale", 1.0),
         start_time=start_time,
-        end_time=start_time + steps * time_step,
+        end_time=end_time,
     )
     physics = _mapping(request.get("physics"), "$.physics")
     density = _positive_scalar(physics.get("density"), "$.physics.density")

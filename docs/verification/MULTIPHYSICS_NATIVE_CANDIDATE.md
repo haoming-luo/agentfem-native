@@ -149,5 +149,17 @@ SPD 输入也可能分解失败，非正枢轴保留行号；显式平移只改�
 macOS arm64 wheel 与三平台 C/C++ 均成功，Intel wheel 失败，后置 ABI 验收跳过。
 随后 `91d2f0a` 的单 Intel 诊断 `40384196091` 确认切线重复断言已修复，但约束
 图复用测试还有约 3.47e-18 的能量重复尾差。按同一 ADR-0033 修正其浮点重复
-断言；准备次数、迭代数、拒绝步和结构仍精确比较。本次新 ABI 和该修订尚需
-新提交的定点诊断与完整 Tier-1，不引用旧成功运行作为新代码的通过结论。
+断言；准备次数、迭代数、拒绝步和结构仍精确比较。新 ABI 和该修订随后随源提交
+`b5ec4af` 通过 Intel 定点诊断
+[40386269044](https://github.com/haoming-luo/agentfem-native/actions/runs/40386269044)，
+再通过完整 Tier-1
+[40386606719](https://github.com/haoming-luo/agentfem-native/actions/runs/40386606719)：
+原生 Windows/Linux/macOS Intel/arm64 wheel，三平台 C/C++，Linux sanitizer、
+Rust、三平台 Python 3.13 Stable ABI 复装及工件清单全部通过。这只覆盖该源提交，
+不自动覆盖此后的 IC0 结构复用或运行准入修订，也不提升科学成熟度。
+
+后续 Python 增量：IC0 同图材料扫描复用与有限时间/检查点/提前取消准入。
+本机源码 289 项及仓库外最小安装环境 289 项通过（安装态 4 项可选 SciPy
+跳过）；Ruff、格式、独立性扫描通过。时间修订先复现了 4 类失败，另以
+np.int64 最大步号复现回绕，再检查修正；正常完整动力轨迹与重启测试仍通过。
+不新增必需依赖或 ABI 变动；其平台证据不得自动继承 b5ec4af 的运行。

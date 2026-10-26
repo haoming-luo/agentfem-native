@@ -23,6 +23,8 @@ K_ab=V G_a k G_b；C_ab=rho*c*V*(1+delta_ab)/(m*(m+1))。
 热流 q_phys=-k grad(T)。边界输入为向内热通量，故正值进入右端。
 Robin 为 h(T-Tambient)，左端添加面质量乘 h，右端添加 h*Tambient 面积分。
 每步记录 C(Tnew-Told)/dt+K*Tnew-q 的约束反力以及全局热量余额。
+瞬态热和 T4 动力的规划先检查整个时间区间有限、相邻时间可表示；具体准入沿用
+`LINEAR_DYNAMICS.md`，不因单个 dt/steps 合法就承诺无限终点可执行。
 导热张量仅允许相对最大分量 `64*eps` 的舍入级非对称，并取对称均值；不得以
 NumPy 默认绝对容差让微小量纲下的非对称张量通过正定准入。
 
