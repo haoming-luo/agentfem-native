@@ -84,6 +84,11 @@ operation returns a new CSR matrix and right-hand side; the input is immutable.
 For symmetric positive-definite `A` on the free subspace, `A'` is symmetric
 positive definite.
 
+Native 预备求解在非零约束时用 `x0_C=g, x0_F=0` 初始化 CG；单位约束行与
+自由行已解耦，Jacobi/块 Jacobi 保持约束搜索方向为零。全零约束维持默认零
+初猜。已知边界值不受全局残差近似误差支配；原方程、真残差和停止门槛不变。
+详见 ADR-0035；不以事后改写结果或报告替代这个状态不变量。
+
 ## Conjugate gradient and Jacobi
 
 The baseline CG algorithm solves symmetric positive-definite systems. Optional

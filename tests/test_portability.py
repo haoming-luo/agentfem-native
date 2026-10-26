@@ -17,6 +17,24 @@ from tests.test_contract import request_record
 
 
 class PortabilityTests(unittest.TestCase):
+    def test_diagnostics_rejects_incorrect_native_factor_application(self):
+        with (
+            patch(
+                "agentfem_native.diagnostics.native_kernel_identity",
+                return_value={"available": True},
+            ),
+            patch("agentfem_native.diagnostics.csr_spmv", return_value=[2.0, 5.0]),
+            patch(
+                "agentfem_native.diagnostics.ic0_factor",
+                return_value=([-0.5], [2, 1.5]),
+            ),
+            patch("agentfem_native.diagnostics.ldlt_solve", return_value=[0.0, 0.0]),
+        ):
+            result = runtime_diagnostics(require_native=True)
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["checks"][0]["code"], "native.smoke_failed")
+        self.assertIn("IC0/LDLT", result["checks"][0]["message"])
+
     def test_unicode_space_path_subprocess_and_replacement(self):
         with TemporaryDirectory(prefix="原生 FEM ") as directory:
             root = Path(directory)

@@ -11,7 +11,6 @@ import numpy as np
 
 from agentfem_native import (
     MULTIPHYSICS_VERSION,
-    SimplexGeometry,
     plan_multiphysics_request,
     run_multiphysics_request,
     unit_cube_tetrahedra,
@@ -82,15 +81,12 @@ def candidate_requests():
                 dofs = np.concatenate((dimension * left, transverse))
                 stretch = 1.5
                 piola = 40 * (stretch - 1 / stretch) + 40 * np.log(stretch) / stretch
-                load = SimplexGeometry(mesh).mechanical_load(
-                    tractions={"right": [piola] + [0] * (dimension - 1)}
-                )
                 request["mechanical"] = {
                     "constraints": {
                         "dofs": dofs.tolist(),
                         "values": np.zeros(dofs.size).tolist(),
                     },
-                    "load": load.tolist(),
+                    "tractions": {"right": [piola] + [0] * (dimension - 1)},
                 }
                 request["procedure"] = {"steps": 4, "maximum_accepted_steps": 32}
             if kind == "at2_fracture":

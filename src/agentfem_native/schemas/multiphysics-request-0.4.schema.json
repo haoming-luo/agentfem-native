@@ -63,6 +63,8 @@
       "properties": {
         "constraints": {"$ref": "#/$defs/constraints"},
         "load": {"$ref": "#/$defs/matrix"},
+        "body_force": {"$ref": "#/$defs/vector", "description": "每单位参考体积的常体力向量，不是加速度；二维积分包含厚度。"},
+        "tractions": {"type": "object", "propertyNames": {"minLength": 1}, "additionalProperties": {"$ref": "#/$defs/vector"}, "description": "命名外边界到每单位参考面积的常面力向量；非随动压力，与节点力/体力相加。"},
         "initial_displacement": {"$ref": "#/$defs/matrix"},
         "initial_velocity": {"$ref": "#/$defs/matrix"},
         "initial_damage": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1}}

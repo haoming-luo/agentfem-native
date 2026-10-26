@@ -110,6 +110,13 @@ class NativeSparseSolvePlan:
         """复用约束后矩阵和数值预条件器，只变换当前右端项。"""
 
         constrained_load = self.constraint_plan.transform_rhs(self.matrix, load, values)
+        prescribed = constrained_load[self.constraint_plan.constrained]
+        initial_guess = None
+        if np.any(prescribed != 0):
+            # 单位约束行与自由行已解耦：从精确已知值开始，避免全局残差容差
+            # 将其当成未知量近似求解，再被高系数梯度放大为边界通量误差。
+            initial_guess = np.zeros_like(constrained_load)
+            initial_guess[self.constraint_plan.constrained] = prescribed
         result = conjugate_gradient(
             self.constrained_matrix,
             constrained_load,
@@ -117,6 +124,7 @@ class NativeSparseSolvePlan:
             absolute_tolerance=self.absolute_tolerance,
             maximum_iterations=self.maximum_iterations,
             prepared_preconditioner=self.preconditioner,
+            initial_guess=initial_guess,
         )
         if not result.report.converged:
             raise LinearSolveError(

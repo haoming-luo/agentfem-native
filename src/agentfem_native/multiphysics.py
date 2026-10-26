@@ -62,6 +62,11 @@ def multiphysics_capabilities() -> dict:
         "elements": ["T3", "T4"],
         "provider": "native_sparse",
         "required_optional_providers": [],
+        "mechanical_loads": [
+            "nodal_force",
+            "constant_body_force",
+            "reference_traction",
+        ],
         "kinds": [
             {
                 "name": kind,
@@ -77,6 +82,7 @@ def multiphysics_capabilities() -> dict:
             "有限变形不含接触、弧长、壳梁或近不可压缩混合公式。",
             "AT2 无张压分裂，压缩亦会损伤；不用于压缩断裂或裂面闭合。",
             "T4 动力 JSON 仅 Newmark、零固定约束、常载荷；无阻尼或 JSON 重启。",
+            "面力按参考构形固定方向积分，不含随动压力；体力输入不是加速度。",
         ],
     }
 
@@ -199,6 +205,8 @@ def _decode(request):
         {
             "constraints",
             "load",
+            "body_force",
+            "tractions",
             "initial_damage",
             "initial_displacement",
             "initial_velocity",
@@ -322,6 +330,15 @@ def _validate_physics(decoded):
     mechanical_bc = _bc(mechanical.get("constraints"), n * d)
     if "load" in mechanical:
         finite_array(mechanical["load"], (n, d), "节点外力")
+    if "body_force" in mechanical:
+        finite_array(mechanical["body_force"], (d,), "单位参考体积的体力")
+    tractions = _mapping(
+        mechanical.get("tractions", {}), "参考面力映射", set(mesh.boundary_sets)
+    )
+    for name, value in tractions.items():
+        finite_array(value, (d,), "单位参考面积的面力")
+        if not mesh.boundary_sets[name].size:
+            raise ValueError(f"参考面力边界 {name} 为空，不能静默忽略载荷。")
     if not kind.startswith("thermal_"):
         check_component_constraints(mesh, components, mechanical_bc)
         _elastic_parameters(material["young_modulus"], material["poisson_ratio"])
@@ -418,6 +435,18 @@ def _validate_physics(decoded):
             damage = finite_array(mechanical["initial_damage"], (n,), "初始损伤")
             if np.any(damage < 0) or np.any(damage > 1):
                 raise ValueError("初始损伤必须位于 [0,1]。")
+
+
+def _mechanical_load(geometry, mechanical):
+    """Native 拥有载荷积分；三种来源相加，均在参考构形中定义。"""
+    if not {"load", "body_force", "tractions"} & mechanical.keys():
+        return None
+    values = geometry.mechanical_load(
+        body_force=mechanical.get("body_force"), tractions=mechanical.get("tractions")
+    )
+    if "load" in mechanical:
+        values += np.asarray(mechanical["load"], dtype=float)
+    return finite_array(values, geometry.mesh.points.shape, "组合节点力")
 
 
 def _plan(decoded):
@@ -621,7 +650,7 @@ def run_multiphysics_request(
                     heat_result = operator.steady(thermal_bc)
                 temperature = heat_result.temperatures[-1]
             if kind == "thermoelastic":
-                result = ThermoelasticOperator(
+                elastic = ThermoelasticOperator(
                     mesh,
                     material["young_modulus"],
                     material["poisson_ratio"],
@@ -630,23 +659,27 @@ def run_multiphysics_request(
                     expansion=material.get("expansion", 0.0),
                     reference_temperature=material.get("reference_temperature", 0.0),
                     thickness=thickness,
-                ).solve(mechanical_bc, load=mechanical.get("load"))
+                )
+                result = elastic.solve(
+                    mechanical_bc, load=_mechanical_load(elastic.geometry, mechanical)
+                )
             else:
                 result = heat_result
         elif kind == "linear_dynamics_t4":
-            stiffness = ThermoelasticOperator(
+            elastic = ThermoelasticOperator(
                 mesh, material["young_modulus"], material["poisson_ratio"]
-            ).stiffness
+            )
             mass = assemble_t4_mass(
                 mesh,
                 material["density"],
                 lumped=procedure.get("mass", "lumped") == "lumped",
             )
             shape = (mesh.node_count, 3)
+            load = _mechanical_load(elastic.geometry, mechanical)
             system = LinearSecondOrderSystem(
-                stiffness,
+                elastic.stiffness,
                 mass,
-                np.asarray(mechanical.get("load", np.zeros(shape))).ravel(),
+                (np.zeros(shape) if load is None else load).ravel(),
                 procedure["time_step"],
                 procedure["steps"],
                 np.asarray(
@@ -670,7 +703,10 @@ def run_multiphysics_request(
                 thermal_stretch=material.get("thermal_stretch", 1.0),
             )
             result = operator.solve(
-                mechanical_bc, load=mechanical.get("load"), context=ctx, **procedure
+                mechanical_bc,
+                load=_mechanical_load(operator.geometry, mechanical),
+                context=ctx,
+                **procedure,
             )
         else:
             operator = AT2FractureOperator(
@@ -685,7 +721,7 @@ def run_multiphysics_request(
             )
             result = operator.solve(
                 mechanical_bc,
-                load=mechanical.get("load"),
+                load=_mechanical_load(operator.geometry, mechanical),
                 initial_damage=mechanical.get("initial_damage"),
                 context=ctx,
                 **procedure,

@@ -11,7 +11,7 @@ from importlib.metadata import PackageNotFoundError, version
 import numpy as np
 
 from .multiphysics import multiphysics_capabilities
-from .native import csr_spmv, native_kernel_identity
+from .native import csr_spmv, ic0_factor, ldlt_solve, native_kernel_identity
 
 
 def _version(name: str) -> str | None:
@@ -46,7 +46,11 @@ def runtime_diagnostics(*, require_native: bool = False) -> dict:
             )
             if not np.array_equal(actual, [2.0, 5.0]):
                 raise ValueError("CSR 手算结果不一致。")
-        except (ValueError, RuntimeError) as error:
+            factors, diagonal = ic0_factor([0, 0, 1], [0], [-1.0], [2.0, 2.0])
+            applied = ldlt_solve([0, 0, 1], [0], factors, diagonal, [1.0, 1.0])
+            if not np.array_equal(applied, [1.0, 1.0]):
+                raise ValueError("IC0/LDLT 手算结果不一致。")
+        except (ValueError, RuntimeError, AttributeError) as error:
             checks.append(
                 {
                     "code": "native.smoke_failed",
@@ -59,7 +63,7 @@ def runtime_diagnostics(*, require_native: bool = False) -> dict:
                 {
                     "code": "native.smoke_passed",
                     "status": "passed",
-                    "message": "C++20 ABI 稀疏乘法手算检查通过。",
+                    "message": "C++20 ABI 稀疏乘法与 IC0/LDLT 手算检查通过（不代表实验算法已晋级）。",
                 }
             )
     else:

@@ -41,6 +41,59 @@ def _problem() -> SteadyDiffusionProblem:
 
 
 class ProviderTests(unittest.TestCase):
+    def test_prescribed_values_stay_exact_with_scalar_and_block_jacobi(self):
+        dense = (
+            np.array(
+                [
+                    [5, -1, -0.4, 0.2],
+                    [-1, 4, 0.3, -0.1],
+                    [-0.4, 0.3, 6, -1],
+                    [0.2, -0.1, -1, 3],
+                ],
+                dtype=float,
+            )
+            * 1e6
+        )
+        rows, columns = np.nonzero(dense)
+        matrix = CSRMatrix.from_coo(dense.shape, rows, columns, dense[rows, columns])
+        fixed, free = np.array([1, 3]), np.array([0, 2])
+        prescribed = np.array([1.25, -0.75])
+        load = np.array([1, 2, 3, 4], dtype=float)
+        exact_free = np.linalg.solve(
+            dense[np.ix_(free, free)],
+            load[free] - dense[np.ix_(free, fixed)] @ prescribed,
+        )
+        for block_size in (None, 2):
+            answer = NativeSparseProvider(block_size=block_size).solve_constrained(
+                matrix, load, fixed, prescribed
+            )
+            np.testing.assert_array_equal(answer.solution[fixed], prescribed)
+            np.testing.assert_allclose(
+                answer.solution[free], exact_free, rtol=1e-12, atol=1e-13
+            )
+            self.assertLessEqual(
+                answer.convergence.residual_norm, answer.convergence.threshold
+            )
+
+    def test_fully_prescribed_solution_requires_no_krylov_iteration(self):
+        matrix = CSRMatrix.from_coo((2, 2), [0, 0, 1, 1], [0, 1, 0, 1], [4, -1, -1, 3])
+        result = NativeSparseProvider(maximum_iterations=0).solve_constrained(
+            matrix, [100, -200], [1, 0], [1.25, -0.75]
+        )
+        np.testing.assert_array_equal(result.solution, [-0.75, 1.25])
+        self.assertEqual(result.convergence.iterations, 0)
+        self.assertEqual(result.convergence.residual_norm, 0)
+
+    def test_homogeneous_constraints_keep_implicit_zero_initial_guess(self):
+        from agentfem_native.sparse import conjugate_gradient
+
+        matrix = CSRMatrix.from_coo((2, 2), [0, 1], [0, 1], [1, 2])
+        with patch(
+            "agentfem_native.providers.conjugate_gradient", wraps=conjugate_gradient
+        ) as solve:
+            NativeSparseProvider().solve_constrained(matrix, [0, 2], [0], [0])
+        self.assertIsNone(solve.call_args.kwargs["initial_guess"])
+
     def test_default_provider_is_owned_sparse_baseline(self) -> None:
         result = solve_steady_diffusion(_problem())
         self.assertEqual(result.provider_name, "native_sparse")
