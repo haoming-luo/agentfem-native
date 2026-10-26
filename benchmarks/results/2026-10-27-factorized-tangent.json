@@ -1,0 +1,103 @@
+{
+  "scope": "给定网格及节点力后的算子构建、全载荷步求解和结果；不含导入、网格生成与 I/O。",
+  "comparison": "同一物理输入/容差；两路均复用约束图，仅对比 tensor 与显式 factorized 切线。",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "native_kernel": {
+    "name": "cpp20",
+    "available": true,
+    "abi_version": "1.5",
+    "required_abi_version": "1.5"
+  },
+  "source_sha256": {
+    "agentfem_native.finite_strain": "28590ad18fb2629ba041251e98e1db03e6e7300309433e7cbff00801ee071cc7",
+    "agentfem_native.krylov": "3f1ed68ba5f0df4d10d6d57a70c4ac7a75c3a24ff456701edd3ca9446f5559c4"
+  },
+  "cases": [
+    {
+      "dimension": 2,
+      "cells": 512,
+      "dofs": 578,
+      "accepted_steps": 4,
+      "rejected_steps": 0,
+      "newton_iterations": 12,
+      "maximum_displacement_error": 3.934057524190848e-10,
+      "trajectory_bitwise_equal": false,
+      "maximum_field_absolute_difference": 1.2789769243681803e-13,
+      "seconds": {
+        "tensor": [
+          0.052480124999419786,
+          0.052431166001042584,
+          0.05257529099981184,
+          0.05266916599794058,
+          0.0526659169991035
+        ],
+        "factorized": [
+          0.03882270800022525,
+          0.038474583001516294,
+          0.038328833998093614,
+          0.03842387500117184,
+          0.03825404099916341
+        ]
+      },
+      "median_solve_speedup": 1.3682974712521425
+    },
+    {
+      "dimension": 3,
+      "cells": 384,
+      "dofs": 375,
+      "accepted_steps": 4,
+      "rejected_steps": 0,
+      "newton_iterations": 12,
+      "maximum_displacement_error": 3.9340597446368974e-10,
+      "trajectory_bitwise_equal": false,
+      "maximum_field_absolute_difference": 2.842170943040401e-14,
+      "seconds": {
+        "tensor": [
+          0.09181037499729428,
+          0.09360887499860837,
+          0.09529133399701095,
+          0.09217516700300621,
+          0.09225245900233858
+        ],
+        "factorized": [
+          0.051899499998398824,
+          0.05183641700205044,
+          0.05357608299891581,
+          0.05217104099938297,
+          0.051882915999158286
+        ]
+      },
+      "median_solve_speedup": 1.7775211515560787
+    },
+    {
+      "dimension": 3,
+      "cells": 3072,
+      "dofs": 2187,
+      "accepted_steps": 4,
+      "rejected_steps": 0,
+      "newton_iterations": 12,
+      "maximum_displacement_error": 3.9340813939858776e-10,
+      "trajectory_bitwise_equal": false,
+      "maximum_field_absolute_difference": 6.394884621840902e-14,
+      "seconds": {
+        "tensor": [
+          0.7042680000013206,
+          0.7058360830014863,
+          0.7053077919990756,
+          0.7050196249983856,
+          0.7069992920005461
+        ],
+        "factorized": [
+          0.3797055420000106,
+          0.3803075830001035,
+          0.37829058399802307,
+          0.37935887500134413,
+          0.3801787089978461
+        ]
+      },
+      "median_solve_speedup": 1.8575125037259947
+    }
+  ]
+}

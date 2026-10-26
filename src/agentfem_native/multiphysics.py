@@ -11,6 +11,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from .dynamics import LinearSecondOrderSystem, integrate_constrained_linear_dynamics
 from .finite_strain import (
     FiniteStrainOperator,
     NonlinearConvergenceError,
@@ -20,6 +21,7 @@ from .finite_strain import (
 from .fracture import AT2FractureOperator
 from .materials import NeoHookeanMaterial, _elastic_parameters
 from .mesh import TriangularMesh
+from .providers import LinearSolveError
 from .runtime import (
     ExecutionContext,
     NativeExecutionError,
@@ -35,6 +37,7 @@ from .simplex import (
     positive,
     positive_integer,
 )
+from .solid_dynamics import assemble_t4_mass
 from .thermal import ThermalBoundary, ThermalOperator, conductivity_tensors
 from .thermoelastic import ThermoelasticOperator
 from .volume_mesh import TetrahedralMesh
@@ -46,6 +49,7 @@ KINDS = (
     "thermoelastic",
     "finite_strain",
     "at2_fracture",
+    "linear_dynamics_t4",
 )
 
 
@@ -60,6 +64,7 @@ def multiphysics_capabilities() -> dict:
         "kinds": [
             {
                 "name": kind,
+                "dimensions": [3] if kind == "linear_dynamics_t4" else [2, 3],
                 "maturity": "experimental"
                 if kind in ("finite_strain", "at2_fracture")
                 else "implemented",
@@ -70,7 +75,7 @@ def multiphysics_capabilities() -> dict:
             "热力为单向顺序耦合，不含机械耗散热反馈。",
             "有限变形不含接触、弧长、壳梁或近不可压缩混合公式。",
             "AT2 无张压分裂，压缩亦会损伤；不用于压缩断裂或裂面闭合。",
-            "T4 线性动力仅提供 Python 候选 API，未进入此 JSON 契约。",
+            "T4 动力 JSON 仅 Newmark、零固定约束、常载荷；无阻尼或 JSON 重启。",
         ],
     }
 
@@ -171,6 +176,7 @@ def _decode(request):
             "length_scale",
             "residual_stiffness",
             "thickness",
+            "density",
         },
     )
     thermal = _mapping(
@@ -187,7 +193,15 @@ def _decode(request):
         },
     )
     mechanical = _mapping(
-        request.get("mechanical", {}), "力学", {"constraints", "load", "initial_damage"}
+        request.get("mechanical", {}),
+        "力学",
+        {
+            "constraints",
+            "load",
+            "initial_damage",
+            "initial_displacement",
+            "initial_velocity",
+        },
     )
     procedure = _mapping(
         request.get("procedure", {}),
@@ -203,6 +217,7 @@ def _decode(request):
             "load_factors",
             "maximum_alternations",
             "tolerance",
+            "mass",
         },
     )
     budget = ResourceBudget(
@@ -238,6 +253,7 @@ def _decode(request):
             "residual_stiffness",
             "thickness",
         },
+        "linear_dynamics_t4": {"young_modulus", "poisson_ratio", "density"},
     }
     procedure_fields = {
         "thermal_steady": set(),
@@ -252,10 +268,11 @@ def _decode(request):
             "absolute_tolerance",
         },
         "at2_fracture": {"load_factors", "maximum_alternations", "tolerance"},
+        "linear_dynamics_t4": {"time_step", "steps", "mass"},
     }
     _mapping(material, "当前分析的材料", material_fields[kind])
     _mapping(procedure, "当前分析的程序", procedure_fields[kind])
-    if kind in ("finite_strain", "at2_fracture") and thermal:
+    if kind in ("finite_strain", "at2_fracture", "linear_dynamics_t4") and thermal:
         raise ValueError(
             "此候选分析不接受热场子问题；有限变形仅支持显式 thermal_stretch。"
         )
@@ -263,6 +280,11 @@ def _decode(request):
         raise ValueError("纯热分析不接受力学字段。")
     if kind != "at2_fracture" and "initial_damage" in mechanical:
         raise ValueError("当前分析不接受初始损伤。")
+    if (
+        kind != "linear_dynamics_t4"
+        and {"initial_displacement", "initial_velocity"} & mechanical.keys()
+    ):
+        raise ValueError("位移/速度初值仅用于 T4 线性动力候选。")
     if kind == "thermal_steady" and ("initial" in thermal or "temperature" in thermal):
         raise ValueError("稳态热分析不接受初值或预给定温度场。")
     if kind == "thermal_transient" and "temperature" in thermal:
@@ -307,6 +329,21 @@ def _validate_physics(decoded):
             d == 3 and mode == "plane_stress"
         ):
             raise ValueError("实体/平面本构模式与维数不兼容。")
+    if kind == "linear_dynamics_t4":
+        if d != 3:
+            raise ValueError("linear_dynamics_t4 只支持三维 T4 实体。")
+        positive(material["density"], "密度")
+        positive(procedure["time_step"], "动力时间步")
+        positive_integer(procedure["steps"], "动力步数")
+        if procedure.get("mass", "lumped") not in ("lumped", "consistent"):
+            raise ValueError("动力质量形式必须是 lumped 或 consistent。")
+        if np.any(mechanical_bc.values != 0) or mechanical_bc.dofs.size == n * d:
+            raise ValueError("T4 动力要求零固定约束且至少存在一个自由 DOF。")
+        for name in ("initial_displacement", "initial_velocity"):
+            if name in mechanical:
+                values = finite_array(mechanical[name], (n, d), name)
+                if np.any(values.ravel()[mechanical_bc.dofs] != 0):
+                    raise ValueError(f"{name} 违反零固定约束。")
     if kind == "thermoelastic":
         cell_values(material.get("expansion", 0.0), count, "线膨胀系数")
         finite_array(material.get("reference_temperature", 0.0), (), "参考温度")
@@ -444,6 +481,10 @@ def _plan(decoded):
         plan["warnings"].append(
             "可压缩 T3 平面应变/T4；不含近不可压缩混合、接触、壳梁或弧长跟踪。"
         )
+    if kind == "linear_dynamics_t4":
+        plan["warnings"].append(
+            "三维动力当前仅无阻尼 Newmark、零固定约束及常载荷，尚未完成三维波传播 Gate。"
+        )
     plan["plan_digest"] = sha256(
         json.dumps(plan, sort_keys=True, ensure_ascii=False).encode()
     ).hexdigest()
@@ -465,8 +506,18 @@ def _context(budget, context):
     )
 
 
-def _failure(error):
-    if isinstance(error, NativeExecutionError):
+def _failure(error, request=None):
+    if isinstance(error, LinearSolveError):
+        result = {
+            "code": "solver.linear_nonconvergence",
+            "message": str(error),
+            "path": "solver",
+            "retryable": True,
+            "remediations": ["inspect_constraints", "inspect_conditioning"],
+        }
+        if error.report is not None:
+            result["convergence"] = _json(asdict(error.report))
+    elif isinstance(error, NativeExecutionError):
         result = error.as_dict()
     else:
         result = {
@@ -481,6 +532,10 @@ def _failure(error):
         ]
     return {
         "contract_version": MULTIPHYSICS_VERSION,
+        "request_id": request.get("request_id", "unknown")
+        if isinstance(request, dict)
+        and isinstance(request.get("request_id", "unknown"), str)
+        else "unknown",
         "status": "failed",
         "error": result,
     }
@@ -498,11 +553,12 @@ def plan_multiphysics_request(
         ctx.check("multiphysics.plan", 0, plan["requested_steps"])
         return {
             "contract_version": MULTIPHYSICS_VERSION,
+            "request_id": request.get("request_id", "unknown"),
             "status": "planned",
             "plan": plan,
         }
     except (ValueError, TypeError, KeyError, NativeExecutionError) as error:
-        return _failure(error)
+        return _failure(error, request)
 
 
 def run_multiphysics_request(
@@ -572,6 +628,33 @@ def run_multiphysics_request(
                 ).solve(mechanical_bc, load=mechanical.get("load"))
             else:
                 result = heat_result
+        elif kind == "linear_dynamics_t4":
+            stiffness = ThermoelasticOperator(
+                mesh, material["young_modulus"], material["poisson_ratio"]
+            ).stiffness
+            mass = assemble_t4_mass(
+                mesh,
+                material["density"],
+                lumped=procedure.get("mass", "lumped") == "lumped",
+            )
+            shape = (mesh.node_count, 3)
+            system = LinearSecondOrderSystem(
+                stiffness,
+                mass,
+                np.asarray(mechanical.get("load", np.zeros(shape))).ravel(),
+                procedure["time_step"],
+                procedure["steps"],
+                np.asarray(
+                    mechanical.get("initial_displacement", np.zeros(shape))
+                ).ravel(),
+                np.asarray(mechanical.get("initial_velocity", np.zeros(shape))).ravel(),
+            )
+            result = integrate_constrained_linear_dynamics(
+                system,
+                mechanical_bc.dofs,
+                method="newmark_average_acceleration",
+                context=ctx,
+            )
         elif kind == "finite_strain":
             operator = FiniteStrainOperator(
                 mesh,
@@ -610,6 +693,9 @@ def run_multiphysics_request(
             getattr(result, "states", ()),
         )
         fields = _json(asdict(result))
+        if kind == "linear_dynamics_t4":
+            fields["maturity"] = "implemented"
+            fields["dof_layout"] = "node_major_xyz"
         if kind == "thermoelastic" and heat_result is not None:
             fields["thermal"] = _json(asdict(heat_result))
         result_digest = sha256(
@@ -632,4 +718,4 @@ def run_multiphysics_request(
             },
         }
     except (ValueError, TypeError, KeyError, NativeExecutionError) as error:
-        return _failure(error)
+        return _failure(error, request)

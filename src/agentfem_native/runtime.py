@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Agent-facing execution budgets, cancellation, progress, and structured errors."""
+"""面向 Agent 的预算、取消、进度与稳定错误边界。"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from threading import Event
 
 
 class NativeExecutionError(RuntimeError):
-    """Stable machine-readable execution failure."""
+    """机器错误码保持稳定，面向人的解释使用中文。"""
 
     def __init__(
         self,
@@ -48,7 +48,7 @@ class ResourceBudget:
             if value is not None and (
                 isinstance(value, bool) or not isinstance(value, int) or value < 0
             ):
-                raise ValueError(f"{name} must be a nonnegative integer or None.")
+                raise ValueError(f"{name} 必须是非负整数或 None。")
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,14 +89,14 @@ class ExecutionContext:
         enforce_step_budget: bool = True,
     ) -> None:
         if total < 0 or completed < 0 or completed > total:
-            raise ValueError("Progress counters must satisfy 0 <= completed <= total.")
+            raise ValueError("进度计数必须满足 0 <= completed <= total。")
         if (
             enforce_step_budget
             and self.budget.maximum_steps is not None
             and total > self.budget.maximum_steps
         ):
             raise NativeExecutionError(
-                f"Requested {total} steps exceeds budget {self.budget.maximum_steps}.",
+                f"请求 {total} 步，超过预算 {self.budget.maximum_steps}。",
                 code="budget.steps_exceeded",
                 path="procedure.steps",
                 retryable=True,
@@ -104,7 +104,7 @@ class ExecutionContext:
             )
         if self.cancellation is not None and self.cancellation.cancelled:
             raise NativeExecutionError(
-                "Execution was cancelled at an accepted state boundary.",
+                "计算已在安全检查点取消，未接受的试探不能作为结果。",
                 code="execution.cancelled",
                 path=stage,
                 retryable=True,
@@ -118,7 +118,7 @@ class ExecutionContext:
             )
         if self.cancellation is not None and self.cancellation.cancelled:
             raise NativeExecutionError(
-                "Execution was cancelled at an accepted state boundary.",
+                "计算已在安全检查点取消，未接受的试探不能作为结果。",
                 code="execution.cancelled",
                 path=stage,
                 retryable=True,
@@ -127,7 +127,7 @@ class ExecutionContext:
 
 
 def enforce_plan_budget(plan: object, budget: ResourceBudget) -> None:
-    """Reject a plan before execution when conservative estimates exceed policy."""
+    """保守估计超过预算时，在执行之前拒绝计划。"""
 
     for attribute, maximum, code in (
         ("dof_count", budget.maximum_dofs, "budget.dofs_exceeded"),
@@ -136,7 +136,7 @@ def enforce_plan_budget(plan: object, budget: ResourceBudget) -> None:
         value = getattr(plan, attribute, None)
         if maximum is not None and (not isinstance(value, int) or value > maximum):
             raise NativeExecutionError(
-                f"Plan {attribute}={value} exceeds budget {maximum}.",
+                f"计划 {attribute}={value} 超过预算 {maximum}。",
                 code=code,
                 path=f"plan.{attribute}",
                 retryable=True,

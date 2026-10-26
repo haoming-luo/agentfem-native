@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Independent executable mathematics for the AgentFEM Native Engine."""
+"""面向 AgentFEM 自主维护的有限元数学、求解程序与版本化契约。"""
 
 __version__ = "0.7.0a1"
 

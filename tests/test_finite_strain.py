@@ -27,6 +27,46 @@ from agentfem_native.volume_mesh import unit_cube_tetrahedra
 
 
 class FiniteStrainTests(unittest.TestCase):
+    def test_large_uniaxial_stretch_with_free_transverse_contraction(self):
+        for mesh in (unit_square_triangles(4), unit_cube_tetrahedra(3)):
+            dimension = mesh.points.shape[1]
+            operator = FiniteStrainOperator(mesh, NeoHookeanMaterial(100, 0.25))
+            dofs, values = [], []
+            for component in range(dimension):
+                nodes = np.flatnonzero(mesh.points[:, component] == 0)
+                dofs.extend(dimension * nodes + component)
+                values.extend(np.zeros(nodes.size))
+            right = mesh.nodes("right")
+            dofs.extend(dimension * right)
+            values.extend(np.full(right.size, 0.5))
+            result = operator.solve(
+                EssentialBC(dofs, values),
+                steps=4,
+                relative_tolerance=1e-10,
+                absolute_tolerance=1e-12,
+            )
+            # 横向 Piola=0：mu(t²-1)+lambda*log(s*t^(d-1))=0；mu=lambda=40。
+            low, high = 0.1, 1.0
+            for _ in range(80):
+                middle = (low + high) / 2
+                if middle**2 - 1 + np.log(1.5 * middle ** (dimension - 1)) > 0:
+                    high = middle
+                else:
+                    low = middle
+            transverse = (low + high) / 2
+            exact = mesh.points * np.array([0.5] + [transverse - 1] * (dimension - 1))
+            traction = (
+                40 * (1.5 - 1 / 1.5)
+                + 40 * np.log(1.5 * transverse ** (dimension - 1)) / 1.5
+            )
+            reaction = result.final.residual.reshape(mesh.points.shape)[right, 0].sum()
+            np.testing.assert_allclose(result.final.displacements, exact, atol=2e-9)
+            self.assertLess(abs(reaction - traction), 2e-8)
+            for component in range(1, dimension):
+                np.testing.assert_allclose(
+                    result.final.cell_cauchy[:, component, component], 0, atol=2e-8
+                )
+
     def test_krylov_cancellation_and_physical_step_budget_are_separate(self):
         matrix = CSRMatrix.from_coo((3, 3), [0, 1, 2], [0, 1, 2], [1.0, 2.0, 3.0])
         # 内迭代上限不是时间/载荷步数，maximum_steps=1 不应阻断 GMRES。

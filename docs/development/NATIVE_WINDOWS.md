@@ -46,6 +46,15 @@ Native 的必需通用运行依赖只有 NumPy；SciPy、PETSc、MPI 不拥有�
 .venv\Scripts\python.exe -m agentfem_native.cli "work/多物理 验收/finite_strain-3d-request.json" --plan-only
 ```
 
+T4 动力独立示例 `examples/linear_dynamics_t4_candidate.json` 可直接交给同一入口。
+其 `linear_dynamics_t4` 只支持无阻尼 Newmark、恒定节点力、零固定约束和
+`lumped`/`consistent` 质量；位移/速度初值为节点数 × 3，返回历史按节点优先 xyz
+展平。结果含反力与能量余额，但仍是 implemented 候选，不等于完整三维动力准入。
+
+```text
+.venv\Scripts\python.exe -m agentfem_native.cli examples/linear_dynamics_t4_candidate.json --result "work/T4 动力结果.json"
+```
+
 诊断输出区分本机原生 Windows 与 WSL，并真正调用 C++ ABI 检查一个手算稀疏
 乘法。它不外推 Windows 性能，也不证明所有模型正确。可选包的元数据存在只说明
 安装信息，不保证提供者可用。

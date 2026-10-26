@@ -17,6 +17,7 @@ from agentfem_native.multiphysics import (
     plan_multiphysics_request,
     run_multiphysics_request,
 )
+from agentfem_native.providers import LinearSolveError
 from agentfem_native.runtime import CancellationToken, ExecutionContext, ResourceBudget
 from agentfem_native.volume_mesh import unit_cube_tetrahedra
 
@@ -63,6 +64,24 @@ def request_for(kind, dimension=2):
 
 
 class MultiphysicsTests(unittest.TestCase):
+    def test_failed_requests_keep_correlation_and_solver_error_category(self):
+        request = request_for("thermal_steady")
+        request["request_id"] = "中文 Windows 作业"
+        planned = plan_multiphysics_request(request)
+        self.assertEqual(planned["request_id"], request["request_id"])
+        with patch(
+            "agentfem_native.multiphysics.ThermalOperator.steady",
+            side_effect=LinearSolveError("线性迭代未收敛"),
+        ):
+            failed = run_multiphysics_request(request)
+        self.assertEqual(failed["request_id"], request["request_id"])
+        self.assertEqual(failed["error"]["code"], "solver.linear_nonconvergence")
+        self.assertTrue(failed["error"]["retryable"])
+        request["budget"] = {"maximum_dofs": 0}
+        self.assertEqual(
+            plan_multiphysics_request(request)["request_id"], request["request_id"]
+        )
+
     def test_packaged_schema_and_candidate_identity(self):
         schema = multiphysics_request_schema()
         self.assertEqual(

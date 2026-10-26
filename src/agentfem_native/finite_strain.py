@@ -118,9 +118,13 @@ class FiniteStrainOperator:
         *,
         thickness: float = 1.0,
         thermal_stretch: ArrayLike = 1.0,
+        tangent_form: str = "tensor",
     ) -> None:
         self.geometry = SimplexGeometry(mesh, thickness)
         self.material = material
+        if tangent_form not in ("tensor", "factorized"):
+            raise ValueError("切线形式必须是 tensor 或实验 factorized。")
+        self.tangent_form = tangent_form
         self.plan = self.geometry.assembly_plan(self.geometry.dimension)
         stretch = cell_values(thermal_stretch, mesh.cell_count, "各向同性热伸长")
         if np.any(stretch <= 0):
@@ -159,15 +163,26 @@ class FiniteStrainOperator:
         matrix = None
         if tangent:
             inv = inverse[:, :d, :d]
-            a = mu * np.einsum("ik,jl->ijkl", np.eye(d), np.eye(d))[None, ...]
-            a = a + lame * np.einsum("eij,ekl->eijkl", inv, inv)
-            a += (mu - lame * logj)[:, None, None, None, None] * np.einsum(
-                "eil,ekj->eijkl", inv, inv
-            )
-            a /= s[:, None, None, None, None] ** 2
-            local = np.einsum(
-                "eaj,eijkl,ebl,e->eaibk", g.gradients, a, g.gradients, g.volumes
-            )
+            if self.tangent_form == "factorized":
+                # 由解析 A 精确缩并得到；不创建 e×d×d×d×d 的四阶材料数组。
+                transformed = np.einsum("eaj,eij->eai", g.gradients, inv)
+                metric = np.einsum("eaj,ebj->eab", g.gradients, g.gradients)
+                local = mu * np.einsum("eab,ik->eaibk", metric, np.eye(d))
+                local += lame * np.einsum("eai,ebk->eaibk", transformed, transformed)
+                local += (mu - lame * logj)[:, None, None, None, None] * np.einsum(
+                    "eak,ebi->eaibk", transformed, transformed
+                )
+                local *= (g.volumes / s**2)[:, None, None, None, None]
+            else:
+                a = mu * np.einsum("ik,jl->ijkl", np.eye(d), np.eye(d))[None, ...]
+                a = a + lame * np.einsum("eij,ekl->eijkl", inv, inv)
+                a += (mu - lame * logj)[:, None, None, None, None] * np.einsum(
+                    "eil,ekj->eijkl", inv, inv
+                )
+                a /= s[:, None, None, None, None] ** 2
+                local = np.einsum(
+                    "eaj,eijkl,ebl,e->eaibk", g.gradients, a, g.gradients, g.volumes
+                )
             matrix = self.plan.fill(
                 local.reshape(mesh.cell_count, (d + 1) * d, (d + 1) * d)
             )

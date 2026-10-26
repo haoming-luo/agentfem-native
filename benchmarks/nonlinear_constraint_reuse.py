@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""相同非线性物理问题的完整数值求解对照：仅改变约束图复用。"""
+"""相同非线性问题的完整数值求解对照：约束图复用或显式切线缩并实验。"""
 
 import argparse
 import json
@@ -26,7 +26,17 @@ from agentfem_native import (
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--compare-tangent-forms",
+        action="store_true",
+        help="两条路径均复用约束图，仅比较 tensor/factorized 切线",
+    )
     args = parser.parse_args()
+    labels = (
+        ("tensor", "factorized")
+        if args.compare_tangent_forms
+        else ("rebuild_each_newton", "reuse_per_solve")
+    )
     cases = []
     for dimension, resolution in ((2, 16), (3, 4), (3, 8)):
         mesh = (
@@ -44,24 +54,32 @@ def main():
             tractions={"right": [traction] + [0] * (dimension - 1)}
         )
 
-        def solve(reuse, mesh=mesh, bc=bc, load=load):
+        def solve(candidate, mesh=mesh, bc=bc, load=load):
             # 计时包含算子/稀疏图准备、全部非线性步、求解和结果复制；网格输入已给定。
-            return FiniteStrainOperator(mesh, NeoHookeanMaterial(100, 0.25)).solve(
-                bc, load=load, steps=4, reuse_constraint_plan=reuse
+            form = (
+                "factorized" if args.compare_tangent_forms and candidate else "tensor"
+            )
+            return FiniteStrainOperator(
+                mesh, NeoHookeanMaterial(100, 0.25), tangent_form=form
+            ).solve(
+                bc,
+                load=load,
+                steps=4,
+                reuse_constraint_plan=args.compare_tangent_forms or candidate,
             )
 
         reference = solve(False)
         solve(True)
-        timings = {"rebuild_each_newton": [], "reuse_per_solve": []}
+        timings = {label: [] for label in labels}
+        bitwise_equal = True
+        max_difference = 0.0
         for repeat in range(5):
             routes = (False, True) if repeat % 2 == 0 else (True, False)
             for reuse in routes:
                 start = perf_counter()
                 result = solve(reuse)
                 elapsed = perf_counter() - start
-                timings["reuse_per_solve" if reuse else "rebuild_each_newton"].append(
-                    elapsed
-                )
+                timings[labels[int(reuse)]].append(elapsed)
                 assert result.rejected_steps == reference.rejected_steps
                 for actual, expected in zip(
                     result.states, reference.states, strict=True
@@ -73,10 +91,25 @@ def main():
                         "cell_jacobian",
                         "cell_cauchy",
                     ):
-                        np.testing.assert_array_equal(
-                            getattr(actual, name), getattr(expected, name)
+                        a, b = getattr(actual, name), getattr(expected, name)
+                        bitwise_equal &= np.array_equal(a, b)
+                        max_difference = max(
+                            max_difference, float(np.max(np.abs(a - b)))
                         )
-                    assert actual.strain_energy == expected.strain_energy
+                        if args.compare_tangent_forms:
+                            np.testing.assert_allclose(
+                                a,
+                                b,
+                                rtol=1e-10,
+                                atol=2e-7 if name == "cell_cauchy" else 2e-8,
+                            )
+                        else:
+                            np.testing.assert_array_equal(a, b)
+                    bitwise_equal &= actual.strain_energy == expected.strain_energy
+                    if args.compare_tangent_forms:
+                        assert abs(actual.strain_energy - expected.strain_energy) < 1e-8
+                    else:
+                        assert actual.strain_energy == expected.strain_energy
         exact = np.zeros_like(mesh.points)
         exact[:, 0] = 0.5 * mesh.points[:, 0]
         np.testing.assert_allclose(reference.final.displacements, exact, atol=2e-8)
@@ -93,17 +126,19 @@ def main():
                 "maximum_displacement_error": float(
                     np.max(np.abs(reference.final.displacements - exact))
                 ),
-                "trajectory_bitwise_equal": True,
+                "trajectory_bitwise_equal": bool(bitwise_equal),
+                "maximum_field_absolute_difference": max_difference,
                 "seconds": timings,
                 "median_solve_speedup": float(
-                    np.median(timings["rebuild_each_newton"])
-                    / np.median(timings["reuse_per_solve"])
+                    np.median(timings[labels[0]]) / np.median(timings[labels[1]])
                 ),
             }
         )
     output = {
         "scope": "给定网格及节点力后的算子构建、全载荷步求解和结果；不含导入、网格生成与 I/O。",
-        "comparison": "同一数学实现、物理输入、容差；仅复用约束图，数值切线不复用。",
+        "comparison": "同一物理输入/容差；两路均复用约束图，仅对比 tensor 与显式 factorized 切线。"
+        if args.compare_tangent_forms
+        else "同一数学实现、物理输入、容差；仅复用约束图，数值切线不复用。",
         "platform": platform.platform(),
         "python": platform.python_version(),
         "numpy": np.__version__,

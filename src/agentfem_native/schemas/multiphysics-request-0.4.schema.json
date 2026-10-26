@@ -8,7 +8,7 @@
   "properties": {
     "contract_version": {"const": "0.4.0-experimental.1"},
     "request_id": {"type": "string"},
-    "kind": {"enum": ["thermal_steady", "thermal_transient", "thermoelastic", "finite_strain", "at2_fracture"]},
+    "kind": {"enum": ["thermal_steady", "thermal_transient", "thermoelastic", "finite_strain", "at2_fracture", "linear_dynamics_t4"]},
     "experimental": {"type": "boolean"},
     "mesh": {
       "type": "object", "additionalProperties": false, "required": ["points", "cells"],
@@ -32,7 +32,8 @@
         "toughness": {"type": "number", "exclusiveMinimum": 0},
         "length_scale": {"type": "number", "exclusiveMinimum": 0},
         "residual_stiffness": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
-        "thickness": {"type": "number", "exclusiveMinimum": 0}
+        "thickness": {"type": "number", "exclusiveMinimum": 0},
+        "density": {"type": "number", "exclusiveMinimum": 0}
       }
     },
     "thermal": {
@@ -62,6 +63,8 @@
       "properties": {
         "constraints": {"$ref": "#/$defs/constraints"},
         "load": {"$ref": "#/$defs/matrix"},
+        "initial_displacement": {"$ref": "#/$defs/matrix"},
+        "initial_velocity": {"$ref": "#/$defs/matrix"},
         "initial_damage": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1}}
       }
     },
@@ -70,6 +73,7 @@
       "properties": {
         "steps": {"type": "integer", "minimum": 1},
         "time_step": {"type": "number", "exclusiveMinimum": 0},
+        "mass": {"enum": ["lumped", "consistent"]},
         "maximum_iterations": {"type": "integer", "minimum": 1},
         "maximum_cutbacks": {"type": "integer", "minimum": 1},
         "maximum_accepted_steps": {"type": "integer", "minimum": 1},
@@ -91,7 +95,8 @@
   },
   "allOf": [
     {"if": {"properties": {"kind": {"enum": ["finite_strain", "at2_fracture"]}}}, "then": {"required": ["experimental"], "properties": {"experimental": {"const": true}}}},
-    {"if": {"properties": {"kind": {"enum": ["thermoelastic", "finite_strain", "at2_fracture"]}}}, "then": {"required": ["material"], "properties": {"material": {"required": ["young_modulus", "poisson_ratio"]}}}},
+    {"if": {"properties": {"kind": {"enum": ["thermoelastic", "finite_strain", "at2_fracture", "linear_dynamics_t4"]}}}, "then": {"required": ["material"], "properties": {"material": {"required": ["young_modulus", "poisson_ratio"]}}}},
+    {"if": {"properties": {"kind": {"const": "linear_dynamics_t4"}}}, "then": {"required": ["procedure"], "properties": {"material": {"required": ["density"]}, "procedure": {"required": ["steps", "time_step"]}}}},
     {"if": {"properties": {"kind": {"const": "at2_fracture"}}}, "then": {"properties": {"material": {"required": ["toughness", "length_scale"]}}}},
     {"if": {"properties": {"kind": {"const": "thermal_transient"}}}, "then": {"required": ["thermal", "procedure"], "properties": {"thermal": {"required": ["initial"]}, "procedure": {"required": ["steps", "time_step"]}}}}
   ],

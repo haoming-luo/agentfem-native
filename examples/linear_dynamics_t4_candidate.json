@@ -1,0 +1,16 @@
+{
+  "contract_version": "0.4.0-experimental.1",
+  "request_id": "T4原生动力候选-自由振动",
+  "kind": "linear_dynamics_t4",
+  "mesh": {
+    "points": [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    "cells": [[0, 1, 2, 3]]
+  },
+  "material": {"young_modulus": 100, "poisson_ratio": 0.25, "density": 2},
+  "mechanical": {
+    "constraints": {"dofs": [0, 1, 2, 3, 4, 5, 6, 7, 8], "values": [0, 0, 0, 0, 0, 0, 0, 0, 0]},
+    "initial_displacement": [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0.01]]
+  },
+  "procedure": {"steps": 20, "time_step": 0.001, "mass": "consistent"},
+  "budget": {"maximum_dofs": 12, "maximum_steps": 20}
+}
